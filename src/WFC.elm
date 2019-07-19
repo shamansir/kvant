@@ -8,7 +8,7 @@ import Array exposing (Array)
 
 
 type PatternExtraction
-    = Simple
+    = Tiles
     | Overlapping
 
 
@@ -44,42 +44,47 @@ type Propagator = Propagator ()
 type Observation = Observation ()
 
 
-type alias Step = Result PreGeneratedImage GeneratedImage
+-- type Wave = Wave ()
+
+
+type Step
+    = Conflicting PreGeneratedImage
+    | InProgress PreGeneratedImage
+    | Generated GeneratedImage
 
 
 findTiles : Sample -> Array Tile
 findTiles _ = Array.empty
 
 
-buildPropagator : Array Tile -> Propagator
-buildPropagator _ = Propagator ()
+buildPropagator : PatternExtraction -> Array Tile -> Propagator
+buildPropagator _ _ = Propagator ()
 
 
-firstStep : Step
-firstStep = Err (PreGeneratedImage Array.empty Array.empty)
+firstImage : PreGeneratedImage
+firstImage = PreGeneratedImage Array.empty Array.empty
 
 
-observe : Step -> Observation
+observe : PreGeneratedImage -> Observation
 observe _ = Observation ()
 
 
 propagate : Propagator -> Observation -> Step
-propagate _ _ = Ok (GeneratedImage Array.empty)
-
+propagate _ _ = Generated (GeneratedImage Array.empty)
 
 
 run : Configuration -> Result PreGeneratedImage GeneratedImage
-run _ =
+run { extraction } =
     let
         patterns = findTiles <| Sample Array.empty
-        propagator = buildPropagator patterns
-        observeAndPropagate step =
-            case observe step |> propagate propagator of
-                Ok image -> Ok image
-                Err further -> observeAndPropagate (Err further)
-
+        propagator = buildPropagator extraction patterns
+        observeAndPropagate preImage =
+            case observe preImage |> propagate propagator of
+                Conflicting conflicting -> Err conflicting
+                InProgress inProgress -> observeAndPropagate inProgress
+                Generated generatedImage -> Ok generatedImage
     in
-        observeAndPropagate firstStep
+        observeAndPropagate firstImage
 
 
 foo = 42
