@@ -1,0 +1,46 @@
+From: https://adamsmith.as/papers/wfc_is_constraint_solving_in_the_wild.pdf
+
+
+defn Run():
+    PatternsFromSample()
+    BuildPropagator()
+    Loop until finished:
+        Observe()
+        Propagate()
+    OutputObservations()
+
+
+defn Observe(coefficient_matrix):
+    FindLowestEntropy()
+    If there is a contradiction, throw an error and quit
+    If all cells are at entropy 0, processing is complete:
+        Return CollapsedObservations()
+    Else:
+        Choose a pattern by a random sample, weighted by the pattern frequency in the source data
+        Set the boolean array in this cell to false, except for the chosen pattern
+
+
+defn FindLowestEntropy(coefficient_matrix):
+    Return the cell that has the lowest greater-than-zero
+entropy, defined as:
+        A cell with one valid pattern has 0 entropy
+        A cell with no valid patterns is a contradiction
+        Else:
+            the entropy is based on the sum of the frequency that the patterns appear in the source data, plus
+            Use some random noise to break ties and near-ties.
+
+
+defn Propagate(coefficient_matrix):
+    Loop until no more cells are left to be update:
+        For each neighboring cell:
+            For each pattern that is still potentially valid:
+                Compare this location in the pattern with the cell's values
+                    If this point in the pattern no longer matches:
+                        Set the array in the wave to false for this pattern
+                        Flag this cell as needing to be updated in the next iteration
+
+
+defn OutputObservations(coefficient_matrix):
+    For each cell:
+        Set observed value to the average of the color value of this cell in the pattern for the remaining valid patterns
+    Return the observed values as an output image

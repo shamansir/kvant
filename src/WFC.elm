@@ -2,8 +2,6 @@ module WFC exposing
     ( foo )
 
 
-
-
 import Array exposing (Array)
 
 
@@ -41,10 +39,10 @@ type Sample = Sample PixelGrid
 type Propagator = Propagator ()
 
 
-type Observation = Observation ()
+type Observation = Observation Wave
 
 
--- type Wave = Wave ()
+type Wave = Wave (Array (Array Bool))
 
 
 type Step
@@ -66,7 +64,7 @@ firstImage = PreGeneratedImage Array.empty Array.empty
 
 
 observe : PreGeneratedImage -> Observation
-observe _ = Observation ()
+observe _ = Observation (Wave Array.empty)
 
 
 propagate : Propagator -> Observation -> Step
@@ -88,4 +86,3 @@ run { extraction } =
 
 
 foo = 42
-
