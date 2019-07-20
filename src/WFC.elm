@@ -36,10 +36,10 @@ type PreGeneratedImage = PreGeneratedImage PixelGrid (Array (Array (Maybe Tile))
 type Sample = Sample PixelGrid
 
 
-type Propagator = Propagator ()
+type Propagator = Propagator (Array (Array (Array TileId)))
 
 
-type Observation = Observation Wave
+type Observation = Observation Wave (Array TileId)
 
 
 type Wave = Wave (Array (Array Bool))
@@ -55,8 +55,12 @@ findTiles : Sample -> Array Tile
 findTiles _ = Array.empty
 
 
+initialWave : Wave
+initialWave = (Wave Array.empty)
+
+
 buildPropagator : PatternExtraction -> Array Tile -> Propagator
-buildPropagator _ _ = Propagator ()
+buildPropagator _ _ = Propagator Array.empty
 
 
 firstImage : PreGeneratedImage
@@ -64,7 +68,7 @@ firstImage = PreGeneratedImage Array.empty Array.empty
 
 
 observe : PreGeneratedImage -> Observation
-observe _ = Observation (Wave Array.empty)
+observe _ = Observation initialWave (Array.empty)
 
 
 propagate : Propagator -> Observation -> Step
