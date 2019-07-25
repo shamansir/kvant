@@ -3,15 +3,35 @@ module Model
 
 
 import Array exposing (Array)
+import Random
 
 
 type FMX = FMX Int
 type FMY = FMY Int
 type T = T Int
+type Size = Size FMX FMY
+type Limit = Limit Int
+
+type alias CheckBoundary = Int -> Int -> Bool
+
 
 type WaveCell
     = Collapsed
     | Unknown
+type Wave = Wave (Array (Array WaveCell))
+
+
+type Observation
+    = Continue -- null
+    | Contradiction -- false
+    | Finished -- true
+
+
+type Graphics = Graphics {}
+type RunResolution
+    = FoundContradiction
+    | ReachedLimit
+    | Success Graphics
 
 
 type alias Compatibility =
@@ -31,45 +51,55 @@ type alias Weights =
 
 
 type alias Model =
-    { distribution : Array Int
+    { size : Size
+    , distribution : Array Int
     , wave : Array (Array WaveCell)
     , compatible : Array (Array Compatibility)
     , weights : Weights
     , entropies : Array Float
+    , startingEntropy : Float
     , stack : Array Int
     -- , startingEntropy : Float
     }
 
 
-dx = [-1, 0, 1, 0]
-dy = [0, 1, 0, -1]
-opposite = [2, 3, 0, 1]
+-- dx = [-1, 0, 1, 0]
+-- dy = [0, 1, 0, -1]
+-- opposite = [2, 3, 0, 1]
 
 
-init : FMX -> FMY -> T -> Model
-init (FMX fmx) (FMY fmy) (T t) =
+square : Size -> Int
+square (Size (FMX fmx) (FMY fmy)) =
+    fmx * fmy
+
+
+init : Size -> T -> Model
+init size (T t) =
     let
-        size = fmx * fmy
-    in
-        { distribution = Array.repeat t 0
-        , wave = Array.repeat size <| Array.repeat t Unknown
-        , compatible =
-            Array.repeat size
-                <| Array.repeat t
-                <| { a = 0, b = 0, c = 0, d = 0 }
-        , weights =
+        count = square size
+        weights =
             { values = Array.repeat t 0
             , logged = Array.repeat t 0
             , sum = 0
             , sumLogged = 0
-            }
+            } |> weight
+    in
+        { distribution = Array.repeat t 0
+        , wave = Array.repeat count <| Array.repeat t Unknown
+        , compatible =
+            Array.repeat count
+                <| Array.repeat t
+                <| { a = 0, b = 0, c = 0, d = 0 }
+        , weights = weights
+        , startingEntropy = logBase weights.sum e - weights.sumLogged / weights.sum
         , entropies = Array.repeat t 0
         , stack = Array.repeat t 0
+        , size = size
         }
 
 
-weight : T -> Weights -> Weights
-weight (T t) weights =
+weight : Weights -> Weights
+weight weights =
     let
         updateWeights w ( currentWeights, index ) =
             (
@@ -87,3 +117,31 @@ weight (T t) weights =
         weights.values
             |> Array.foldl updateWeights ( weights, 0 )
             |> Tuple.first
+
+
+observe
+    :  Random.Seed
+    -> Model
+    -> ( Random.Seed, Observation )
+observe seed model =
+    let
+        min = 1000
+        argmin = -1
+    in
+        ( seed, Finished )
+
+
+run : Wave -> Limit -> Random.Seed -> RunResolution
+run wave (Limit limit) seed =
+    let
+        iterate _ observation =
+            observation
+    in
+        case List.range 0 (limit - 1)
+            |> List.foldl iterate Continue of
+                Continue -> ReachedLimit
+                Finished -> Success (Graphics {})
+                Contradiction -> FoundContradiction
+
+
+
