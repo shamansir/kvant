@@ -22,6 +22,10 @@ type WaveCell
 type Wave = Wave (List (List WaveCell))
 
 
+type EntropyAmounts = EntropyAmounts (List Int)
+type Entropies = Entropies (List Float)
+
+
 type Observation
     = Continue -- null
     | Contradiction -- false
@@ -53,7 +57,7 @@ type alias Weights =
 
 
 type alias Sums =
-    { ones : List Int
+    { ones : EntropyAmounts
     , weights : List Float
     , weightsLogged : List Float
     }
@@ -66,7 +70,7 @@ type alias Model =
     , compatible : List (List Compatibility)
     , weights : Weights
     , sums : Sums
-    , entropies : List Float
+    , entropies : Entropies
     , startingEntropy : Float
     , stack : List Int
     , stackSize : Int
@@ -91,7 +95,7 @@ init size (T t) =
         weights =
             List.repeat t 0 |> weight
         sums =
-            { ones = List.repeat count 0
+            { ones = List.repeat count 0 |> EntropyAmounts
             , weights = List.repeat count 0
             , weightsLogged = List.repeat count 0
             }
@@ -105,7 +109,7 @@ init size (T t) =
         , weights = weights
         , startingEntropy =
             logBase e weights.sum - weights.sumRaisedToLog / weights.sum
-        , entropies = List.repeat count 0
+        , entropies = List.repeat count 0 |> Entropies
         , sums = sums
         , stack = List.repeat t 0
         , stackSize = 0
@@ -125,6 +129,63 @@ weight values =
         }
 
 
+findMinimumEntropyPos
+    :  Size
+    -> CheckBoundary
+    -> EntropyAmounts
+    -> Entropies
+    -> Random.Seed
+    -> ( Random.Seed, Maybe Int )
+findMinimumEntropyPos
+    (Size (FMX fmx) (FMY fmy))
+    checkBoundary
+    (EntropyAmounts amounts)
+    (Entropies entropies)
+    seed =
+    let
+        advance ( index, ( amount, entropy ) ) maybeVals =
+            if checkBoundary
+                    { x = modBy fmx index
+                    , y = floor <| toFloat index / toFloat fmx
+                    }
+                then maybeVals
+                else
+                    case ( amount, maybeVals ) of
+                        ( 0, _ ) -> Nothing
+                        ( _, Nothing ) -> Nothing
+                        ( nonZeroAmount, Just ( lastSeed, lastMin, lastIndexOfMin ) ) ->
+                            if nonZeroAmount > 1 && entropy <= lastMin then
+                                let
+                                    ( noise, nextSeed ) =
+                                        Random.step
+                                            (Random.float 0 1 |> Random.map ((*) 0.000001))
+                                            lastSeed
+                                in
+                                    if entropy + noise < lastMin
+                                        then ( nextSeed, entropy + noise, index ) |> Just
+                                        else ( nextSeed, lastMin, lastIndexOfMin ) |> Just
+                            else maybeVals
+        search =
+            List.map2 Tuple.pair amounts entropies
+                |> List.indexedMap Tuple.pair
+                |> List.foldl
+                    advance
+                    (Just
+                        ( seed
+                        , Random.minInt |> toFloat
+                        , -1
+                        )
+                    )
+    in
+        case search of
+            Just ( lastSeed, _, indexOfMin ) ->
+                if ( indexOfMin == -1) then
+                    ( lastSeed, Nothing )
+                else ( lastSeed, Just indexOfMin )
+            Nothing ->
+                ( seed, Nothing )
+
+
 observe
     :  CheckBoundary
     -> Model
@@ -132,47 +193,20 @@ observe
     -> ( Random.Seed, Observation, Model )
 observe checkBoundary model seed =
     let
-        findMinimumEntropy ( index, (amount, entropy) ) maybeVals =
-            if checkBoundary { x = 0, y = 0 } then maybeVals
-            else case ( amount, maybeVals ) of
-                ( 0, _ ) -> Nothing
-                ( _, Nothing ) -> Nothing
-                ( nonZeroAmount, Just lastValues ) ->
-                    if nonZeroAmount > 1 && entropy <= lastValues.min then
-                        let
-                            ( noise, nextSeed ) =
-                                Random.step
-                                    (Random.float 0 1 |> Random.map ((*) 0.000001))
-                                    lastValues.seed
-                        in
-                            if entropy + noise < lastValues.min
-                                then
-                                    { lastValues
-                                    | min = entropy + noise
-                                    , indexOfMin = index
-                                    , seed = nextSeed
-                                    } |> Just
-                                else
-                                    { lastValues
-                                    | seed = nextSeed
-                                    } |> Just
-                    else maybeVals
-        maybeIndexOfMin =
-            List.map2
-                Tuple.pair
+        ( nextSeed, maybeMinimumEntropyPos ) =
+            findMinimumEntropyPos
+                model.size
+                checkBoundary
                 model.sums.ones
                 model.entropies
-                |> List.indexedMap Tuple.pair
-                |> List.foldl
-                    findMinimumEntropy
-                    (Just
-                        { seed = seed
-                        , min = Random.minInt |> toFloat
-                        , indexOfMin = -1
-                        })
-                |> Maybe.map .indexOfMin
+                seed
     in
-        ( seed, Finished, model )
+        case maybeMinimumEntropyPos of
+            Just minimumEntropy ->
+                ( seed, Finished, model )
+            Nothing ->
+                ( seed, Contradiction, model )
+
 
 
 propagate
