@@ -12,13 +12,14 @@ type T = T Int
 type Size = Size FMX FMY
 type Limit = Limit Int
 
-type alias CheckBoundary = Int -> Int -> Bool
+
+type alias CheckBoundary = { x : Int, y : Int } -> Bool
 
 
 type WaveCell
     = Collapsed
     | Unknown
-type Wave = Wave (Array (Array WaveCell))
+type Wave = Wave (List (List WaveCell))
 
 
 type Observation
@@ -28,9 +29,10 @@ type Observation
 
 
 type Graphics = Graphics {}
+type UnfinishedGraphics = UnfinishedGraphics {}
 type RunResolution
     = FoundContradiction
-    | ReachedLimit
+    | ReachedLimit UnfinishedGraphics
     | Success Graphics
 
 
@@ -43,22 +45,31 @@ type alias Compatibility =
 
 
 type alias Weights =
-    { values : Array Float
-    , logged : Array Float
+    { values : List Float
+    , logged : List Float
     , sum : Float
     , sumLogged : Float
     }
 
 
+type alias Sums =
+    { ones : List Int
+    , weights : List Float
+    , weightsLogged : List Float
+    }
+
+
 type alias Model =
     { size : Size
-    , distribution : Array Int
-    , wave : Array (Array WaveCell)
-    , compatible : Array (Array Compatibility)
+    , distribution : List Int
+    , wave : List (List WaveCell)
+    , compatible : List (List Compatibility)
     , weights : Weights
-    , entropies : Array Float
+    , sums : Sums
+    , entropies : List Float
     , startingEntropy : Float
-    , stack : Array Int
+    , stack : List Int
+    , stackSize : Int
     -- , startingEntropy : Float
     }
 
@@ -78,86 +89,78 @@ init size (T t) =
     let
         count = square size
         weights =
-            { values = Array.repeat t 0
-            , logged = Array.repeat t 0
-            , sum = 0
-            , sumLogged = 0
-            } |> weight
+            List.repeat t 0 |> weight
+        sums =
+            { ones = List.repeat count 0
+            , weights = List.repeat count 0
+            , weightsLogged = List.repeat count 0
+            }
     in
-        { distribution = Array.repeat t 0
-        , wave = Array.repeat count <| Array.repeat t Unknown
+        { distribution = List.repeat t 0
+        , wave = List.repeat count <| List.repeat t Unknown
         , compatible =
-            Array.repeat count
-                <| Array.repeat t
+            List.repeat count
+                <| List.repeat t
                 <| { a = 0, b = 0, c = 0, d = 0 }
         , weights = weights
         , startingEntropy = logBase weights.sum e - weights.sumLogged / weights.sum
-        , entropies = Array.repeat t 0
-        , stack = Array.repeat t 0
+        , entropies = List.repeat count 0
+        , sums = sums
+        , stack = List.repeat t 0
+        , stackSize = 0
         , size = size
         }
 
 
-weight : Weights -> Weights
-weight weights =
+weight : List Float -> Weights
+weight values =
     let
-        updateWeights w ( currentWeights, index ) =
-            (
-                let
-                    logged = w + logBase w e
-                in
-                    { logged = Array.set index logged currentWeights.logged
-                    , sum = currentWeights.sum + w
-                    , sumLogged = currentWeights.sumLogged + w
-                    , values = currentWeights.values
-                    }
-            , index + 1
-            )
+        logged = List.map (\w -> w * logBase w e) values
     in
-        weights.values
-            |> Array.foldl updateWeights ( weights, 0 )
-            |> Tuple.first
+        { logged = logged
+        , sum = List.foldl (+) 0 values
+        , sumLogged = List.foldl (+) 0 logged
+        , values = values
+        }
 
 
 observe
     :  Model
     -> Random.Seed
-    -> ( Random.Seed, Observation )
+    -> ( Random.Seed, Observation, Model )
 observe model seed =
     let
-        min = 1000
-        argmin = -1
+        ( min, argmin ) =
+            List.foldl (\w t -> t) ( Random.minInt, -1 ) model.wave
     in
-        ( seed, Finished )
+        ( seed, Finished, model )
 
 
 propagate
     :  Model
     -> Random.Seed
-    -> ( Random.Seed, {} )
+    -> ( Random.Seed, Model )
 propagate model seed =
-    ( seed, {} )
+    ( seed, model )
 
 
 run : Wave -> Limit -> Model -> Random.Seed -> RunResolution
 run wave (Limit limit) model seed =
     let
-        iterate iterationsLeft ( prevSeed, observation ) =
-            if iterationsLeft < 0 then ( prevSeed , observation )
-            else case observe model prevSeed of
-                ( obsSeed, result ) ->
+        iterate iterationsLeft ( prevSeed, prevObservation, prevModel ) =
+            if iterationsLeft < 0 then ( prevSeed , prevObservation, prevModel )
+            else case observe prevModel prevSeed of
+                ( obsSeed, result, observedModel ) ->
                     if result == Continue then
-                        case propagate model obsSeed of
-                            ( propSeed, _ ) ->
-                                iterate (iterationsLeft - 1) ( propSeed, result )
-                    else ( obsSeed, result )
-
+                        case propagate observedModel obsSeed of
+                            ( propSeed, propagatedModel ) ->
+                                iterate (iterationsLeft - 1) ( propSeed, result, propagatedModel )
+                    else ( obsSeed, result, observedModel )
     in
-        case iterate limit ( seed, Continue )
-            |> Tuple.second of
-                Continue -> ReachedLimit
-                Finished -> Success (Graphics {})
-                Contradiction -> FoundContradiction
+        case iterate limit ( seed, Continue, model ) of
+                ( _, Continue, _ )  -> ReachedLimit (UnfinishedGraphics {})
+                ( _, Finished, _ ) -> Success (Graphics {})
+                ( _, Contradiction, _ ) -> FoundContradiction
 
 
 
