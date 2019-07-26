@@ -120,10 +120,10 @@ weight weights =
 
 
 observe
-    :  Random.Seed
-    -> Model
+    :  Model
+    -> Random.Seed
     -> ( Random.Seed, Observation )
-observe seed model =
+observe model seed =
     let
         min = 1000
         argmin = -1
@@ -131,14 +131,30 @@ observe seed model =
         ( seed, Finished )
 
 
-run : Wave -> Limit -> Random.Seed -> RunResolution
-run wave (Limit limit) seed =
+propagate
+    :  Model
+    -> Random.Seed
+    -> ( Random.Seed, {} )
+propagate model seed =
+    ( seed, {} )
+
+
+run : Wave -> Limit -> Model -> Random.Seed -> RunResolution
+run wave (Limit limit) model seed =
     let
-        iterate _ observation =
-            observation
+        iterate iterationsLeft ( prevSeed, observation ) =
+            if iterationsLeft < 0 then ( prevSeed , observation )
+            else case observe model prevSeed of
+                ( obsSeed, result ) ->
+                    if result == Continue then
+                        case propagate model obsSeed of
+                            ( propSeed, _ ) ->
+                                iterate (iterationsLeft - 1) ( propSeed, result )
+                    else ( obsSeed, result )
+
     in
-        case List.range 0 (limit - 1)
-            |> List.foldl iterate Continue of
+        case iterate limit ( seed, Continue )
+            |> Tuple.second of
                 Continue -> ReachedLimit
                 Finished -> Success (Graphics {})
                 Contradiction -> FoundContradiction
