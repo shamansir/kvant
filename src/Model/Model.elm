@@ -22,7 +22,10 @@ type WaveCell
 type Wave = Wave (List (List WaveCell))
 
 
-type EntropyAmounts = EntropyAmounts (List Int)
+type MatchingPatternsCount
+    = Zero
+    | One
+    | MoreThanOne
 type Entropies = Entropies (List Float)
 
 
@@ -35,7 +38,7 @@ type Observation
 type Graphics = Graphics {}
 type UnfinishedGraphics = UnfinishedGraphics {}
 type RunResolution
-    = FoundContradiction
+    = GotContradiction
     | ReachedLimit UnfinishedGraphics
     | Success Graphics
 
@@ -57,7 +60,7 @@ type alias Weights =
 
 
 type alias Sums =
-    { ones : EntropyAmounts
+    { amounts : List MatchingPatternsCount
     , weights : List Float
     , weightsLogged : List Float
     }
@@ -78,6 +81,12 @@ type alias Model =
     }
 
 
+type MinEntropy
+    = FoundContradiction
+    | FoundAt Int
+    | NotFound
+
+
 -- dx = [-1, 0, 1, 0]
 -- dy = [0, 1, 0, -1]
 -- opposite = [2, 3, 0, 1]
@@ -95,7 +104,7 @@ init size (T t) =
         weights =
             List.repeat t 0 |> weight
         sums =
-            { ones = List.repeat count 0 |> EntropyAmounts
+            { amounts = List.repeat count Zero
             , weights = List.repeat count 0
             , weightsLogged = List.repeat count 0
             }
@@ -129,61 +138,64 @@ weight values =
         }
 
 
-findMinimumEntropyPos
+findMinimumEntropy
     :  Size
     -> CheckBoundary
-    -> EntropyAmounts
+    -> List MatchingPatternsCount
     -> Entropies
     -> Random.Seed
-    -> ( Random.Seed, Maybe Int )
-findMinimumEntropyPos
+    -> ( Random.Seed, MinEntropy )
+findMinimumEntropy
     (Size (FMX fmx) (FMY fmy))
-    checkBoundary
-    (EntropyAmounts amounts)
+    onBoundary
+    amounts
     (Entropies entropies)
     seed =
     let
-        advance ( index, ( amount, entropy ) ) maybeVals =
-            if checkBoundary
-                    { x = modBy fmx index
-                    , y = floor <| toFloat index / toFloat fmx
-                    }
-                then maybeVals
-                else
-                    case ( amount, maybeVals ) of
-                        ( 0, _ ) -> Nothing
-                        ( _, Nothing ) -> Nothing
-                        ( nonZeroAmount, Just ( lastSeed, lastMin, lastIndexOfMin ) ) ->
-                            if nonZeroAmount > 1 && entropy <= lastMin then
-                                let
-                                    ( noise, nextSeed ) =
-                                        Random.step
-                                            (Random.float 0 1 |> Random.map ((*) 0.000001))
-                                            lastSeed
-                                in
-                                    if entropy + noise < lastMin
-                                        then ( nextSeed, entropy + noise, index ) |> Just
-                                        else ( nextSeed, lastMin, lastIndexOfMin ) |> Just
-                            else maybeVals
+        advance ( index, ( amount, entropy ) ) ( lastSeed, prevResult ) =
+            case ( amount, prevResult ) of
+                ( _, Err err ) -> ( lastSeed, Err err ) -- stop (contradiction happened before)
+                ( Zero, _ ) -> ( lastSeed, Err () ) -- stop (zero options -> contradictiom)
+                ( One, _ ) -> ( lastSeed, prevResult ) -- continue (amount is one -> entropy is 0)
+                ( MoreThanOne, Ok ( lastMin, lastIndexOfMin ) ) ->
+                    if (entropy > lastMin)
+                       || onBoundary
+                            { x = modBy fmx index
+                            , y = floor <| toFloat index / toFloat fmx
+                            }
+                    then ( lastSeed, prevResult ) -- continue
+                    else
+                        let
+                            ( noise, nextSeed ) =
+                                Random.step
+                                    (Random.float 0 1 |> Random.map ((*) 0.000001))
+                                    lastSeed
+                        in
+                            ( nextSeed
+                            , Ok <|
+                                if entropy + noise < lastMin
+                                    then ( entropy + noise, index )
+                                    else ( lastMin, lastIndexOfMin )
+                            )
         search =
             List.map2 Tuple.pair amounts entropies
                 |> List.indexedMap Tuple.pair
                 |> List.foldl
                     advance
-                    (Just
-                        ( seed
-                        , Random.minInt |> toFloat
+                    ( seed
+                    , Ok
+                        ( Random.minInt |> toFloat
                         , -1
                         )
                     )
     in
         case search of
-            Just ( lastSeed, _, indexOfMin ) ->
+            ( lastSeed, Ok ( _, indexOfMin ) ) ->
                 if ( indexOfMin == -1) then
-                    ( lastSeed, Nothing )
-                else ( lastSeed, Just indexOfMin )
-            Nothing ->
-                ( seed, Nothing )
+                    ( lastSeed, NotFound )
+                else ( lastSeed, FoundAt indexOfMin )
+            ( lastSeed, Err _ )  ->
+                ( lastSeed, FoundContradiction )
 
 
 observe
@@ -193,19 +205,21 @@ observe
     -> ( Random.Seed, Observation, Model )
 observe checkBoundary model seed =
     let
-        ( nextSeed, maybeMinimumEntropyPos ) =
-            findMinimumEntropyPos
+        ( nextSeed, minimumEntropy ) =
+            findMinimumEntropy
                 model.size
                 checkBoundary
-                model.sums.ones
+                model.sums.amounts
                 model.entropies
                 seed
     in
-        case maybeMinimumEntropyPos of
-            Just minimumEntropy ->
-                ( seed, Finished, model )
-            Nothing ->
-                ( seed, Contradiction, model )
+        case minimumEntropy of
+            FoundAt minimumEntropyPos ->
+                ( nextSeed, Continue, model )
+            NotFound ->
+                ( nextSeed, Finished, model )
+            FoundContradiction ->
+                ( nextSeed, Contradiction, model )
 
 
 
@@ -234,7 +248,7 @@ run wave checkBoundary (Limit limit) model seed =
         case iterate limit ( seed, Continue, model ) of
                 ( _, Continue, _ )  -> ReachedLimit (UnfinishedGraphics {})
                 ( _, Finished, _ ) -> Success (Graphics {})
-                ( _, Contradiction, _ ) -> FoundContradiction
+                ( _, Contradiction, _ ) -> GotContradiction
 
 
 
