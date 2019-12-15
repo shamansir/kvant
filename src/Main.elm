@@ -4,13 +4,21 @@ module Main exposing (..)
 import Browser
 
 import Html exposing (..)
+import Html.Attributes exposing (..)
+
+import WFC.Core exposing (WFC(..))
+import WFC.Core as WFC exposing (string)
 
 
-type Model = Model
+type alias Model =
+    { source: String
+    , result: Maybe String
+    }
 
 
-
-type Msg = Msg
+type Msg
+    = NoOp
+    | Calculate (WFC String)
 
 -- type alias Document msg =
 --   { title : String
@@ -18,12 +26,31 @@ type Msg = Msg
 --   }
 
 
+init : Model
+init = Model "123456789" Nothing
+
+
 update : Msg -> Model -> ( Model, Cmd Msg )
-update _ _ = ( Model, Cmd.none )
+update msg model =
+    case msg of
+        NoOp ->
+            ( model, Cmd.none )
+        Calculate (WFC wfc) ->
+            (
+                { model
+                | result = Just <| wfc model.source
+                }
+            , Cmd.none
+            )
 
 
 view : Model -> Html Msg
-view _ = div [] [ text "WFC" ]
+view model =
+    div
+        [ ]
+        [ div [] [ text model.source ]
+        , div [] [ text (model.result |> Maybe.withDefault "<NO RESULT>") ]
+        ]
 
 
     -- { init : flags -> Url -> Key -> ( model, Cmd msg )
@@ -37,9 +64,9 @@ view _ = div [] [ text "WFC" ]
 main : Program {} Model Msg
 main =
     Browser.application
-        { init = \_ _ _ -> ( Model, Cmd.none )
-        , onUrlChange = always Msg
-        , onUrlRequest = always Msg
+        { init = \_ _ _ -> init |> update (Calculate WFC.string)
+        , onUrlChange = always NoOp
+        , onUrlRequest = always NoOp
         , subscriptions = always Sub.none
         , update = update
         , view = \model -> { title = "WFC", body = [ view model ] }
