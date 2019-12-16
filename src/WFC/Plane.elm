@@ -1,4 +1,4 @@
 module WFC.Plane exposing (..)
 
 
-type Plane a = Plane (Int -> Int -> Maybe a)
+type Plane pos a = Plane (pos -> Maybe a)
