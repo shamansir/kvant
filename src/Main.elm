@@ -6,8 +6,9 @@ import Browser
 import Html exposing (..)
 import Html.Attributes exposing (..)
 
-import WFC.Core exposing (WFC(..))
-import WFC.Core as WFC exposing (string)
+import WFC.Core exposing (WFC, TextWFC)
+import WFC.Core as WFC
+import WFC.Solver exposing (Approach(..))
 
 
 type alias Model =
@@ -18,12 +19,7 @@ type alias Model =
 
 type Msg
     = NoOp
-    | Calculate (WFC String)
-
--- type alias Document msg =
---   { title : String
---   , body : List (Html msg)
---   }
+    | Calculate WFC.Instance
 
 
 init : Model
@@ -35,10 +31,12 @@ update msg model =
     case msg of
         NoOp ->
             ( model, Cmd.none )
-        Calculate (WFC wfc) ->
+        Calculate wfcInstance ->
             (
                 { model
-                | result = Just <| wfc model.source
+                | result =
+                    case wfcInstance of
+                        WFC.Text wfc -> Just (wfc |> WFC.run model.source)
                 }
             , Cmd.none
             )
@@ -53,18 +51,21 @@ view model =
         ]
 
 
-    -- { init : flags -> Url -> Key -> ( model, Cmd msg )
-    -- , view : model -> Document msg
-    -- , update : msg -> model -> ( model, Cmd msg )
-    -- , subscriptions : model -> Sub msg
-    -- , onUrlRequest : UrlRequest -> msg
-    -- , onUrlChange : Url -> msg
-    -- }
+options : WFC.TextOptions
+options =
+    { approach = Overlapping
+    , tileSize = ( 2, 2 )
+    , inputSize = ( 4, 4 )
+    , outputSize = ( 10, 10 )
+    }
+
 
 main : Program {} Model Msg
 main =
     Browser.application
-        { init = \_ _ _ -> init |> update (Calculate WFC.string)
+        { init = \_ _ _ ->
+                    init |> update
+                        (Calculate <| WFC.Text <| WFC.text options)
         , onUrlChange = always NoOp
         , onUrlRequest = always NoOp
         , subscriptions = always Sub.none
