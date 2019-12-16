@@ -9,6 +9,7 @@ import Html.Attributes exposing (..)
 import WFC.Core exposing (WFC, TextWFC)
 import WFC.Core as WFC
 import WFC.Solver exposing (Approach(..))
+import WFC.Solver as WFC exposing (TextOptions)
 
 
 type alias Model =
@@ -23,7 +24,15 @@ type Msg
 
 
 init : Model
-init = Model "123456789" Nothing
+init =
+    Model
+    (
+        "0000" ++
+        "0111" ++
+        "0121" ++
+        "0111"
+    )
+    Nothing
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )

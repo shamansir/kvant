@@ -17,4 +17,8 @@ type alias Options size =
     }
 
 
-type Solver pos size fmt item = Solver (Options size) fmt
+type Solver pos size item = Solver (Options size) (Plane pos item)
+
+
+type alias TextOptions = Options (Int, Int)
+type alias TextSolver = Solver (Int, Int) (Int, Int) Char

@@ -1,6 +1,6 @@
 module WFC.Core exposing
     ( WFC, Instance(..)
-    , text, TextOptions, TextWFC, TextSolver
+    , text, TextWFC
     , run
     )
 
@@ -17,10 +17,7 @@ type Instance
     = Text TextWFC
 
 
-type alias TextOptions = Options (Int, Int)
 type alias TextWFC = WFC (Int, Int) (Int, Int) String Char
-type alias TextSolver = Solver (Int, Int) (Int, Int) String Char
-
 
 
 text : TextOptions -> TextWFC
@@ -28,7 +25,7 @@ text options =
     WFC <| \input ->
                 let
                     solver : TextSolver
-                    solver = Solver options input
+                    solver = Solver options <| makeTextPlane input options.inputSize
                 in input
 
 
