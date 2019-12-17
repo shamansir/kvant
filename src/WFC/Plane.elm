@@ -7,6 +7,9 @@ import Array
 type Plane pos a = Plane (pos -> Maybe a)
 
 
+type alias Pattern pos a = Plane pos a
+
+
 type alias TextPlane = Plane (Int, Int) Char
 
 
@@ -40,3 +43,8 @@ textPlaneToString size plane =
         |> List.concat
         |> List.filterMap identity
         |> String.fromList
+
+
+findPatterns : Plane pos a -> List (Pattern pos a)
+findPatterns plane =
+    []

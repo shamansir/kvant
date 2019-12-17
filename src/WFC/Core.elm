@@ -24,11 +24,16 @@ text : TextOptions -> TextWFC
 text options =
     WFC <| \(step, input) ->
                 let
-                    plane : TextPlane
+                    -- plane : TextPlane
                     plane = input |> makeTextPlane options.inputSize
-                    solver : TextSolver
-                    solver = Solver options plane
-                in (step, input)
+                    -- patterns : List TextPlane
+                    patterns = findPatterns plane
+                    -- solver : TextSolver
+                    solver = Solver options plane patterns
+                in
+                    solver
+                        |> solve step
+                        |> Tuple.mapSecond (textPlaneToString options.outputSize)
 
 
 -- load : Instance -> WFC pos size fmt item
