@@ -32,3 +32,11 @@ unpack2 ( width, height ) (Plane f) =
                 List.repeat width Nothing
                     |> List.indexedMap (\x _ -> f (x, y))
             )
+
+
+textPlaneToString : (Int, Int) -> Plane (Int, Int) Char -> String
+textPlaneToString size plane =
+    unpack2 size plane
+        |> List.concat
+        |> List.filterMap identity
+        |> String.fromList

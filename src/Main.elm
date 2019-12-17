@@ -14,8 +14,8 @@ import WFC.Solver as WFC exposing (TextOptions)
 
 
 type alias Model =
-    { source: ( String, TextPlane )
-    , result: Maybe ( String, TextPlane )
+    { source: String
+    , result: Maybe String
     }
 
 
@@ -43,11 +43,9 @@ init =
                 "0121" ++
                 "0111"
             )
-        -- plane is needed only for text, to display it nicely
-        srcPlane = srcText |> makeTextPlane options.inputSize
     in
         Model
-        ( srcText, srcPlane )
+        srcText
         Nothing
 
 
@@ -62,11 +60,7 @@ update msg model =
                 | result =
                     case wfcInstance of
                         WFC.Text wfc ->
-                            let
-                                resultText = wfc |> WFC.run (Tuple.first model.source)
-                                resultPlane = resultText |> makeTextPlane options.outputSize
-                            in
-                                Just ( resultText, resultPlane )
+                            Just ( wfc |> WFC.run model.source )
                 }
             , Cmd.none
             )
@@ -77,12 +71,10 @@ view model =
     div
         [ ]
         [ model.source
-            |> Tuple.second
-            |> displayTextPlane options.inputSize
+            |> displayTextInBounds options.inputSize
         , hr [] []
         , model.result
-            |> Maybe.map Tuple.second
-            |> Maybe.map (displayTextPlane options.outputSize)
+            |> Maybe.map (displayTextInBounds options.outputSize)
             |> Maybe.withDefault (div [] [])
         ]
 
@@ -101,9 +93,21 @@ main =
         }
 
 
-displayTextPlane : ( Int, Int ) -> TextPlane -> Html Msg
-displayTextPlane size plane =
-    unpack2 size plane
+splitBy : Int -> String -> List String
+splitBy width src =
+    let
+        next = src |> String.left width
+        left = src |> String.dropLeft width
+    in
+        if String.length left > 0 then
+            next :: splitBy width left
+        else
+            [ next ]
+
+
+displayCharGrid : List (List Char) -> Html Msg
+displayCharGrid grid =
+    grid
         |> List.map
             (\row ->
                 div [ style "flex" "row" ]
@@ -111,8 +115,23 @@ displayTextPlane size plane =
                         (\c ->
                             span
                                 []
-                                [ c |> Maybe.withDefault '?' |> String.fromChar |> text ]
+                                [ text <| String.fromChar c ]
                         )
                     row)
             )
         |> div [ style "flex" "column" ]
+
+
+displayTextInBounds : ( Int, Int ) -> String -> Html Msg
+displayTextInBounds (width, height) string =
+    string
+        |> splitBy width
+        |> List.map (String.toList)
+        |> displayCharGrid
+
+
+displayTextPlane : ( Int, Int ) -> TextPlane -> Html Msg
+displayTextPlane size plane =
+    unpack2 size plane
+        |> List.map (List.map <| Maybe.withDefault '?')
+        |> displayCharGrid
