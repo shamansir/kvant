@@ -8,13 +8,14 @@ import Html.Attributes exposing (..)
 
 import WFC.Core exposing (WFC, TextWFC)
 import WFC.Core as WFC
+import WFC.Plane exposing (TextPlane, makeTextPlane, unpack2)
 import WFC.Solver exposing (Approach(..))
 import WFC.Solver as WFC exposing (TextOptions)
 
 
 type alias Model =
-    { source: String
-    , result: Maybe String
+    { source: ( String, TextPlane )
+    , result: Maybe ( String, TextPlane )
     }
 
 
@@ -23,16 +24,31 @@ type Msg
     | Calculate WFC.Instance
 
 
+options : WFC.TextOptions
+options =
+    { approach = Overlapping
+    , tileSize = ( 2, 2 )
+    , inputSize = ( 4, 4 )
+    , outputSize = ( 10, 10 )
+    }
+
+
 init : Model
 init =
-    Model
-    (
-        "0000" ++
-        "0111" ++
-        "0121" ++
-        "0111"
-    )
-    Nothing
+    let
+        srcText =
+            (
+                "0000" ++
+                "0111" ++
+                "0121" ++
+                "0111"
+            )
+        -- plane is needed only for text, to display it nicely
+        srcPlane = srcText |> makeTextPlane options.inputSize
+    in
+        Model
+        ( srcText, srcPlane )
+        Nothing
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -45,7 +61,12 @@ update msg model =
                 { model
                 | result =
                     case wfcInstance of
-                        WFC.Text wfc -> Just (wfc |> WFC.run model.source)
+                        WFC.Text wfc ->
+                            let
+                                resultText = wfc |> WFC.run (Tuple.first model.source)
+                                resultPlane = resultText |> makeTextPlane options.outputSize
+                            in
+                                Just ( resultText, resultPlane )
                 }
             , Cmd.none
             )
@@ -55,18 +76,15 @@ view : Model -> Html Msg
 view model =
     div
         [ ]
-        [ div [] [ text model.source ]
-        , div [] [ text (model.result |> Maybe.withDefault "<NO RESULT>") ]
+        [ model.source
+            |> Tuple.second
+            |> displayTextPlane options.inputSize
+        , hr [] []
+        , model.result
+            |> Maybe.map Tuple.second
+            |> Maybe.map (displayTextPlane options.outputSize)
+            |> Maybe.withDefault (div [] [])
         ]
-
-
-options : WFC.TextOptions
-options =
-    { approach = Overlapping
-    , tileSize = ( 2, 2 )
-    , inputSize = ( 4, 4 )
-    , outputSize = ( 10, 10 )
-    }
 
 
 main : Program {} Model Msg
@@ -82,3 +100,19 @@ main =
         , view = \model -> { title = "WFC", body = [ view model ] }
         }
 
+
+displayTextPlane : ( Int, Int ) -> TextPlane -> Html Msg
+displayTextPlane size plane =
+    unpack2 size plane
+        |> List.map
+            (\row ->
+                div [ style "flex" "row" ]
+                    (List.map
+                        (\c ->
+                            span
+                                []
+                                [ c |> Maybe.withDefault '?' |> String.fromChar |> text ]
+                        )
+                    row)
+            )
+        |> div [ style "flex" "column" ]

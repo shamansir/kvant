@@ -10,8 +10,8 @@ type Plane pos a = Plane (pos -> Maybe a)
 type alias TextPlane = Plane (Int, Int) Char
 
 
-makeTextPlane : String -> (Int, Int) -> TextPlane
-makeTextPlane src ( width, height ) =
+makeTextPlane : (Int, Int) -> String -> TextPlane
+makeTextPlane ( width, height ) src =
     let
         charArray = String.toList src |> Array.fromList
     in
@@ -24,3 +24,11 @@ makeTextPlane src ( width, height ) =
                 else Nothing
             )
 
+
+unpack2 : (Int, Int) -> Plane (Int, Int) a -> List (List (Maybe a))
+unpack2 ( width, height ) (Plane f) =
+    List.repeat height []
+        |> List.indexedMap (\y _ ->
+                List.repeat width Nothing
+                    |> List.indexedMap (\x _ -> f (x, y))
+            )

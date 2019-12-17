@@ -17,6 +17,10 @@ type alias Options size =
     }
 
 
+type Step item
+    = Step Int
+
+
 type Solver pos size item = Solver (Options size) (Plane pos item)
 
 
