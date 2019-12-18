@@ -32,9 +32,19 @@ fromPattern : Pattern v a -> Plane v a
 fromPattern (Pattern size f) = Plane size f
 
 
-sub : (Int, Int) -> (Int, Int) -> Plane (Int, Int) a -> Plane (Int, Int) a
-sub (shiftX, shiftY) dstSize (Plane srcSize planeF) =
-    (Plane srcSize planeF)
+sub : (Int, Int) -> Plane (Int, Int) a -> Plane (Int, Int) a
+sub = subAt (0, 0)
+
+
+subAt : (Int, Int) -> (Int, Int) -> Plane (Int, Int) a -> Plane (Int, Int) a
+subAt (shiftX, shiftY) (dstWidth, dstHeight) (Plane _ planeF) =
+    (Plane (dstWidth, dstHeight)
+        <| \(x, y) ->
+            if (x < dstWidth) && (y < dstHeight) then
+                planeF (x + shiftX, y + shiftY)
+            else
+                Nothing
+        )
 
 
 rotate : Orientation -> Plane (Int, Int) a -> Plane (Int, Int) a

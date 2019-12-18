@@ -10,6 +10,7 @@ import WFC.Core exposing (WFC, TextWFC)
 import WFC.Core as WFC
 import WFC.Plane exposing
     (TextPlane, makeTextPlane, unpack, rotate, flip, Orientation(..), Flip(..))
+import WFC.Plane as Plane exposing (sub ,subAt)
 import WFC.Solver exposing (Approach(..))
 import WFC.Solver as WFC exposing (TextOptions)
 
@@ -106,6 +107,39 @@ view model =
                 , displayTextPlane <| flip Horizontal testRotationPlane
                 , text "Vert"
                 , displayTextPlane <| flip Vertical testRotationPlane
+                ]
+        , hr [] []
+        , let
+            testSubsPlane =
+                makeTextPlane (4, 4) (
+                    "0123" ++
+                    "4567" ++
+                    "89AB" ++
+                    "CDEF"
+                )
+
+        in
+            div [ style "display" "flex"
+                , style "flex-direction" "row"
+                , style "justify-content" "space-evenly"
+                ]
+                [ displayTextPlane testSubsPlane
+                , text "(0, 0) (2, 2)"
+                , displayTextPlane <| WFC.Plane.sub (2, 2) testSubsPlane
+                , text "(0, 0) (3, 3)"
+                , displayTextPlane <| Plane.sub (3, 3) testSubsPlane
+                , text "(1, 1) (2, 2)"
+                , displayTextPlane <| Plane.subAt (1, 1) (2, 2) testSubsPlane
+                , text "(1, 1) (3, 3)"
+                , displayTextPlane <| Plane.subAt (1, 1) (3, 3) testSubsPlane
+                , text "(0, 1) (3, 3)"
+                , displayTextPlane <| Plane.subAt (0, 1) (3, 3) testSubsPlane
+                , text "(0, 1) (2, 3)"
+                , displayTextPlane <| Plane.subAt (0, 1) (2, 3) testSubsPlane
+                , text "(3, 3) (1, 1)"
+                , displayTextPlane <| Plane.subAt (3, 3) (1, 1) testSubsPlane
+                , text "(3, 3) (4, 4)"
+                , displayTextPlane <| Plane.subAt (3, 3) (4, 4) testSubsPlane
                 ]
         ]
 
