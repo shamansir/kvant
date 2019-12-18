@@ -5,67 +5,54 @@ import Array
 
 
 type Plane v a = Plane v (v -> Maybe a)
+type Pattern v a = Pattern v (v -> Maybe a)
 
 
-type alias Pattern pos a = Plane pos a
-
-
-type Orientaion
+type Orientation
     = North
     | West
     | East
     | South
 
 
-type alias TextPlane = Plane (Int, Int) Char
+type Flip
+    = Horizontal
+    | Vertical
 
 
-makeTextPlane : (Int, Int) -> String -> TextPlane
-makeTextPlane ( width, height ) src =
-    let
-        charArray = String.toList src |> Array.fromList
-    in
-        Plane
-            ( width, height )
-            (\(x, y) ->
-                if (x <= width) && (y <= height) then
-                    charArray |>
-                        Array.get
-                            (x * width + y)
-                else Nothing
-            )
+empty : v -> Plane v a
+empty size = Plane size <| always Nothing
 
 
-unpack : Plane (Int, Int) a -> List (List (Maybe a))
-unpack (Plane (width, height) f) =
-    List.repeat height []
-        |> List.indexedMap (\y _ ->
-                List.repeat width Nothing
-                    |> List.indexedMap (\x _ -> f (x, y))
-            )
+toPattern : Plane v a -> Pattern v a
+toPattern (Plane size f) = Pattern size f
 
 
-textPlaneToString : TextPlane -> String
-textPlaneToString plane =
-    unpack plane
-        |> List.concat
-        |> List.filterMap identity
-        |> String.fromList
+fromPattern : Pattern v a -> Plane v a
+fromPattern (Pattern size f) = Plane size f
 
 
-findPatterns : Plane v a -> List (Pattern v a)
-findPatterns plane =
-    []
-
-
-sub : v -> Plane v a -> Plane v a
-sub dstSize (Plane srcSize planeF) =
+sub : (Int, Int) -> (Int, Int) -> Plane (Int, Int) a -> Plane (Int, Int) a
+sub (shiftX, shiftY) dstSize (Plane srcSize planeF) =
     (Plane srcSize planeF)
 
 
-rotate : Orientaion -> Plane v a -> Plane v a
-rotate orientation (Plane srcSize planeF) =
-    (Plane srcSize planeF)
+rotate : Orientation -> Plane (Int, Int) a -> Plane (Int, Int) a
+rotate orientation (Plane (width, height) planeF) =
+    Plane (width, height)
+        <| case orientation of
+            North -> planeF
+            West -> \(x, y) -> planeF (height - 1 - y, x)
+            South -> \(x, y) -> planeF (width - 1 - x, height - 1 - y)
+            East -> \(x, y) -> planeF (y, width - 1 - x)
+
+
+flip : Flip -> Plane (Int, Int) a -> Plane (Int, Int) a
+flip how (Plane (width, height) planeF) =
+    Plane (width, height)
+        <| case how of
+            Horizontal -> \(x, y) -> planeF (width - 1 - x, y)
+            Vertical -> \(x, y) -> planeF (x, height - 1 - y)
 
 
 equal : Plane (Int, Int) a -> Plane (Int, Int) a -> Bool
@@ -81,8 +68,13 @@ equal ((Plane sizeA fA) as planeA) ((Plane sizeB fB) as planeB) =
     else False
 
 
-empty : (Int, Int) -> Plane (Int, Int) a
-empty size = Plane size <| always Nothing
+unpack : Plane (Int, Int) a -> List (List (Maybe a))
+unpack (Plane (width, height) f) =
+    List.repeat height []
+        |> List.indexedMap (\y _ ->
+                List.repeat width Nothing
+                    |> List.indexedMap (\x _ -> f (x, y))
+            )
 
 
 materialize : Plane (Int, Int) a -> List (List ((Int, Int), Maybe a))
@@ -95,3 +87,34 @@ materialize (Plane (width, height) f) =
 
 materializeFlatten : Plane (Int, Int) a -> List ((Int, Int), Maybe a)
 materializeFlatten = materialize >> List.concat
+
+
+findPatterns : Plane v a -> List (Pattern v a)
+findPatterns plane =
+    []
+
+
+type alias TextPlane = Plane (Int, Int) Char
+
+
+makeTextPlane : (Int, Int) -> String -> TextPlane
+makeTextPlane ( width, height ) src =
+    let
+        charArray = String.toList src |> Array.fromList
+    in
+        Plane
+            ( width, height )
+            (\(x, y) ->
+                if (x < width) && (y < height) then
+                    charArray |>
+                        Array.get (y * height + x)
+                else Nothing
+            )
+
+
+textPlaneToString : TextPlane -> String
+textPlaneToString plane =
+    unpack plane
+        |> List.concat
+        |> List.filterMap identity
+        |> String.fromList

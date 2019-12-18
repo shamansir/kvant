@@ -8,7 +8,8 @@ import Html.Attributes exposing (..)
 
 import WFC.Core exposing (WFC, TextWFC)
 import WFC.Core as WFC
-import WFC.Plane exposing (TextPlane, makeTextPlane, unpack)
+import WFC.Plane exposing
+    (TextPlane, makeTextPlane, unpack, rotate, flip, Orientation(..), Flip(..))
 import WFC.Solver exposing (Approach(..))
 import WFC.Solver as WFC exposing (TextOptions)
 
@@ -76,6 +77,36 @@ view model =
         , model.result
             |> Maybe.map (displayTextInBounds options.outputSize)
             |> Maybe.withDefault (div [] [])
+        -- --------------------------
+        , hr [] []
+        , let
+            testRotationPlane =
+                makeTextPlane (4, 4) (
+                    "0123" ++
+                    "4567" ++
+                    "89AB" ++
+                    "CDEF"
+                )
+
+        in
+            div [ style "display" "flex"
+                , style "flex-direction" "row"
+                , style "justify-content" "space-evenly"
+                ]
+                [ displayTextPlane testRotationPlane
+                , text "North"
+                , displayTextPlane <| rotate North testRotationPlane
+                , text "West"
+                , displayTextPlane <| rotate West testRotationPlane
+                , text "South"
+                , displayTextPlane <| rotate South testRotationPlane
+                , text "East"
+                , displayTextPlane <| rotate East testRotationPlane
+                , text "Horz"
+                , displayTextPlane <| flip Horizontal testRotationPlane
+                , text "Vert"
+                , displayTextPlane <| flip Vertical testRotationPlane
+                ]
         ]
 
 
@@ -91,6 +122,9 @@ main =
         , update = update
         , view = \model -> { title = "WFC", body = [ view model ] }
         }
+
+
+{-- --------- --}
 
 
 splitBy : Int -> String -> List String
@@ -114,7 +148,8 @@ displayCharGrid grid =
                     (List.map
                         (\c ->
                             span
-                                []
+                                [ style "display" "inline-block"
+                                , style "width" "21px" ]
                                 [ text <| String.fromChar c ]
                         )
                     row)

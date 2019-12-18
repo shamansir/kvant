@@ -29,7 +29,5 @@ solve step (Solver options sourcePlane patterns) =
     ( step, sourcePlane )
 
 
-
-
 type alias TextOptions = Options (Int, Int)
 type alias TextSolver = Solver (Int, Int) Char
