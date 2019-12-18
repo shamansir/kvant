@@ -4,7 +4,7 @@ module WFC.Plane exposing (..)
 import Array
 
 
-type Plane pos a = Plane (pos -> Maybe a)
+type Plane v a = Plane v (v -> Maybe a)
 
 
 type alias Pattern pos a = Plane pos a
@@ -19,6 +19,7 @@ makeTextPlane ( width, height ) src =
         charArray = String.toList src |> Array.fromList
     in
         Plane
+            ( width, height )
             (\(x, y) ->
                 if (x <= width) && (y <= height) then
                     charArray |>
@@ -28,8 +29,8 @@ makeTextPlane ( width, height ) src =
             )
 
 
-unpack2 : (Int, Int) -> Plane (Int, Int) a -> List (List (Maybe a))
-unpack2 ( width, height ) (Plane f) =
+unpack : Plane (Int, Int) a -> List (List (Maybe a))
+unpack (Plane (width, height) f) =
     List.repeat height []
         |> List.indexedMap (\y _ ->
                 List.repeat width Nothing
@@ -37,14 +38,14 @@ unpack2 ( width, height ) (Plane f) =
             )
 
 
-textPlaneToString : (Int, Int) -> Plane (Int, Int) Char -> String
-textPlaneToString size plane =
-    unpack2 size plane
+textPlaneToString : TextPlane -> String
+textPlaneToString plane =
+    unpack plane
         |> List.concat
         |> List.filterMap identity
         |> String.fromList
 
 
-findPatterns : Plane pos a -> List (Pattern pos a)
+findPatterns : Plane v a -> List (Pattern v a)
 findPatterns plane =
     []

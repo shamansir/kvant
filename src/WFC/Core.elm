@@ -9,15 +9,15 @@ import WFC.Plane exposing (..)
 import WFC.Solver exposing (..)
 
 
-type WFC pos size fmt item =
-    WFC ( (Step item, fmt) -> (Step item, fmt) )
+type WFC v fmt a =
+    WFC ( (Step a, fmt) -> (Step a, fmt) )
 
 
 type Instance
     = Text TextWFC
 
 
-type alias TextWFC = WFC (Int, Int) (Int, Int) String Char
+type alias TextWFC = WFC (Int, Int) String Char
 
 
 text : TextOptions -> TextWFC
@@ -33,7 +33,7 @@ text options =
                 in
                     solver
                         |> solve step
-                        |> Tuple.mapSecond (textPlaneToString options.outputSize)
+                        |> Tuple.mapSecond textPlaneToString
 
 
 -- load : Instance -> WFC pos size fmt item
@@ -42,5 +42,5 @@ text options =
 --         Text wfc -> wfc
 
 
-run : fmt -> WFC pos size fmt item -> fmt
+run : fmt -> WFC v fmt a -> fmt
 run input (WFC wfc) = Tuple.second <| wfc ( Step 0, input )

@@ -9,22 +9,22 @@ type Approach
     | Tiled {- Rules -}
 
 
-type alias Options size =
+type alias Options v =
     { approach: Approach
-    , tileSize: size
-    , inputSize: size
-    , outputSize: size
+    , tileSize: v
+    , inputSize: v
+    , outputSize: v
     }
 
 
-type Step item
+type Step a
     = Step Int
 
 
-type Solver pos size item = Solver (Options size) (Plane pos item) (List (Pattern pos item))
+type Solver v a = Solver (Options v) (Plane v a) (List (Pattern v a))
 
 
-solve : Step item -> Solver pos size item -> ( Step item, Plane pos item )
+solve : Step a -> Solver v a -> ( Step a, Plane v a )
 solve step (Solver options sourcePlane patterns) =
     ( step, sourcePlane )
 
@@ -32,4 +32,4 @@ solve step (Solver options sourcePlane patterns) =
 
 
 type alias TextOptions = Options (Int, Int)
-type alias TextSolver = Solver (Int, Int) (Int, Int) Char
+type alias TextSolver = Solver (Int, Int) Char

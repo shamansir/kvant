@@ -8,7 +8,7 @@ import Html.Attributes exposing (..)
 
 import WFC.Core exposing (WFC, TextWFC)
 import WFC.Core as WFC
-import WFC.Plane exposing (TextPlane, makeTextPlane, unpack2)
+import WFC.Plane exposing (TextPlane, makeTextPlane, unpack)
 import WFC.Solver exposing (Approach(..))
 import WFC.Solver as WFC exposing (TextOptions)
 
@@ -130,8 +130,8 @@ displayTextInBounds (width, height) string =
         |> displayCharGrid
 
 
-displayTextPlane : ( Int, Int ) -> TextPlane -> Html Msg
-displayTextPlane size plane =
-    unpack2 size plane
+displayTextPlane : TextPlane -> Html Msg
+displayTextPlane plane =
+    unpack plane
         |> List.map (List.map <| Maybe.withDefault '?')
         |> displayCharGrid
