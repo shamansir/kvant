@@ -8,8 +8,7 @@ import Html.Attributes exposing (..)
 
 import WFC.Core exposing (WFC, TextWFC)
 import WFC.Core as WFC
-import WFC.Plane exposing
-    (TextPlane, makeTextPlane, unpack, rotate, flip, Orientation(..), Flip(..))
+import WFC.Plane exposing (..)
 import WFC.Plane as Plane exposing (sub ,subAt)
 import WFC.Solver exposing (Approach(..))
 import WFC.Solver as WFC exposing (TextOptions)
@@ -191,7 +190,7 @@ displayCharGrid grid =
         |> div [ style "flex" "column" ]
 
 
-displayTextInBounds : ( Int, Int ) -> String -> Html Msg
+displayTextInBounds : Vec2 -> String -> Html Msg
 displayTextInBounds (width, height) string =
     string
         |> splitBy width

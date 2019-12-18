@@ -17,7 +17,7 @@ type Instance
     = Text TextWFC
 
 
-type alias TextWFC = WFC (Int, Int) String Char
+type alias TextWFC = WFC Vec2 String Char
 
 
 text : TextOptions -> TextWFC

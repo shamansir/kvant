@@ -5,7 +5,12 @@ import Array
 
 
 type Plane v a = Plane v (v -> Maybe a)
-type Pattern v a = Pattern v (v -> Maybe a)
+
+
+type alias Cell v a = (v, Maybe a)
+
+
+type alias Vec2 = (Int, Int)
 
 
 type Orientation
@@ -24,19 +29,40 @@ empty : v -> Plane v a
 empty size = Plane size <| always Nothing
 
 
-toPattern : Plane v a -> Pattern v a
-toPattern (Plane size f) = Pattern size f
+getSize : Plane v a -> v
+getSize (Plane size _) = size
 
 
-fromPattern : Pattern v a -> Plane v a
-fromPattern (Pattern size f) = Plane size f
+map : (a -> b) -> Plane v a -> Plane v b
+map f (Plane size srcF) =
+    Plane size (Maybe.map f << srcF)
 
 
-sub : (Int, Int) -> Plane (Int, Int) a -> Plane (Int, Int) a
+foldMap : (Cell Vec2 a -> b) -> Plane Vec2 a -> List (List b)
+foldMap f (Plane (width, height) planeF) =
+    List.repeat height []
+        |> List.map (always <| List.repeat width Nothing)
+        |> List.indexedMap
+            (\y row ->
+                List.indexedMap
+                    (\x _ -> ((x, y), planeF (x, y)))
+                    row
+                    |> List.map f
+            )
+
+
+foldl : (Cell Vec2 a -> b -> b) -> b -> Plane Vec2 a -> b
+foldl f def plane =
+    foldMap identity plane
+        |> List.concat
+        |> List.foldl f def
+
+
+sub : Vec2 -> Plane Vec2 a -> Plane Vec2 a
 sub = subAt (0, 0)
 
 
-subAt : (Int, Int) -> (Int, Int) -> Plane (Int, Int) a -> Plane (Int, Int) a
+subAt : Vec2 -> Vec2 -> Plane Vec2 a -> Plane Vec2 a
 subAt (shiftX, shiftY) (dstWidth, dstHeight) (Plane _ planeF) =
     (Plane (dstWidth, dstHeight)
         <| \(x, y) ->
@@ -47,7 +73,7 @@ subAt (shiftX, shiftY) (dstWidth, dstHeight) (Plane _ planeF) =
         )
 
 
-rotate : Orientation -> Plane (Int, Int) a -> Plane (Int, Int) a
+rotate : Orientation -> Plane Vec2 a -> Plane Vec2 a
 rotate orientation (Plane (width, height) planeF) =
     Plane (width, height)
         <| case orientation of
@@ -57,7 +83,7 @@ rotate orientation (Plane (width, height) planeF) =
             East -> \(x, y) -> planeF (y, width - 1 - x)
 
 
-flip : Flip -> Plane (Int, Int) a -> Plane (Int, Int) a
+flip : Flip -> Plane Vec2 a -> Plane Vec2 a
 flip how (Plane (width, height) planeF) =
     Plane (width, height)
         <| case how of
@@ -65,7 +91,7 @@ flip how (Plane (width, height) planeF) =
             Vertical -> \(x, y) -> planeF (x, height - 1 - y)
 
 
-equal : Plane (Int, Int) a -> Plane (Int, Int) a -> Bool
+equal : Plane Vec2 a -> Plane Vec2 a -> Bool
 equal ((Plane sizeA fA) as planeA) ((Plane sizeB fB) as planeB) =
     if sizeA == sizeB then
         let
@@ -78,7 +104,7 @@ equal ((Plane sizeA fA) as planeA) ((Plane sizeB fB) as planeB) =
     else False
 
 
-unpack : Plane (Int, Int) a -> List (List (Maybe a))
+unpack : Plane Vec2 a -> List (List (Maybe a))
 unpack (Plane (width, height) f) =
     List.repeat height []
         |> List.indexedMap (\y _ ->
@@ -87,27 +113,22 @@ unpack (Plane (width, height) f) =
             )
 
 
-materialize : Plane (Int, Int) a -> List (List ((Int, Int), Maybe a))
-materialize (Plane (width, height) f) =
-    List.repeat height []
-        |> List.map (always <| List.repeat width Nothing)
-        |> List.indexedMap
-            (\y row -> List.indexedMap (\x _-> ((x, y), f (x, y))) row)
+materialize : Plane Vec2 a -> List (List (Cell Vec2 a))
+materialize = foldMap identity
 
 
-materializeFlatten : Plane (Int, Int) a -> List ((Int, Int), Maybe a)
+materializeFlatten : Plane Vec2 a -> List (Cell Vec2 a)
 materializeFlatten = materialize >> List.concat
 
 
-findPatterns : Plane v a -> List (Pattern v a)
-findPatterns plane =
-    []
+coords : Plane Vec2 a -> List Vec2
+coords = foldMap Tuple.first >> List.concat
 
 
-type alias TextPlane = Plane (Int, Int) Char
+type alias TextPlane = Plane Vec2 Char
 
 
-makeTextPlane : (Int, Int) -> String -> TextPlane
+makeTextPlane : Vec2 -> String -> TextPlane
 makeTextPlane ( width, height ) src =
     let
         charArray = String.toList src |> Array.fromList
