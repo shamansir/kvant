@@ -11,7 +11,7 @@ type Approach
 
 type alias Options v =
     { approach: Approach
-    , tileSize: v
+    , patternSize: v
     , inputSize: v
     , outputSize: v
     }

@@ -10,6 +10,13 @@ type Plane v a = Plane v (v -> Maybe a)
 type alias Pattern pos a = Plane pos a
 
 
+type Orientaion
+    = North
+    | West
+    | East
+    | South
+
+
 type alias TextPlane = Plane (Int, Int) Char
 
 
@@ -49,3 +56,42 @@ textPlaneToString plane =
 findPatterns : Plane v a -> List (Pattern v a)
 findPatterns plane =
     []
+
+
+sub : v -> Plane v a -> Plane v a
+sub dstSize (Plane srcSize planeF) =
+    (Plane srcSize planeF)
+
+
+rotate : Orientaion -> Plane v a -> Plane v a
+rotate orientation (Plane srcSize planeF) =
+    (Plane srcSize planeF)
+
+
+equal : Plane (Int, Int) a -> Plane (Int, Int) a -> Bool
+equal ((Plane sizeA fA) as planeA) ((Plane sizeB fB) as planeB) =
+    if sizeA == sizeB then
+        let
+            ( width, height ) = sizeA -- sizeA == sizeB, so it's safe
+        in
+            planeA
+                |> materializeFlatten
+                |> List.map (\(pos, valA) -> valA == fB pos)
+                |> List.foldl ((&&)) True
+    else False
+
+
+empty : (Int, Int) -> Plane (Int, Int) a
+empty size = Plane size <| always Nothing
+
+
+materialize : Plane (Int, Int) a -> List (List ((Int, Int), Maybe a))
+materialize (Plane (width, height) f) =
+    List.repeat height []
+        |> List.map (always <| List.repeat width Nothing)
+        |> List.indexedMap
+            (\y row -> List.indexedMap (\x _-> ((x, y), f (x, y))) row)
+
+
+materializeFlatten : Plane (Int, Int) a -> List ((Int, Int), Maybe a)
+materializeFlatten = materialize >> List.concat

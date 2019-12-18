@@ -27,7 +27,7 @@ type Msg
 options : WFC.TextOptions
 options =
     { approach = Overlapping
-    , tileSize = ( 2, 2 )
+    , patternSize = ( 2, 2 )
     , inputSize = ( 4, 4 )
     , outputSize = ( 10, 10 )
     }
