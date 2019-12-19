@@ -22,18 +22,19 @@ type alias TextWFC = WFC Vec2 String Char
 
 text : TextOptions -> TextWFC
 text options =
-    WFC <| \(step, input) ->
-                let
-                    -- plane : TextPlane
-                    plane = input |> makeTextPlane options.inputSize
-                    -- patterns : List TextPlane
-                    patterns = findPatterns options.patternSize plane
-                    -- solver : TextSolver
-                    solver = Solver options plane patterns
-                in
-                    solver
-                        |> solve step
-                        |> Tuple.mapSecond textPlaneToString
+    WFC <|
+        \(step, input) ->
+            let
+                -- plane : TextPlane
+                plane = input |> makeTextPlane options.inputSize
+                -- patterns : List TextPlane
+                patterns = findPatterns options.patternSize plane
+                -- solver : TextSolver
+                solver = Solver options plane patterns
+            in
+                solver
+                    |> solve step
+                    |> Tuple.mapSecond textPlaneToString
 
 
 -- load : Instance -> WFC pos size fmt item

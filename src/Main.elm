@@ -10,7 +10,7 @@ import WFC.Core exposing (WFC, TextWFC)
 import WFC.Core as WFC
 import WFC.Plane exposing (..)
 import WFC.Plane as Plane exposing (sub ,subAt)
-import WFC.Solver exposing (Approach(..))
+import WFC.Solver exposing (Approach(..), fromPattern)
 import WFC.Solver as WFC exposing (TextOptions)
 
 
@@ -67,6 +67,17 @@ update msg model =
             )
 
 
+testPlane : TextPlane
+testPlane =
+    makeTextPlane (4, 4)
+        (
+            "0123" ++
+            "4567" ++
+            "89AB" ++
+            "CDEF"
+        )
+
+
 view : Model -> Html Msg
 view model =
     div
@@ -79,67 +90,13 @@ view model =
             |> Maybe.withDefault (div [] [])
         -- --------------------------
         , hr [] []
-        , let
-            testRotationPlane =
-                makeTextPlane (4, 4) (
-                    "0123" ++
-                    "4567" ++
-                    "89AB" ++
-                    "CDEF"
-                )
-
-        in
-            div [ style "display" "flex"
-                , style "flex-direction" "row"
-                , style "justify-content" "space-evenly"
-                ]
-                [ displayTextPlane testRotationPlane
-                , text "North"
-                , displayTextPlane <| rotate North testRotationPlane
-                , text "West"
-                , displayTextPlane <| rotate West testRotationPlane
-                , text "South"
-                , displayTextPlane <| rotate South testRotationPlane
-                , text "East"
-                , displayTextPlane <| rotate East testRotationPlane
-                , text "Horz"
-                , displayTextPlane <| flip Horizontal testRotationPlane
-                , text "Vert"
-                , displayTextPlane <| flip Vertical testRotationPlane
-                ]
+        , testPlane |> viewRotationsAndFlips
         , hr [] []
-        , let
-            testSubsPlane =
-                makeTextPlane (4, 4) (
-                    "0123" ++
-                    "4567" ++
-                    "89AB" ++
-                    "CDEF"
-                )
-
-        in
-            div [ style "display" "flex"
-                , style "flex-direction" "row"
-                , style "justify-content" "space-evenly"
-                ]
-                [ displayTextPlane testSubsPlane
-                , text "(0, 0) (2, 2)"
-                , displayTextPlane <| WFC.Plane.sub (2, 2) testSubsPlane
-                , text "(0, 0) (3, 3)"
-                , displayTextPlane <| Plane.sub (3, 3) testSubsPlane
-                , text "(1, 1) (2, 2)"
-                , displayTextPlane <| Plane.subAt (1, 1) (2, 2) testSubsPlane
-                , text "(1, 1) (3, 3)"
-                , displayTextPlane <| Plane.subAt (1, 1) (3, 3) testSubsPlane
-                , text "(0, 1) (3, 3)"
-                , displayTextPlane <| Plane.subAt (0, 1) (3, 3) testSubsPlane
-                , text "(0, 1) (2, 3)"
-                , displayTextPlane <| Plane.subAt (0, 1) (2, 3) testSubsPlane
-                , text "(3, 3) (1, 1)"
-                , displayTextPlane <| Plane.subAt (3, 3) (1, 1) testSubsPlane
-                , text "(3, 3) (4, 4)"
-                , displayTextPlane <| Plane.subAt (3, 3) (4, 4) testSubsPlane
-                ]
+        , testPlane |> viewSubPlanes
+        , hr [] []
+        , testPlane |> viewAllViews
+        , hr [] []
+        , testPlane |> viewPatterns
         ]
 
 
@@ -203,3 +160,80 @@ displayTextPlane plane =
     unpack plane
         |> List.map (List.map <| Maybe.withDefault '?')
         |> displayCharGrid
+
+
+viewRotationsAndFlips : TextPlane -> Html Msg
+viewRotationsAndFlips plane =
+    div [ style "display" "flex"
+        , style "flex-direction" "row"
+        , style "justify-content" "space-evenly"
+        ]
+        [ displayTextPlane plane
+        , text "North"
+        , displayTextPlane <| rotate North plane
+        , text "West"
+        , displayTextPlane <| rotate West plane
+        , text "South"
+        , displayTextPlane <| rotate South plane
+        , text "East"
+        , displayTextPlane <| rotate East plane
+        , text "Horz"
+        , displayTextPlane <| flip Horizontal plane
+        , text "Vert"
+        , displayTextPlane <| flip Vertical plane
+        ]
+
+
+viewSubPlanes : TextPlane -> Html Msg
+viewSubPlanes plane =
+    div [ style "display" "flex"
+        , style "flex-direction" "row"
+        , style "justify-content" "space-evenly"
+        ]
+        [ displayTextPlane plane
+        , text "(0, 0) (2, 2)"
+        , displayTextPlane <| WFC.Plane.sub (2, 2) plane
+        , text "(0, 0) (3, 3)"
+        , displayTextPlane <| Plane.sub (3, 3) plane
+        , text "(1, 1) (2, 2)"
+        , displayTextPlane <| Plane.subAt (1, 1) (2, 2) plane
+        , text "(1, 1) (3, 3)"
+        , displayTextPlane <| Plane.subAt (1, 1) (3, 3) plane
+        , text "(0, 1) (3, 3)"
+        , displayTextPlane <| Plane.subAt (0, 1) (3, 3) plane
+        , text "(0, 1) (2, 3)"
+        , displayTextPlane <| Plane.subAt (0, 1) (2, 3) plane
+        , text "(3, 3) (1, 1)"
+        , displayTextPlane <| Plane.subAt (3, 3) (1, 1) plane
+        , text "(3, 3) (4, 4)"
+        , displayTextPlane <| Plane.subAt (3, 3) (4, 4) plane
+        ]
+
+
+viewAllViews : TextPlane -> Html Msg
+viewAllViews plane =
+    div [ style "display" "flex"
+        , style "flex-direction" "row"
+        , style "justify-content" "space-evenly"
+        ]
+    <| List.map displayTextPlane
+    <| allViews plane
+
+
+viewPatterns : TextPlane -> Html Msg
+viewPatterns plane =
+    div [ style "display" "flex"
+        , style "flex-direction" "column"
+        , style "justify-content" "space-evenly"
+        ]
+    <| List.indexedMap
+        (\index pattern ->
+            div
+                [ class <| "pattern-" ++ String.fromInt index
+                , style "margin" "10px 0"
+                ]
+                [ span [] [ text <| String.fromInt index ]
+                , displayTextPlane <| fromPattern pattern
+                ]
+        )
+        (WFC.findPatterns (2, 2) plane)
