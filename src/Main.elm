@@ -192,21 +192,37 @@ viewSubPlanes plane =
         ]
         [ displayTextPlane plane
         , text "(0, 0) (2, 2)"
-        , displayTextPlane <| WFC.Plane.sub (2, 2) plane
+        , Plane.sub (2, 2) plane
+            |> Maybe.map displayTextPlane
+            |> Maybe.withDefault (text "<NONE>")
         , text "(0, 0) (3, 3)"
-        , displayTextPlane <| Plane.sub (3, 3) plane
+        , Plane.sub (3, 3) plane
+            |> Maybe.map displayTextPlane
+            |> Maybe.withDefault (text "<NONE>")
         , text "(1, 1) (2, 2)"
-        , displayTextPlane <| Plane.subAt (1, 1) (2, 2) plane
+        , Plane.subAt (1, 1) (2, 2) plane
+            |> Maybe.map displayTextPlane
+            |> Maybe.withDefault (text "<NONE>")
         , text "(1, 1) (3, 3)"
-        , displayTextPlane <| Plane.subAt (1, 1) (3, 3) plane
+        , Plane.subAt (1, 1) (3, 3) plane
+            |> Maybe.map displayTextPlane
+            |> Maybe.withDefault (text "<NONE>")
         , text "(0, 1) (3, 3)"
-        , displayTextPlane <| Plane.subAt (0, 1) (3, 3) plane
+        , Plane.subAt (0, 1) (3, 3) plane
+            |> Maybe.map displayTextPlane
+            |> Maybe.withDefault (text "<NONE>")
         , text "(0, 1) (2, 3)"
-        , displayTextPlane <| Plane.subAt (0, 1) (2, 3) plane
+        , Plane.subAt (0, 1) (2, 3) plane
+            |> Maybe.map displayTextPlane
+            |> Maybe.withDefault (text "<NONE>")
         , text "(3, 3) (1, 1)"
-        , displayTextPlane <| Plane.subAt (3, 3) (1, 1) plane
+        , Plane.subAt (3, 3) (1, 1) plane
+            |> Maybe.map displayTextPlane
+            |> Maybe.withDefault (text "<NONE>")
         , text "(3, 3) (4, 4)"
-        , displayTextPlane <| Plane.subAt (3, 3) (4, 4) plane
+        , Plane.subAt (3, 3) (4, 4) plane
+            |> Maybe.map displayTextPlane
+            |> Maybe.withDefault (text "<NONE>")
         ]
 
 

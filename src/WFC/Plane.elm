@@ -58,19 +58,21 @@ foldl f def plane =
         |> List.foldl f def
 
 
-sub : Vec2 -> Plane Vec2 a -> Plane Vec2 a
+sub : Vec2 -> Plane Vec2 a -> Maybe (Plane Vec2 a)
 sub = subAt (0, 0)
 
 
-subAt : Vec2 -> Vec2 -> Plane Vec2 a -> Plane Vec2 a
-subAt (shiftX, shiftY) (dstWidth, dstHeight) (Plane _ planeF) =
-    (Plane (dstWidth, dstHeight)
-        <| \(x, y) ->
-            if (x < dstWidth) && (y < dstHeight) then
-                planeF (x + shiftX, y + shiftY)
-            else
-                Nothing
-        )
+subAt : Vec2 -> Vec2 -> Plane Vec2 a -> Maybe (Plane Vec2 a)
+subAt (shiftX, shiftY) (dstWidth, dstHeight) (Plane (srcWidth, srcHeight) planeF) =
+    if (shiftX + dstWidth <= srcWidth) && (shiftY + dstHeight <= srcHeight) then
+        Just (Plane (dstWidth, dstHeight)
+            <| \(x, y) ->
+                if (x < dstWidth) && (y < dstHeight) then
+                    planeF (x + shiftX, y + shiftY)
+                else
+                    Nothing
+            )
+    else Nothing
 
 
 equal : Plane Vec2 a -> Plane Vec2 a -> Bool

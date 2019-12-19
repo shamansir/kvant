@@ -56,7 +56,8 @@ findPatterns ofSize inPlane =
             (\coord foundPatterns ->
                 foundPatterns ++
                     (Plane.subAt coord ofSize inPlane
-                        |> allViews)
+                        |> Maybe.map allViews
+                        |> Maybe.withDefault [])
             )
             []
         |> List.foldl
