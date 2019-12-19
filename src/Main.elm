@@ -3,6 +3,10 @@ module Main exposing (..)
 
 import Browser
 
+import Random
+import Task
+import Time
+
 import Html exposing (..)
 import Html.Attributes exposing (..)
 
@@ -22,7 +26,7 @@ type alias Model =
 
 type Msg
     = NoOp
-    | Calculate WFC.Instance
+    | Calculate Random.Seed WFC.Instance
 
 
 options : WFC.TextOptions
@@ -55,7 +59,7 @@ update msg model =
     case msg of
         NoOp ->
             ( model, Cmd.none )
-        Calculate wfcInstance ->
+        Calculate seed wfcInstance ->
             (
                 { model
                 | result =
@@ -125,8 +129,15 @@ main : Program {} Model Msg
 main =
     Browser.application
         { init = \_ _ _ ->
-                    init |> update
-                        (Calculate <| WFC.Text <| WFC.text options)
+                    ( init,
+                     Task.perform
+                        (\time ->
+                            Calculate
+                                (Random.initialSeed <| Time.posixToMillis time)
+                                <| WFC.Text <| WFC.text options
+                        )
+                        Time.now
+                    )
         , onUrlChange = always NoOp
         , onUrlRequest = always NoOp
         , subscriptions = always Sub.none
