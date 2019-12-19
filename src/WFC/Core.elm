@@ -27,7 +27,7 @@ text options =
                     -- plane : TextPlane
                     plane = input |> makeTextPlane options.inputSize
                     -- patterns : List TextPlane
-                    patterns = findPatterns plane
+                    patterns = findPatterns options.patternSize plane
                     -- solver : TextSolver
                     solver = Solver options plane patterns
                 in

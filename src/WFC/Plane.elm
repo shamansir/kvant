@@ -73,24 +73,6 @@ subAt (shiftX, shiftY) (dstWidth, dstHeight) (Plane _ planeF) =
         )
 
 
-rotate : Orientation -> Plane Vec2 a -> Plane Vec2 a
-rotate orientation (Plane (width, height) planeF) =
-    Plane (width, height)
-        <| case orientation of
-            North -> planeF
-            West -> \(x, y) -> planeF (height - 1 - y, x)
-            South -> \(x, y) -> planeF (width - 1 - x, height - 1 - y)
-            East -> \(x, y) -> planeF (y, width - 1 - x)
-
-
-flip : Flip -> Plane Vec2 a -> Plane Vec2 a
-flip how (Plane (width, height) planeF) =
-    Plane (width, height)
-        <| case how of
-            Horizontal -> \(x, y) -> planeF (width - 1 - x, y)
-            Vertical -> \(x, y) -> planeF (x, height - 1 - y)
-
-
 equal : Plane Vec2 a -> Plane Vec2 a -> Bool
 equal ((Plane sizeA fA) as planeA) ((Plane sizeB fB) as planeB) =
     if sizeA == sizeB then
@@ -123,6 +105,57 @@ materializeFlatten = materialize >> List.concat
 
 coords : Plane Vec2 a -> List Vec2
 coords = foldMap Tuple.first >> List.concat
+
+
+rotate : Orientation -> Plane Vec2 a -> Plane Vec2 a
+rotate orientation (Plane (width, height) planeF) =
+    Plane (width, height)
+        <| case orientation of
+            North -> planeF
+            West -> \(x, y) -> planeF (height - 1 - y, x)
+            South -> \(x, y) -> planeF (width - 1 - x, height - 1 - y)
+            East -> \(x, y) -> planeF (y, width - 1 - x)
+
+
+flip : Flip -> Plane Vec2 a -> Plane Vec2 a
+flip how (Plane (width, height) planeF) =
+    Plane (width, height)
+        <| case how of
+            Horizontal -> \(x, y) -> planeF (width - 1 - x, y)
+            Vertical -> \(x, y) -> planeF (x, height - 1 - y)
+
+
+allRotations : Plane Vec2 a -> List (Plane Vec2 a)
+allRotations plane =
+    [ plane
+    , plane |> rotate West
+    , plane |> rotate South
+    , plane |> rotate East
+    ]
+
+
+bothFlips : Plane Vec2 a -> List (Plane Vec2 a)
+bothFlips plane =
+    [ plane |> flip Horizontal
+    , plane |> flip Vertical
+    ]
+
+
+allViews : Plane Vec2 a -> List (Plane Vec2 a)
+allViews plane =
+    [ plane
+    , plane |> flip Horizontal
+    , plane |> flip Vertical
+    , plane |> rotate West
+    , plane |> rotate West |> flip Horizontal
+    , plane |> rotate West |> flip Vertical
+    , plane |> rotate South
+    , plane |> rotate South |> flip Horizontal
+    , plane |> rotate South |> flip Vertical
+    , plane |> rotate East
+    , plane |> rotate East |> flip Horizontal
+    , plane |> rotate East |> flip Vertical
+    ]
 
 
 type alias TextPlane = Plane Vec2 Char

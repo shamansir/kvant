@@ -37,14 +37,13 @@ type alias TextOptions = Options Vec2
 type alias TextSolver = Solver Vec2 Char
 
 
-isAmong : Plane Vec2 a -> List (Plane Vec2 a) -> Bool
-isAmong subject planes =
+isAmong : List (Plane Vec2 a) -> Plane Vec2 a -> Bool
+isAmong planes subject =
     planes
         |> List.foldl
                 (\other wasBefore ->
                     wasBefore
                         || Plane.equal subject other
-                        -- TODO: rotate and compare
                 )
            False
 
@@ -55,13 +54,16 @@ findPatterns ofSize inPlane =
         |> Plane.coords
         |> List.foldl
             (\coord foundPatterns ->
-                let
-                    subPlane = Plane.subAt coord ofSize inPlane
-                    -- TODO: add all rotations and flips
-                in
-                    if not <| isAmong subPlane foundPatterns then
-                        subPlane :: foundPatterns
-                    else foundPatterns
+                foundPatterns ++
+                    (Plane.subAt coord ofSize inPlane
+                        |> allViews)
+            )
+            []
+        |> List.foldl
+            (\pattern uniqueOthers ->
+                if not <| isAmong uniqueOthers pattern then
+                    pattern :: uniqueOthers
+                else uniqueOthers
             )
             []
         |> List.map toPattern
