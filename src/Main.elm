@@ -14,7 +14,7 @@ import WFC.Core exposing (WFC, TextWFC)
 import WFC.Core as WFC
 import WFC.Plane exposing (..)
 import WFC.Plane as Plane exposing (sub ,subAt)
-import WFC.Solver exposing (Approach(..), fromPattern)
+import WFC.Solver exposing (Approach(..), fromPattern, Occured(..))
 import WFC.Solver as WFC exposing (TextOptions)
 
 
@@ -283,16 +283,24 @@ viewPatterns plane =
         , style "justify-content" "space-evenly"
         ]
     <| List.indexedMap
-        (\index pattern ->
+        (\index (occurs, pattern) ->
             div
                 [ class <| "pattern-" ++ String.fromInt index
                 , style "margin" "10px 0"
                 ]
-                [ span [] [ text <| String.fromInt index ]
+                [ span [] [ text <| String.fromInt index ++ ". " ]
+                , span [] [ text <| occursText occurs ]
                 , displayTextPlane <| fromPattern pattern
                 ]
         )
         (WFC.findPatterns (2, 2) plane)
+
+
+occursText : Occured -> String
+occursText occured =
+    case occured of
+        Unknown -> "occurs unknown amount of times"
+        Times howMuch -> "occurs " ++ String.fromInt howMuch ++ " times"
 
 
 symbolBg : Char -> String
