@@ -12,7 +12,24 @@ type Occured
     | Times Int
 
 
+type Cell
+    = Contradiction
+    | Entropy Int
+
+
+type Neighbours a =
+    Neighbours
+        a a a
+        a   a
+        a a a
+type Direction
+    = NW | N | NE
+    | W  | X |  E
+    | SW | S | SE
+
+
 type Pattern v a = Pattern v (v -> Maybe a)
+type Wave v = Wave v (v -> Maybe Cell)
 
 
 type Approach
@@ -38,7 +55,11 @@ type Step a
     = Step Int Random.Seed
 
 
-type Solver v a = Solver (Options v) (Plane v a) (List (Occured, Pattern v a))
+type Solver v a =
+    Solver
+        (Options v)
+        (Plane v a) -- source plane
+        (List (Occured, Pattern v a, Neighbours (List Int))) -- pattern statistics
 
 
 solve : Step a -> Solver v a -> ( Step a, Plane v a )
@@ -77,6 +98,8 @@ memberAt planes subject =
            Nothing
 
 
+
+-- TODO: separate calculating occurence from finding patterns
 findPatterns : PatternSearchMethod -> Vec2 -> Plane Vec2 a -> List (Occured, Pattern Vec2 a)
 findPatterns method ofSize inPlane =
     let
@@ -122,12 +145,26 @@ findPatterns method ofSize inPlane =
                                 |> List.filter (equal subPlane)
                                 |> List.length
                                 |> times
-                            , subPlane)
+                            , subPlane
+                            )
                    )
     in
         uniqueSubplanesWithFreq
             |> List.sortBy (Tuple.first >> occuredToInt)
             |> List.map (Tuple.mapSecond toPattern)
+
+
+neighboursAt : Direction -> List (Pattern v a) -> Pattern v a -> List Int
+neighboursAt dir from (Pattern size f) =
+    []
+
+
+findNeighbours : List (Pattern v a) -> Pattern v a -> Neighbours (List Int)
+findNeighbours from pattern =
+    Neighbours
+        (neighboursAt NW from pattern) (neighboursAt N from pattern) (neighboursAt NE from pattern)
+        (neighboursAt W  from pattern)                               (neighboursAt  E from pattern)
+        (neighboursAt SW from pattern) (neighboursAt S from pattern) (neighboursAt SE from pattern)
 
 
 toPattern : Plane v a -> Pattern v a
