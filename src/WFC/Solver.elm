@@ -78,9 +78,8 @@ findPatterns ofSize inPlane =
                 |> List.foldl
                     (\coord foundSubplanes ->
                         foundSubplanes ++
-                            (Plane.subAt coord ofSize inPlane
-                                |> Maybe.map allViews
-                                |> Maybe.withDefault [])
+                            (Plane.periodicSubAt coord ofSize inPlane
+                                |> allViews)
                         -- FIXME: consider periodically tiling source pattern
                     )
                     []
