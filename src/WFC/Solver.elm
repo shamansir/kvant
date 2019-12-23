@@ -111,37 +111,27 @@ memberAt planes subject =
            Nothing
 
 
-findUniquePatterns : PatternSearchMethod -> Vec2 -> Plane Vec2 a -> UniquePatterns Vec2 a
-findUniquePatterns method ofSize inPlane =
+findAllSubplanes : PatternSearchMethod -> Vec2 -> Plane Vec2 a -> List (Plane Vec2 a)
+findAllSubplanes method ofSize inPlane =
+    inPlane
+        |> allViews
+        |> List.concatMap
+            (\view ->
+                Plane.coords view
+                    |> case method of
+                        Periodic ->
+                            List.map (\coord -> Plane.periodicSubAt coord ofSize view)
+                        Bounded ->
+                            List.map (\coord -> Plane.subAt coord ofSize view)
+                            >> List.filterMap identity
+            )
+
+
+findOccurence : List (Plane Vec2 a) -> List (Occured, Plane Vec2 a)
+findOccurence allPlanes =
     let
-        -- FIXME: move each part to a separate function
-        subplanes =
-            inPlane
-                |> allViews
-                |> List.concatMap
-                    (\view ->
-                        Plane.coords view
-                            |> case method of
-                                Periodic ->
-                                    List.map (\coord -> Plane.periodicSubAt coord ofSize view)
-                                Bounded ->
-                                    List.map (\coord -> Plane.subAt coord ofSize view)
-                                    >> List.filterMap identity
-                    )
-        {-
-        subplanes =
-            inPlane
-                |> Plane.coords
-                |> (case method of
-                    Periodic ->
-                        List.map (\coord -> Plane.periodicSubAt coord ofSize inPlane)
-                    Bounded ->
-                        List.map (\coord -> Plane.subAt coord ofSize inPlane)
-                        >> List.filterMap identity)
-                |> List.concatMap allViews
-        -}
-        uniqueSubplanes =
-            subplanes
+        unique =
+            allPlanes
                 |> List.foldl
                     (\pattern uniqueOthers ->
                         if isAmong uniqueOthers pattern
@@ -149,26 +139,36 @@ findUniquePatterns method ofSize inPlane =
                             else pattern :: uniqueOthers
                     )
                     []
-        uniqueSubplanesWithFreq =
+    in
+        unique
+            |> List.map
+                (
+                    \subPlane ->
+                        ( allPlanes
+                            |> List.filter (equal subPlane)
+                            |> List.length
+                            |> times
+                        , subPlane
+                        )
+                )
+            |> List.sortBy (Tuple.first >> occuredToInt)
+
+
+findUniquePatterns : PatternSearchMethod -> Vec2 -> Plane Vec2 a -> UniquePatterns Vec2 a
+findUniquePatterns method ofSize inPlane =
+    let
+        allSubplanes = findAllSubplanes method ofSize inPlane
+        uniqueSubplanes = findOccurence allSubplanes
+        uniquePatterns =
             uniqueSubplanes
-                |> List.map
-                    (
-                        \subPlane ->
-                            ( subplanes
-                                |> List.filter (equal subPlane)
-                                |> List.length
-                                |> times
-                            , subPlane
-                            )
-                   )
+                |> List.map (Tuple.mapSecond toPattern)
         uniquePatternsWithIds =
-            uniqueSubplanes
-                |> List.map toPattern
+            uniquePatterns
+                |> List.map Tuple.second
                 |> List.indexedMap (\index pattern -> Tuple.pair index pattern)
                 |> List.map (Tuple.mapFirst PatternId)
     in
-        uniqueSubplanesWithFreq
-            |> List.map (Tuple.mapSecond toPattern)
+        uniquePatterns
             |> List.indexedMap (\index (occurence, pattern) ->
                 { occured = occurence
                 , pattern = pattern
