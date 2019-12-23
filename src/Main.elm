@@ -29,6 +29,7 @@ type Msg
     | Calculate Random.Seed WFC.Instance
 
 
+
 options : WFC.TextOptions
 options =
     { approach = Overlapping
@@ -215,18 +216,33 @@ viewRotationsAndFlips plane =
         ]
         [ displayTextPlane plane
         , text "North"
-        , displayTextPlane <| rotate North plane
+        , displayTextPlane <| rotateTo North plane
         , text "West"
-        , displayTextPlane <| rotate West plane
+        , displayTextPlane <| rotateTo West plane
         , text "South"
-        , displayTextPlane <| rotate South plane
+        , displayTextPlane <| rotateTo South plane
         , text "East"
-        , displayTextPlane <| rotate East plane
+        , displayTextPlane <| rotateTo East plane
         , text "Horz"
-        , displayTextPlane <| flip Horizontal plane
+        , displayTextPlane <| flipBy Horizontal plane
         , text "Vert"
-        , displayTextPlane <| flip Vertical plane
+        , displayTextPlane <| flipBy Vertical plane
         ]
+
+        {-
+        , text "rotate once"
+        , displayTextPlane <| rotate plane
+        , text "rotate twice"
+        , displayTextPlane <| rotate <| rotate plane
+        , text "rotate triple times"
+        , displayTextPlane <| rotate <| rotate <| rotate plane
+        , text "flip"
+        , displayTextPlane <| flip plane
+        , text "flip rotated"
+        , displayTextPlane <| flip <| rotate plane
+        , text "rotate flipped"
+        , displayTextPlane <| rotate <| flip plane
+        -}
 
 
 viewSubPlanes : TextPlane -> Html Msg

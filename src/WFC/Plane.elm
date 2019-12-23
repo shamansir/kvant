@@ -124,8 +124,8 @@ coords : Plane Vec2 a -> List Vec2
 coords = foldMap Tuple.first >> List.concat
 
 
-rotate : Orientation -> Plane Vec2 a -> Plane Vec2 a
-rotate orientation (Plane (width, height) planeF) =
+rotateTo : Orientation -> Plane Vec2 a -> Plane Vec2 a
+rotateTo orientation (Plane (width, height) planeF) =
     Plane (width, height)
         <| case orientation of
             North -> planeF
@@ -134,44 +134,48 @@ rotate orientation (Plane (width, height) planeF) =
             East -> \(x, y) -> planeF (y, width - 1 - x)
 
 
-flip : Flip -> Plane Vec2 a -> Plane Vec2 a
-flip how (Plane (width, height) planeF) =
+flipBy : Flip -> Plane Vec2 a -> Plane Vec2 a
+flipBy how (Plane (width, height) planeF) =
     Plane (width, height)
         <| case how of
             Horizontal -> \(x, y) -> planeF (width - 1 - x, y)
             Vertical -> \(x, y) -> planeF (x, height - 1 - y)
 
 
+rotate : Plane Vec2 a -> Plane Vec2 a
+rotate = rotateTo East
+
+
+flip : Plane Vec2 a -> Plane Vec2 a
+flip = flipBy Vertical
+
+
 allRotations : Plane Vec2 a -> List (Plane Vec2 a)
 allRotations plane =
     [ plane
-    , plane |> rotate West
-    , plane |> rotate South
-    , plane |> rotate East
+    , plane |> rotate -- rotateTo East
+    , plane |> rotate |> rotate -- rotateTo South
+    , plane |> rotate |> rotate |> rotate -- rotateTo West
     ]
 
 
 bothFlips : Plane Vec2 a -> List (Plane Vec2 a)
 bothFlips plane =
-    [ plane |> flip Horizontal
-    , plane |> flip Vertical
+    [ plane |> flip
+    , plane |> rotate |> flip
     ]
 
 
 allViews : Plane Vec2 a -> List (Plane Vec2 a)
 allViews plane =
     [ plane
-    , plane |> flip Horizontal
-    , plane |> flip Vertical
-    , plane |> rotate West
-    , plane |> rotate West |> flip Horizontal
-    , plane |> rotate West |> flip Vertical
-    , plane |> rotate South
-    , plane |> rotate South |> flip Horizontal
-    , plane |> rotate South |> flip Vertical
-    , plane |> rotate East
-    , plane |> rotate East |> flip Horizontal
-    , plane |> rotate East |> flip Vertical
+    , plane |> rotate -- rotateTo East
+    , plane |> rotate |> rotate -- rotateTo South
+    , plane |> rotate |> rotate |> rotate -- rotateTo West
+    , plane |> flip
+    , plane |> rotate |> flip
+    , plane |> rotate |> rotate |> flip
+    , plane |> flip |> rotate
     ]
 
 

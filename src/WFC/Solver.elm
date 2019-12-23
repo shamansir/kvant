@@ -80,20 +80,32 @@ memberAt planes subject =
 findPatterns : PatternSearchMethod -> Vec2 -> Plane Vec2 a -> List (Occured, Pattern Vec2 a)
 findPatterns method ofSize inPlane =
     let
+        {-
+        subplanes =
+            inPlane
+                |> allViews
+                |> List.concatMap
+                    (\view ->
+                        Plane.coords view
+                            |> case method of
+                                Periodic ->
+                                    List.map (\coord -> Plane.periodicSubAt coord ofSize view)
+                                Bounded ->
+                                    List.map (\coord -> Plane.subAt coord ofSize view)
+                                    >> List.filterMap identity
+                    )
+        allSubplanesViews
+            = subplanes
+        -}
         subplanes =
             inPlane
                 |> Plane.coords
                 |> case method of
-                    Periodic -> List.map (\coord -> Plane.periodicSubAt coord ofSize inPlane)
+                    Periodic ->
+                        List.map (\coord -> Plane.periodicSubAt coord ofSize inPlane)
                     Bounded ->
-                        List.foldl
-                            (\coord foundSubplanes ->
-                                foundSubplanes ++
-                                    (Plane.subAt coord ofSize inPlane
-                                        |> Maybe.map List.singleton
-                                        |> Maybe.withDefault [])
-                            )
-                        []
+                        List.map (\coord -> Plane.subAt coord ofSize inPlane)
+                        >> List.filterMap identity
         allSubplanesViews
             = subplanes |> List.concatMap allViews
         uniqueSubplanes =
