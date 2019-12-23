@@ -75,6 +75,21 @@ subAt (shiftX, shiftY) (dstWidth, dstHeight) (Plane (srcWidth, srcHeight) planeF
     else Nothing
 
 
+periodicSubAt : Vec2 -> Vec2 -> Plane Vec2 a -> Plane Vec2 a
+periodicSubAt (shiftX, shiftY) (dstWidth, dstHeight) (Plane (srcWidth, srcHeight) planeF) =
+    let
+        periodicCoord (x, y) =
+            ( if shiftX + x >= 0
+                then shiftX + x |> modBy srcWidth
+                else srcWidth - (abs (shiftX + x) |> modBy srcWidth)
+            , if shiftY + y >= 0
+                then shiftY + y |> modBy srcHeight
+                else srcHeight - (abs (shiftY + y) |> modBy srcHeight)
+            )
+    in
+        Plane (dstWidth, dstHeight) (planeF << periodicCoord)
+
+
 equal : Plane Vec2 a -> Plane Vec2 a -> Bool
 equal ((Plane sizeA fA) as planeA) ((Plane sizeB fB) as planeB) =
     if sizeA == sizeB then

@@ -115,6 +115,10 @@ view model =
         , hr [] []
         , testPlaneHex |> viewSubPlanes
         , hr [] []
+        , testPlane |> viewPeriodicSubPlanes
+        , hr [] []
+        , testPlaneHex |> viewPeriodicSubPlanes
+        , hr [] []
         , testPlane |> viewAllViews
         , hr [] []
         , testPlaneHex |> viewAllViews
@@ -263,6 +267,46 @@ viewSubPlanes plane =
         , Plane.subAt (3, 3) (4, 4) plane
             |> Maybe.map displayTextPlane
             |> Maybe.withDefault (text "<NONE>")
+        ]
+
+
+viewPeriodicSubPlanes : TextPlane -> Html Msg
+viewPeriodicSubPlanes plane =
+    div [ style "display" "flex"
+        , style "flex-direction" "column"
+        , style "justify-content" "space-evenly"
+        ]
+        [ displayTextPlane plane
+        , text "(0, 0) (2, 2)"
+        , Plane.periodicSubAt (0, 0) (2, 2) plane
+            |> displayTextPlane
+        , text "(0, 0) (3, 3)"
+        , Plane.periodicSubAt (0, 0) (3, 3) plane
+            |> displayTextPlane
+        , text "(1, 1) (2, 2)"
+        , Plane.periodicSubAt (1, 1) (2, 2) plane
+            |> displayTextPlane
+        , text "(1, 1) (3, 3)"
+        , Plane.periodicSubAt (1, 1) (3, 3) plane
+            |> displayTextPlane
+        , text "(0, 1) (3, 3)"
+        , Plane.periodicSubAt (0, 1) (3, 3) plane
+            |> displayTextPlane
+        , text "(0, 1) (2, 3)"
+        , Plane.periodicSubAt (0, 1) (2,3) plane
+            |> displayTextPlane
+        , text "(3, 3) (1, 1)"
+        , Plane.periodicSubAt (3, 3) (1, 1) plane
+            |> displayTextPlane
+        , text "(3, 3) (4, 4)"
+        , Plane.periodicSubAt (3, 3) (4, 4) plane
+            |> displayTextPlane
+        , text "(2, 3) (4, 4)"
+        , Plane.periodicSubAt (2, 3) (4, 4) plane
+            |> displayTextPlane
+        , text "(-2, -2) (4, 4)"
+        , Plane.periodicSubAt (-2, -2) (4, 4) plane
+            |> displayTextPlane
         ]
 
 
