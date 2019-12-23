@@ -1,6 +1,7 @@
 module WFC.Solver exposing (..)
 
 
+-- import Array exposing (Array)
 import Random
 
 import WFC.Plane exposing (..)
@@ -55,11 +56,23 @@ type Step a
     = Step Int Random.Seed
 
 
+type PatternId = PatternId Int
+
+
+type alias UniquePatterns v a =
+    List
+        { occured : Occured
+        , id : PatternId
+        , pattern : Pattern v a
+        , neighbours : Neighbours (List PatternId)
+        }
+
+
 type Solver v a =
     Solver
         (Options v)
         (Plane v a) -- source plane
-        (List (Occured, Pattern v a, Neighbours (List Int))) -- pattern statistics
+        (UniquePatterns v a) -- pattern statistics
 
 
 solve : Step a -> Solver v a -> ( Step a, Plane v a )
@@ -98,11 +111,10 @@ memberAt planes subject =
            Nothing
 
 
-
--- TODO: separate calculating occurence from finding patterns
-findPatterns : PatternSearchMethod -> Vec2 -> Plane Vec2 a -> List (Occured, Pattern Vec2 a)
-findPatterns method ofSize inPlane =
+findUniquePatterns : PatternSearchMethod -> Vec2 -> Plane Vec2 a -> UniquePatterns Vec2 a
+findUniquePatterns method ofSize inPlane =
     let
+        -- FIXME: move each part to a separate function
         subplanes =
             inPlane
                 |> allViews
@@ -139,7 +151,8 @@ findPatterns method ofSize inPlane =
                     []
         uniqueSubplanesWithFreq =
             uniqueSubplanes
-                |> List.map(
+                |> List.map
+                    (
                         \subPlane ->
                             ( subplanes
                                 |> List.filter (equal subPlane)
@@ -148,18 +161,38 @@ findPatterns method ofSize inPlane =
                             , subPlane
                             )
                    )
+        uniquePatternsWithIds =
+            uniqueSubplanes
+                |> List.map toPattern
+                |> List.indexedMap (\index pattern -> Tuple.pair index pattern)
+                |> List.map (Tuple.mapFirst PatternId)
     in
         uniqueSubplanesWithFreq
-            |> List.sortBy (Tuple.first >> occuredToInt)
             |> List.map (Tuple.mapSecond toPattern)
+            |> List.indexedMap (\index (occurence, pattern) ->
+                { occured = occurence
+                , pattern = pattern
+                , id = PatternId index
+                , neighbours = findNeighbours uniquePatternsWithIds pattern
+                }
+            )
+            |> List.sortBy (.occured >> occuredToInt)
 
 
-neighboursAt : Direction -> List (Pattern v a) -> Pattern v a -> List Int
+noNeighbours : Neighbours (List PatternId)
+noNeighbours =
+    Neighbours
+        [] [] []
+        []    []
+        [] [] []
+
+
+neighboursAt : Direction -> List (PatternId, Pattern v a) -> Pattern v a -> List PatternId
 neighboursAt dir from (Pattern size f) =
     []
 
 
-findNeighbours : List (Pattern v a) -> Pattern v a -> Neighbours (List Int)
+findNeighbours : List (PatternId, Pattern v a) -> Pattern v a -> Neighbours (List PatternId)
 findNeighbours from pattern =
     Neighbours
         (neighboursAt NW from pattern) (neighboursAt N from pattern) (neighboursAt NE from pattern)

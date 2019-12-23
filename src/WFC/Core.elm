@@ -31,23 +31,13 @@ text options =
                 -- plane : TextPlane
                 plane = input |> makeTextPlane options.inputSize
                 -- patterns : List ( Occured, TextPlane )
-                patternsAndOccurence
-                    = findPatterns
+                patterns
+                    = findUniquePatterns
                         options.patternSearch
                         options.patternSize
                         plane
-                patterns =
-                    patternsAndOccurence |> List.map Tuple.second
-                patternsWithNeighbours
-                    = patternsAndOccurence
-                          |> List.map (\(occurence, pattern) ->
-                                    ( occurence
-                                    , pattern
-                                    , pattern |> findNeighbours patterns
-                                    )
-                                )
                 -- solver : TextSolver
-                solver = Solver options plane patternsWithNeighbours
+                solver = Solver options plane patterns
             in
                 solver
                     |> solve step

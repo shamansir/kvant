@@ -344,17 +344,17 @@ viewPatterns plane =
         , style "justify-content" "space-evenly"
         ]
     <| List.indexedMap
-        (\index (occurs, pattern) ->
+        (\index {occured, pattern} ->
             div
                 [ class <| "pattern-" ++ String.fromInt index
                 , style "margin" "10px 0"
                 ]
                 [ span [] [ text <| String.fromInt index ++ ". " ]
-                , span [] [ text <| occursText occurs ]
+                , span [] [ text <| occursText occured ]
                 , displayTextPlane <| fromPattern pattern
                 ]
         )
-        (WFC.findPatterns options.patternSearch (2, 2) plane)
+        (WFC.findUniquePatterns options.patternSearch (2, 2) plane)
 
 
 occursText : Occured -> String
