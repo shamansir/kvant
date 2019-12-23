@@ -4,29 +4,16 @@ module WFC.Solver exposing (..)
 -- import Array exposing (Array)
 import Random
 
+import WFC.Occured exposing (Occured)
+import WFC.Occured as Occured
 import WFC.Plane exposing (..)
 import WFC.Plane as Plane exposing (foldl, coords, equal, sub)
-
-
-type Occured
-    = Unknown
-    | Times Int
+import WFC.Neighbours exposing (..)
 
 
 type Cell
     = Contradiction
     | Entropy Int
-
-
-type Neighbours a =
-    Neighbours
-        a a a
-        a   a
-        a a a
-type Direction
-    = NW | N | NE
-    | W  | X |  E
-    | SW | S | SE
 
 
 type Pattern v a = Pattern v (v -> Maybe a)
@@ -38,14 +25,9 @@ type Approach
     | Tiled {- Rules -}
 
 
-type PatternSearchMethod
-    = Bounded
-    | Periodic
-
-
 type alias Options v =
     { approach: Approach
-    , patternSearch: PatternSearchMethod
+    , patternSearch: SearchMethod
     , patternSize: v
     , inputSize: v
     , outputSize: v
@@ -84,80 +66,10 @@ type alias TextOptions = Options Vec2
 type alias TextSolver = Solver Vec2 Char
 
 
-isAmong : List (Plane Vec2 a) -> Plane Vec2 a -> Bool
-isAmong planes subject =
-    planes
-        |> List.foldl
-                (\other wasBefore ->
-                    wasBefore
-                        || Plane.equal subject other
-                )
-           False
-
-
-memberAt : List (Plane Vec2 a) -> Plane Vec2 a -> Maybe Int
-memberAt planes subject =
-    planes
-        |> List.indexedMap Tuple.pair
-        |> List.foldl
-                (\(idx, other) wasBefore ->
-                    case wasBefore of
-                        Just _ -> wasBefore
-                        Nothing ->
-                            if Plane.equal subject other then
-                                Just idx
-                            else Nothing
-                )
-           Nothing
-
-
-findAllSubplanes : PatternSearchMethod -> Vec2 -> Plane Vec2 a -> List (Plane Vec2 a)
-findAllSubplanes method ofSize inPlane =
-    inPlane
-        |> allViews
-        |> List.concatMap
-            (\view ->
-                Plane.coords view
-                    |> case method of
-                        Periodic ->
-                            List.map (\coord -> Plane.periodicSubAt coord ofSize view)
-                        Bounded ->
-                            List.map (\coord -> Plane.subAt coord ofSize view)
-                            >> List.filterMap identity
-            )
-
-
-findOccurence : List (Plane Vec2 a) -> List (Occured, Plane Vec2 a)
-findOccurence allPlanes =
-    let
-        unique =
-            allPlanes
-                |> List.foldl
-                    (\pattern uniqueOthers ->
-                        if isAmong uniqueOthers pattern
-                            then uniqueOthers
-                            else pattern :: uniqueOthers
-                    )
-                    []
-    in
-        unique
-            |> List.map
-                (
-                    \subPlane ->
-                        ( allPlanes
-                            |> List.filter (equal subPlane)
-                            |> List.length
-                            |> times
-                        , subPlane
-                        )
-                )
-            |> List.sortBy (Tuple.first >> occuredToInt)
-
-
-findUniquePatterns : PatternSearchMethod -> Vec2 -> Plane Vec2 a -> UniquePatterns Vec2 a
+findUniquePatterns : SearchMethod -> Vec2 -> Plane Vec2 a -> UniquePatterns Vec2 a
 findUniquePatterns method ofSize inPlane =
     let
-        allSubplanes = findAllSubplanes method ofSize inPlane
+        allSubplanes = findAllSubs method ofSize inPlane
         uniqueSubplanes = findOccurence allSubplanes
         uniquePatterns =
             uniqueSubplanes
@@ -176,7 +88,7 @@ findUniquePatterns method ofSize inPlane =
                 , neighbours = findNeighbours uniquePatternsWithIds pattern
                 }
             )
-            |> List.sortBy (.occured >> occuredToInt)
+            |> List.sortBy (.occured >> Occured.toInt)
 
 
 noNeighbours : Neighbours (List PatternId)
@@ -206,30 +118,3 @@ toPattern (Plane size f) = Pattern size f
 
 fromPattern : Pattern v a -> Plane v a
 fromPattern (Pattern size f) = Plane size f
-
-
-occuredToInt : Occured -> Int
-occuredToInt occured =
-    case occured of
-        Unknown -> 0
-        Times howMuch -> howMuch
-
-
-compareOccured : Occured -> Occured -> Order
-compareOccured a b =
-    compare (occuredToInt a) (occuredToInt b)
-
-
-once : Occured
-once = Times 1
-
-
-times : Int -> Occured
-times = Times
-
-
-inc : Occured -> Occured
-inc occured =
-    case occured of
-        Unknown -> Times 1
-        Times before -> Times <| before + 1

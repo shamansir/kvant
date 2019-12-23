@@ -13,8 +13,9 @@ import Html.Attributes exposing (..)
 import WFC.Core exposing (WFC, TextWFC)
 import WFC.Core as WFC
 import WFC.Plane exposing (..)
+import WFC.Occured exposing (Occured(..))
 import WFC.Plane as Plane exposing (sub ,subAt)
-import WFC.Solver exposing (Approach(..), fromPattern, Occured(..), PatternSearchMethod(..))
+import WFC.Solver exposing (Approach(..), fromPattern)
 import WFC.Solver as WFC exposing (TextOptions)
 
 

@@ -2,6 +2,8 @@ module WFC.Plane exposing (..)
 
 
 import Array
+import WFC.Occured exposing (Occured)
+import WFC.Occured as Occured
 
 
 type Plane v a = Plane v (v -> Maybe a)
@@ -23,6 +25,11 @@ type Orientation
 type Flip
     = Horizontal
     | Vertical
+
+
+type SearchMethod
+    = Bounded
+    | Periodic
 
 
 empty : v -> Plane v a
@@ -177,6 +184,75 @@ allViews plane =
     , plane |> rotate |> rotate |> flip
     , plane |> flip |> rotate
     ]
+
+
+isAmong : List (Plane Vec2 a) -> Plane Vec2 a -> Bool
+isAmong planes subject =
+    planes
+        |> List.foldl
+                (\other wasBefore ->
+                    wasBefore
+                        || equal subject other
+                )
+           False
+
+
+memberAt : List (Plane Vec2 a) -> Plane Vec2 a -> Maybe Int
+memberAt planes subject =
+    planes
+        |> List.indexedMap Tuple.pair
+        |> List.foldl
+                (\(idx, other) wasBefore ->
+                    case wasBefore of
+                        Just _ -> wasBefore
+                        Nothing ->
+                            if equal subject other then Just idx
+                            else Nothing
+                )
+           Nothing
+
+
+findAllSubs : SearchMethod -> Vec2 -> Plane Vec2 a -> List (Plane Vec2 a)
+findAllSubs method ofSize inPlane =
+    inPlane
+        |> allViews
+        |> List.concatMap
+            (\view ->
+                coords view
+                    |> case method of
+                        Periodic ->
+                            List.map (\coord -> periodicSubAt coord ofSize view)
+                        Bounded ->
+                            List.map (\coord -> subAt coord ofSize view)
+                            >> List.filterMap identity
+            )
+
+
+findOccurence : List (Plane Vec2 a) -> List (Occured, Plane Vec2 a)
+findOccurence allPlanes =
+    let
+        unique =
+            allPlanes
+                |> List.foldl
+                    (\pattern uniqueOthers ->
+                        if isAmong uniqueOthers pattern
+                            then uniqueOthers
+                            else pattern :: uniqueOthers
+                    )
+                    []
+    in
+        unique
+            |> List.map
+                (
+                    \subPlane ->
+                        ( allPlanes
+                            |> List.filter (equal subPlane)
+                            |> List.length
+                            |> Occured.times
+                        , subPlane
+                        )
+                )
+            |> List.sortBy (Tuple.first >> Occured.toInt)
 
 
 type alias TextPlane = Plane Vec2 Char
