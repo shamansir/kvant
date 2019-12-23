@@ -14,7 +14,7 @@ import WFC.Core exposing (WFC, TextWFC)
 import WFC.Core as WFC
 import WFC.Plane exposing (..)
 import WFC.Plane as Plane exposing (sub ,subAt)
-import WFC.Solver exposing (Approach(..), fromPattern, Occured(..))
+import WFC.Solver exposing (Approach(..), fromPattern, Occured(..), PatternSearchMethod(..))
 import WFC.Solver as WFC exposing (TextOptions)
 
 
@@ -32,6 +32,7 @@ type Msg
 options : WFC.TextOptions
 options =
     { approach = Overlapping
+    , patternSearch = Bounded
     , patternSize = ( 2, 2 )
     , inputSize = ( 4, 4 )
     , outputSize = ( 10, 10 )
@@ -65,7 +66,7 @@ update msg model =
                 | result =
                     case wfcInstance of
                         WFC.Text wfc ->
-                            Just ( wfc |> WFC.run model.source )
+                            Just ( wfc |> WFC.run seed model.source )
                 }
             , Cmd.none
             )
@@ -337,7 +338,7 @@ viewPatterns plane =
                 , displayTextPlane <| fromPattern pattern
                 ]
         )
-        (WFC.findPatterns (2, 2) plane)
+        (WFC.findPatterns options.patternSearch (2, 2) plane)
 
 
 occursText : Occured -> String

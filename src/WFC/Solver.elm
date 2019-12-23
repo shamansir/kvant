@@ -1,6 +1,8 @@
 module WFC.Solver exposing (..)
 
 
+import Random
+
 import WFC.Plane exposing (..)
 import WFC.Plane as Plane exposing (foldl, coords, equal, sub)
 
@@ -18,8 +20,14 @@ type Approach
     | Tiled {- Rules -}
 
 
+type PatternSearchMethod
+    = Bounded
+    | Periodic
+
+
 type alias Options v =
     { approach: Approach
+    , patternSearch: PatternSearchMethod
     , patternSize: v
     , inputSize: v
     , outputSize: v
@@ -27,7 +35,7 @@ type alias Options v =
 
 
 type Step a
-    = Step Int
+    = Step Int Random.Seed
 
 
 type Solver v a = Solver (Options v) (Plane v a) (List (Occured, Pattern v a))
@@ -69,22 +77,27 @@ memberAt planes subject =
            Nothing
 
 
-findPatterns : Vec2 -> Plane Vec2 a -> List (Occured, Pattern Vec2 a)
-findPatterns ofSize inPlane =
+findPatterns : PatternSearchMethod -> Vec2 -> Plane Vec2 a -> List (Occured, Pattern Vec2 a)
+findPatterns method ofSize inPlane =
     let
-        allSubplanesVariants =
+        subplanes =
             inPlane
                 |> Plane.coords
-                |> List.foldl
-                    (\coord foundSubplanes ->
-                        foundSubplanes ++
-                            (Plane.periodicSubAt coord ofSize inPlane
-                                |> allViews)
-                        -- FIXME: consider periodically tiling source pattern
-                    )
-                    []
+                |> case method of
+                    Periodic -> List.map (\coord -> Plane.periodicSubAt coord ofSize inPlane)
+                    Bounded ->
+                        List.foldl
+                            (\coord foundSubplanes ->
+                                foundSubplanes ++
+                                    (Plane.subAt coord ofSize inPlane
+                                        |> Maybe.map List.singleton
+                                        |> Maybe.withDefault [])
+                            )
+                        []
+        allSubplanesViews
+            = subplanes |> List.concatMap allViews
         uniqueSubplanes =
-            allSubplanesVariants
+            allSubplanesViews
                 |> List.foldl
                     (\pattern uniqueOthers ->
                         if isAmong uniqueOthers pattern
@@ -96,7 +109,7 @@ findPatterns ofSize inPlane =
             uniqueSubplanes
                 |> List.map(
                         \subPlane ->
-                            ( allSubplanesVariants
+                            ( allSubplanesViews
                                 |> List.filter (equal subPlane)
                                 |> List.length
                                 |> times

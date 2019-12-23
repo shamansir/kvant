@@ -5,6 +5,9 @@ module WFC.Core exposing
     )
 
 
+import Random
+
+
 import WFC.Plane exposing (..)
 import WFC.Solver exposing (..)
 
@@ -27,8 +30,11 @@ text options =
             let
                 -- plane : TextPlane
                 plane = input |> makeTextPlane options.inputSize
-                -- patterns : List TextPlane
-                patterns = findPatterns options.patternSize plane
+                -- patterns : List ( Occured, TextPlane )
+                patterns = findPatterns
+                                options.patternSearch
+                                options.patternSize
+                                plane
                 -- solver : TextSolver
                 solver = Solver options plane patterns
             in
@@ -43,5 +49,5 @@ text options =
 --         Text wfc -> wfc
 
 
-run : fmt -> WFC v fmt a -> fmt
-run input (WFC wfc) = Tuple.second <| wfc ( Step 0, input )
+run : Random.Seed -> fmt -> WFC v fmt a -> fmt
+run seed input (WFC wfc) = Tuple.second <| wfc ( Step 0 seed, input )
