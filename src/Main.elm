@@ -35,7 +35,7 @@ options : WFC.TextOptions
 options =
     { approach = Overlapping
     , patternSearch = Bounded
-    , patternSize = ( 2, 2 )
+    , patternSize = N ( 2, 2 )
     , inputSize = ( 4, 4 )
     , outputSize = ( 10, 10 )
     }
@@ -254,35 +254,35 @@ viewSubPlanes plane =
         ]
         [ displayTextPlane plane
         , text "(0, 0) (2, 2)"
-        , Plane.sub (2, 2) plane
+        , Plane.sub (N (2, 2)) plane
             |> Maybe.map displayTextPlane
             |> Maybe.withDefault (text "<NONE>")
         , text "(0, 0) (3, 3)"
-        , Plane.sub (3, 3) plane
+        , Plane.sub (N (3, 3)) plane
             |> Maybe.map displayTextPlane
             |> Maybe.withDefault (text "<NONE>")
         , text "(1, 1) (2, 2)"
-        , Plane.subAt (1, 1) (2, 2) plane
+        , Plane.subAt (1, 1) (N (2, 2)) plane
             |> Maybe.map displayTextPlane
             |> Maybe.withDefault (text "<NONE>")
         , text "(1, 1) (3, 3)"
-        , Plane.subAt (1, 1) (3, 3) plane
+        , Plane.subAt (1, 1) (N (3, 3)) plane
             |> Maybe.map displayTextPlane
             |> Maybe.withDefault (text "<NONE>")
         , text "(0, 1) (3, 3)"
-        , Plane.subAt (0, 1) (3, 3) plane
+        , Plane.subAt (0, 1) (N (3, 3)) plane
             |> Maybe.map displayTextPlane
             |> Maybe.withDefault (text "<NONE>")
         , text "(0, 1) (2, 3)"
-        , Plane.subAt (0, 1) (2, 3) plane
+        , Plane.subAt (0, 1) (N (2, 3)) plane
             |> Maybe.map displayTextPlane
             |> Maybe.withDefault (text "<NONE>")
         , text "(3, 3) (1, 1)"
-        , Plane.subAt (3, 3) (1, 1) plane
+        , Plane.subAt (3, 3) (N (1, 1)) plane
             |> Maybe.map displayTextPlane
             |> Maybe.withDefault (text "<NONE>")
         , text "(3, 3) (4, 4)"
-        , Plane.subAt (3, 3) (4, 4) plane
+        , Plane.subAt (3, 3) (N (4, 4)) plane
             |> Maybe.map displayTextPlane
             |> Maybe.withDefault (text "<NONE>")
         ]
@@ -296,34 +296,34 @@ viewPeriodicSubPlanes plane =
         ]
         [ displayTextPlane plane
         , text "(0, 0) (2, 2)"
-        , Plane.periodicSubAt (0, 0) (2, 2) plane
+        , Plane.periodicSubAt (0, 0) (N (2, 2)) plane
             |> displayTextPlane
         , text "(0, 0) (3, 3)"
-        , Plane.periodicSubAt (0, 0) (3, 3) plane
+        , Plane.periodicSubAt (0, 0) (N (3, 3)) plane
             |> displayTextPlane
         , text "(1, 1) (2, 2)"
-        , Plane.periodicSubAt (1, 1) (2, 2) plane
+        , Plane.periodicSubAt (1, 1) (N (2, 2)) plane
             |> displayTextPlane
         , text "(1, 1) (3, 3)"
-        , Plane.periodicSubAt (1, 1) (3, 3) plane
+        , Plane.periodicSubAt (1, 1) (N (3, 3)) plane
             |> displayTextPlane
         , text "(0, 1) (3, 3)"
-        , Plane.periodicSubAt (0, 1) (3, 3) plane
+        , Plane.periodicSubAt (0, 1) (N (3, 3)) plane
             |> displayTextPlane
         , text "(0, 1) (2, 3)"
-        , Plane.periodicSubAt (0, 1) (2,3) plane
+        , Plane.periodicSubAt (0, 1) (N (2,3)) plane
             |> displayTextPlane
         , text "(3, 3) (1, 1)"
-        , Plane.periodicSubAt (3, 3) (1, 1) plane
+        , Plane.periodicSubAt (3, 3) (N (1, 1)) plane
             |> displayTextPlane
         , text "(3, 3) (4, 4)"
-        , Plane.periodicSubAt (3, 3) (4, 4) plane
+        , Plane.periodicSubAt (3, 3) (N (4, 4)) plane
             |> displayTextPlane
         , text "(2, 3) (4, 4)"
-        , Plane.periodicSubAt (2, 3) (4, 4) plane
+        , Plane.periodicSubAt (2, 3) (N (4, 4)) plane
             |> displayTextPlane
         , text "(-2, -2) (4, 4)"
-        , Plane.periodicSubAt (-2, -2) (4, 4) plane
+        , Plane.periodicSubAt (-2, -2) (N (4, 4)) plane
             |> displayTextPlane
         ]
 
@@ -355,7 +355,7 @@ viewPatterns plane =
                 , displayTextPlane <| fromPattern pattern
                 ]
         )
-        (WFC.findUniquePatterns options.patternSearch (2, 2) plane)
+        (WFC.findUniquePatterns options.patternSearch (N (2, 2)) plane)
 
 
 occursText : Occured -> String

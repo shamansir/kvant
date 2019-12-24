@@ -7,7 +7,7 @@ import Random
 import WFC.Occured exposing (Occured)
 import WFC.Occured as Occured
 import WFC.Plane exposing (..)
-import WFC.Plane as Plane exposing (foldl, coords, equal, sub)
+import WFC.Plane as Plane exposing (foldl, coords, equal, sub, findMatches, map)
 import WFC.Neighbours exposing (..)
 
 
@@ -28,9 +28,10 @@ type Approach
 type alias Options v =
     { approach: Approach
     , patternSearch: SearchMethod
-    , patternSize: v
+    , patternSize: N v
     , inputSize: v
     , outputSize: v
+    -- add symmetry etc.
     }
 
 
@@ -46,7 +47,7 @@ type alias UniquePatterns v a =
         { occured : Occured
         , id : PatternId
         , pattern : Pattern v a
-        , neighbours : Neighbours (List PatternId)
+        , overlaps : Plane (Offset v) (List PatternId)
         }
 
 
@@ -66,7 +67,7 @@ type alias TextOptions = Options Vec2
 type alias TextSolver = Solver Vec2 Char
 
 
-findUniquePatterns : SearchMethod -> Vec2 -> Plane Vec2 a -> UniquePatterns Vec2 a
+findUniquePatterns : SearchMethod -> N Vec2 -> Plane Vec2 a -> UniquePatterns Vec2 a
 findUniquePatterns method ofSize inPlane =
     let
         allSubplanes = findAllSubs method ofSize inPlane
@@ -84,21 +85,14 @@ findUniquePatterns method ofSize inPlane =
             |> List.indexedMap (\index (occurence, pattern) ->
                 { occured = occurence
                 , pattern = pattern
-                , id = PatternId index
-                , neighbours = findNeighbours uniquePatternsWithIds pattern
+                , id = PatternId index -- ensure the same as in `uniquePatternsWithIds`
+                , overlaps = findMatches uniquePatternsWithIds pattern
                 }
             )
-            |> List.sortBy (.occured >> Occured.toInt)
+            -- |> List.sortBy (.occured >> Occured.toInt) -- already sorted in `uniqueSubplanes`
 
 
-noNeighbours : Neighbours (List PatternId)
-noNeighbours =
-    Neighbours
-        [] [] []
-        []    []
-        [] [] []
-
-
+{-
 neighboursAt : Direction -> List (PatternId, Pattern v a) -> Pattern v a -> List PatternId
 neighboursAt dir from (Pattern size f) =
     []
@@ -110,6 +104,25 @@ findNeighbours from pattern =
         (neighboursAt NW from pattern) (neighboursAt N from pattern) (neighboursAt NE from pattern)
         (neighboursAt W  from pattern)                               (neighboursAt  E from pattern)
         (neighboursAt SW from pattern) (neighboursAt S from pattern) (neighboursAt SE from pattern)
+-}
+
+
+idToInt : PatternId -> Int
+idToInt (PatternId i) = i
+
+
+findMatches
+    :  List (PatternId, Pattern Vec2 a)
+    -> Pattern Vec2 a
+    -> Plane (Offset Vec2) (List PatternId)
+findMatches from for =
+    Plane.findMatches
+        (from
+            |> List.sortBy (Tuple.first >> idToInt)
+            |> List.map Tuple.second
+            |> List.map fromPattern)
+        (fromPattern for)
+        |> Plane.map (List.map PatternId)
 
 
 toPattern : Plane v a -> Pattern v a

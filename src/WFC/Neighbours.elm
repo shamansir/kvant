@@ -13,3 +13,11 @@ type Direction
     = NW | N | NE
     | W  | X |  E
     | SW | S | SE
+
+
+none : Neighbours (List a)
+none =
+    Neighbours
+        [] [] []
+        []    []
+        [] [] []

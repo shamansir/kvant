@@ -2,6 +2,8 @@ module WFC.Plane exposing (..)
 
 
 import Array
+
+import WFC.Neighbours exposing (..)
 import WFC.Occured exposing (Occured)
 import WFC.Occured as Occured
 
@@ -13,6 +15,12 @@ type alias Cell v a = (v, Maybe a)
 
 
 type alias Vec2 = (Int, Int)
+
+
+type N v = N v -- FIXME: should be N Int, actually, since all patterns should have equal sides
+
+
+type Offset v = Offset v
 
 
 type Orientation
@@ -65,16 +73,16 @@ foldl f def plane =
         |> List.foldl f def
 
 
-sub : Vec2 -> Plane Vec2 a -> Maybe (Plane Vec2 a)
+sub : N Vec2 -> Plane Vec2 a -> Maybe (Plane Vec2 a)
 sub = subAt (0, 0)
 
 
-subAt : Vec2 -> Vec2 -> Plane Vec2 a -> Maybe (Plane Vec2 a)
-subAt (shiftX, shiftY) (dstWidth, dstHeight) (Plane (srcWidth, srcHeight) planeF) =
-    if (shiftX + dstWidth <= srcWidth) && (shiftY + dstHeight <= srcHeight) then
-        Just (Plane (dstWidth, dstHeight)
+subAt : Vec2 -> N Vec2 -> Plane Vec2 a -> Maybe (Plane Vec2 a)
+subAt (shiftX, shiftY) (N (nX, nY)) (Plane (srcWidth, srcHeight) planeF) =
+    if (shiftX + nX <= srcWidth) && (shiftY + nY <= srcHeight) then
+        Just (Plane (nX, nY)
             <| \(x, y) ->
-                if (x < dstWidth) && (y < dstHeight) then
+                if (x < nX) && (y < nY) then
                     planeF (x + shiftX, y + shiftY)
                 else
                     Nothing
@@ -82,8 +90,8 @@ subAt (shiftX, shiftY) (dstWidth, dstHeight) (Plane (srcWidth, srcHeight) planeF
     else Nothing
 
 
-periodicSubAt : Vec2 -> Vec2 -> Plane Vec2 a -> Plane Vec2 a
-periodicSubAt (shiftX, shiftY) (dstWidth, dstHeight) (Plane (srcWidth, srcHeight) planeF) =
+periodicSubAt : Vec2 -> N Vec2 -> Plane Vec2 a -> Plane Vec2 a
+periodicSubAt (shiftX, shiftY) (N (nX, nY)) (Plane (srcWidth, srcHeight) planeF) =
     let
         periodicCoord (x, y) =
             ( if shiftX + x >= 0
@@ -94,7 +102,7 @@ periodicSubAt (shiftX, shiftY) (dstWidth, dstHeight) (Plane (srcWidth, srcHeight
                 else srcHeight - (abs (shiftY + y) |> modBy srcHeight)
             )
     in
-        Plane (dstWidth, dstHeight) (planeF << periodicCoord)
+        Plane (nX, nY) (planeF << periodicCoord)
 
 
 equal : Plane Vec2 a -> Plane Vec2 a -> Bool
@@ -127,6 +135,14 @@ materializeFlatten : Plane Vec2 a -> List (Cell Vec2 a)
 materializeFlatten = materialize >> List.concat
 
 
+rotate : Plane Vec2 a -> Plane Vec2 a
+rotate = rotateTo East
+
+
+flip : Plane Vec2 a -> Plane Vec2 a
+flip = flipBy Vertical
+
+
 coords : Plane Vec2 a -> List Vec2
 coords = foldMap Tuple.first >> List.concat
 
@@ -147,14 +163,6 @@ flipBy how (Plane (width, height) planeF) =
         <| case how of
             Horizontal -> \(x, y) -> planeF (width - 1 - x, y)
             Vertical -> \(x, y) -> planeF (x, height - 1 - y)
-
-
-rotate : Plane Vec2 a -> Plane Vec2 a
-rotate = rotateTo East
-
-
-flip : Plane Vec2 a -> Plane Vec2 a
-flip = flipBy Vertical
 
 
 allRotations : Plane Vec2 a -> List (Plane Vec2 a)
@@ -212,7 +220,7 @@ memberAt planes subject =
            Nothing
 
 
-findAllSubs : SearchMethod -> Vec2 -> Plane Vec2 a -> List (Plane Vec2 a)
+findAllSubs : SearchMethod -> N Vec2 -> Plane Vec2 a -> List (Plane Vec2 a)
 findAllSubs method ofSize inPlane =
     inPlane
         |> allViews
@@ -253,6 +261,19 @@ findOccurence allPlanes =
                         )
                 )
             |> List.sortBy (Tuple.first >> Occured.toInt)
+
+
+-- offsetToTopLeft : Offset
+
+
+matchesAt : Offset Vec2 -> List (Plane Vec2 a) -> Plane Vec2 a -> List Int
+matchesAt (Offset (offsetX, offsetY)) from (Plane size f) =
+    []
+
+
+findMatches : List (Plane Vec2 a) -> Plane Vec2 a -> Plane (Offset Vec2) (List Int)
+findMatches from plane =
+    Plane (Offset (0, 0)) <| always Nothing
 
 
 type alias TextPlane = Plane Vec2 Char
