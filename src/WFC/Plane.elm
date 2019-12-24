@@ -53,17 +53,15 @@ map f (Plane size srcF) =
     Plane size (Maybe.map f << srcF)
 
 
+transform : (v -> v) -> Plane v a -> Plane v a
+transform f (Plane size srcF) =
+    Plane size (srcF << f)
+
+
 foldMap : (Cell Vec2 a -> b) -> Plane Vec2 a -> List (List b)
-foldMap f (Plane (width, height) planeF) =
-    List.repeat height []
-        |> List.map (always <| List.repeat width Nothing)
-        |> List.indexedMap
-            (\y row ->
-                List.indexedMap
-                    (\x _ -> ((x, y), planeF (x, y)))
-                    row
-                    |> List.map f
-            )
+foldMap f (Plane _ planeF as plane) =
+    coords plane
+        |> List.map (List.map <| \v -> f (v, planeF v))
 
 
 foldl : (Cell Vec2 a -> b -> b) -> b -> Plane Vec2 a -> b
@@ -106,7 +104,7 @@ periodicSubAt (shiftX, shiftY) (N (nX, nY)) (Plane (srcWidth, srcHeight) planeF)
 
 
 equal : Plane Vec2 a -> Plane Vec2 a -> Bool
-equal ((Plane sizeA fA) as planeA) ((Plane sizeB fB) as planeB) =
+equal (Plane sizeA fA as planeA) (Plane sizeB fB as planeB) =
     if sizeA == sizeB then
         let
             ( width, height ) = sizeA -- sizeA == sizeB, so it's safe
@@ -143,26 +141,54 @@ flip : Plane Vec2 a -> Plane Vec2 a
 flip = flipBy Vertical
 
 
-coords : Plane Vec2 a -> List Vec2
-coords = foldMap Tuple.first >> List.concat
+shift : Offset Vec2 -> Plane Vec2 a -> Plane Vec2 a
+shift (Offset (offX, offY)) plane =
+    plane |> transform (\(x, y) -> (x + offX, y + offY))
+
+
+coordsFlat : Plane Vec2 a -> List Vec2
+-- coords = foldMap Tuple.first >> List.concat
+coordsFlat = coords >> List.concat
+
+
+coords : Plane Vec2 a -> List (List Vec2)
+coords (Plane (width, height) _) =
+    List.range 0 height
+        |> List.map (always <| List.range 0 width)
+        |> List.map (List.indexedMap Tuple.pair)
+
+
+overlappingCoords : Offset Vec2 -> Plane Vec2 a -> List Vec2
+overlappingCoords (Offset (offX, offY)) (Plane (width, height) _ as plane) =
+    coordsFlat plane
+        |> List.foldl
+            (\(x, y) prev ->
+                if (x + offX >= 0) &&
+                   (y + offY >= 0) &&
+                   (x + offX < width) &&
+                   (y + offY < height) then (x, y) :: prev else prev
+            )
+            []
 
 
 rotateTo : Orientation -> Plane Vec2 a -> Plane Vec2 a
-rotateTo orientation (Plane (width, height) planeF) =
-    Plane (width, height)
-        <| case orientation of
-            North -> planeF
-            West -> \(x, y) -> planeF (height - 1 - y, x)
-            South -> \(x, y) -> planeF (width - 1 - x, height - 1 - y)
-            East -> \(x, y) -> planeF (y, width - 1 - x)
+rotateTo orientation (Plane (width, height) _ as plane) =
+    plane |>
+        transform
+            (case orientation of
+                North -> identity
+                West -> \(x, y) -> (height - 1 - y, x)
+                South -> \(x, y) -> (width - 1 - x, height - 1 - y)
+                East -> \(x, y) -> (y, width - 1 - x))
 
 
 flipBy : Flip -> Plane Vec2 a -> Plane Vec2 a
-flipBy how (Plane (width, height) planeF) =
-    Plane (width, height)
-        <| case how of
-            Horizontal -> \(x, y) -> planeF (width - 1 - x, y)
-            Vertical -> \(x, y) -> planeF (x, height - 1 - y)
+flipBy how (Plane (width, height) _ as plane) =
+    plane |>
+        transform
+            (case how of
+                Horizontal -> \(x, y) -> (width - 1 - x, y)
+                Vertical -> \(x, y) -> (x, height - 1 - y))
 
 
 allRotations : Plane Vec2 a -> List (Plane Vec2 a)
@@ -226,7 +252,7 @@ findAllSubs method ofSize inPlane =
         |> allViews
         |> List.concatMap
             (\view ->
-                coords view
+                coordsFlat view
                     |> case method of
                         Periodic ->
                             List.map (\coord -> periodicSubAt coord ofSize view)
@@ -263,11 +289,31 @@ findOccurence allPlanes =
             |> List.sortBy (Tuple.first >> Occured.toInt)
 
 
--- offsetToTopLeft : Offset
+equalAt : List v -> Plane v a -> Plane v a -> Bool
+equalAt atCoords (Plane _ aF) (Plane _ bF) =
+    atCoords
+        |> List.foldl
+            (\coord before -> before && (aF coord == bF coord))
+            True
+
 
 
 matchesAt : Offset Vec2 -> List (Plane Vec2 a) -> Plane Vec2 a -> List Int
-matchesAt (Offset (offsetX, offsetY)) from (Plane size f) =
+matchesAt offset from plane =
+    let oCoords = plane |> overlappingCoords offset
+    in from
+        |> List.indexedMap Tuple.pair -- refrain from doing it for every offset
+        |> List.foldl
+            (\(idx, otherPlane) matches -> -- ensure plane is the same size as the source
+                if equalAt oCoords plane otherPlane
+                    then idx :: matches
+                    else matches
+            )
+            []
+
+
+offsetsFor : Vec2 -> List (Offset Vec2)
+offsetsFor (w, h) =
     []
 
 
