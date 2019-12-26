@@ -6,6 +6,7 @@ import Browser
 import Random
 import Task
 import Time
+import Dict
 
 import Html exposing (..)
 import Html.Attributes exposing (..)
@@ -344,7 +345,8 @@ viewPatterns plane =
         , style "flex-direction" "column"
         , style "justify-content" "space-evenly"
         ]
-    <| List.indexedMap
+    <| Dict.values
+    <| Dict.map
         (\index {occured, pattern} ->
             div
                 [ class <| "pattern-" ++ String.fromInt index

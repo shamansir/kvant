@@ -2,6 +2,8 @@ module WFC.Solver exposing (..)
 
 
 -- import Array exposing (Array)
+import Dict
+import Dict exposing (Dict)
 import Random
 
 import WFC.Occured exposing (Occured)
@@ -39,15 +41,14 @@ type Step a
     = Step Int Random.Seed
 
 
-type PatternId = PatternId Int
+type alias PatternId = Int
 
 
 type alias UniquePatterns v a =
-    List
-        { occured : Occured
-        , id : PatternId
-        , pattern : Pattern v a
-        , overlaps : Plane (Offset v) (List PatternId)
+    Dict PatternId
+        { pattern: Pattern v a
+        , occured : Occured
+        , matches : Plane (Offset v) (List PatternId)
         }
 
 
@@ -75,21 +76,30 @@ findUniquePatterns method ofSize inPlane =
         uniquePatterns =
             uniqueSubplanes
                 |> List.map (Tuple.mapSecond toPattern)
-        uniquePatternsWithIds =
+        -- uniquePatternsWithIds =
+        --     uniquePatterns
+        --         |> List.map Tuple.second
+        --         |> List.indexedMap Tuple.pair
+                -- |> List.map (Tuple.mapFirst PatternId)
+        uniquePatternsDict =
             uniquePatterns
-                |> List.map Tuple.second
-                |> List.indexedMap (\index pattern -> Tuple.pair index pattern)
-                |> List.map (Tuple.mapFirst PatternId)
+                |> List.indexedMap Tuple.pair
+                |> Dict.fromList
+        onlyPatternsDict =
+            uniquePatternsDict
+                |> Dict.map (always Tuple.second)
+
     in
-        uniquePatterns
-            |> List.indexedMap (\index (occurence, pattern) ->
-                { occured = occurence
-                , pattern = pattern
-                , id = PatternId index -- ensure the same as in `uniquePatternsWithIds`
-                , overlaps = findMatches uniquePatternsWithIds pattern
-                }
-            )
-            -- |> List.sortBy (.occured >> Occured.toInt) -- already sorted in `uniqueSubplanes`
+        uniquePatternsDict
+                |> Dict.map (\_ ( occurence, pattern ) ->
+                        { occured = occurence
+                        , pattern = pattern
+                        , matches =
+                            findMatches
+                                onlyPatternsDict
+                                pattern
+                        }
+                    )
 
 
 {-
@@ -107,22 +117,15 @@ findNeighbours from pattern =
 -}
 
 
-idToInt : PatternId -> Int
-idToInt (PatternId i) = i
-
-
 findMatches
-    :  List (PatternId, Pattern Vec2 a)
+    :  Dict PatternId (Pattern Vec2 a)
     -> Pattern Vec2 a
     -> Plane (Offset Vec2) (List PatternId)
 findMatches from for =
     Plane.findMatches
         (from
-            |> List.sortBy (Tuple.first >> idToInt)
-            |> List.map Tuple.second
-            |> List.map fromPattern)
+            |> Dict.map (always fromPattern))
         (fromPattern for)
-        |> Plane.map (List.map PatternId)
 
 
 toPattern : Plane v a -> Pattern v a

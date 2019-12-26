@@ -2,11 +2,15 @@ module WFC.Plane exposing (..)
 
 
 import Array
+import Dict
+import Dict exposing (Dict)
 
 import WFC.Neighbours exposing (..)
 import WFC.Occured exposing (Occured)
 import WFC.Occured as Occured
 
+
+-- type Plane x v a = Plane x (v -> Maybe a)
 
 type Plane v a = Plane v (v -> Maybe a)
 
@@ -297,14 +301,12 @@ equalAt atCoords (Plane _ aF) (Plane _ bF) =
             True
 
 
-
-matchesAt : Offset Vec2 -> List (Plane Vec2 a) -> Plane Vec2 a -> List Int
+matchesAt : Offset Vec2 -> Dict Int (Plane Vec2 a) -> Plane Vec2 a -> List Int
 matchesAt offset from plane =
     let oCoords = plane |> overlappingCoords offset
     in from
-        |> List.indexedMap Tuple.pair -- refrain from doing it for every offset
-        |> List.foldl
-            (\(idx, otherPlane) matches -> -- ensure plane is the same size as the source
+        |> Dict.foldl
+            (\idx otherPlane matches -> -- ensure plane is the same size as the source
                 if equalAt oCoords plane otherPlane
                     then idx :: matches
                     else matches
@@ -314,12 +316,23 @@ matchesAt offset from plane =
 
 offsetsFor : Vec2 -> List (Offset Vec2)
 offsetsFor (w, h) =
-    []
+    -- TODO: offsets for 1x1
+    List.range (-1 * (h - 1)) (h - 1)
+        |> List.map (\y -> List.range (-1 * (w - 1)) (w - 1) |> List.map (Tuple.pair y))
+        |> List.concat
+        |> List.map Offset
 
 
-findMatches : List (Plane Vec2 a) -> Plane Vec2 a -> Plane (Offset Vec2) (List Int)
-findMatches from plane =
-    Plane (Offset (0, 0)) <| always Nothing
+ -- FIXME: size should be `Vec2` for the resulting plane, but the "key" should be `Offset`
+findMatches : Dict Int (Plane Vec2 a) -> Plane Vec2 a -> Plane (Offset Vec2) (List Int)
+findMatches from (Plane size f as plane) =
+    let
+        offsetToMatches =
+            offsetsFor size
+                |> List.map (\(Offset offset) -> ( offset, matchesAt (Offset offset) from plane ))
+                |> Dict.fromList
+    in
+        Plane (Offset size) (\(Offset v) -> Dict.get v offsetToMatches)
 
 
 type alias TextPlane = Plane Vec2 Char
