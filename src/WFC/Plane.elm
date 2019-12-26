@@ -108,15 +108,12 @@ periodicSubAt (shiftX, shiftY) (N (nX, nY)) (Plane (srcWidth, srcHeight) planeF)
 
 
 equal : Plane Vec2 a -> Plane Vec2 a -> Bool
-equal (Plane sizeA fA as planeA) (Plane sizeB fB as planeB) =
+equal (Plane sizeA fA as planeA) (Plane sizeB fB) =
     if sizeA == sizeB then
-        let
-            ( width, height ) = sizeA -- sizeA == sizeB, so it's safe
-        in
-            planeA
-                |> materializeFlatten
-                |> List.map (\(pos, valA) -> valA == fB pos)
-                |> List.foldl ((&&)) True
+        planeA
+            |> materializeFlatten
+            |> List.map (\(pos, valA) -> valA == fB pos)
+            |> List.foldl ((&&)) True
     else False
 
 
@@ -157,9 +154,9 @@ coordsFlat = coords >> List.concat
 
 coords : Plane Vec2 a -> List (List Vec2)
 coords (Plane (width, height) _) =
-    List.range 0 height
-        |> List.map (always <| List.range 0 width)
-        |> List.map (List.indexedMap Tuple.pair)
+    List.range 0 (width - 1)
+        |> List.map (\x ->
+            List.range 0 (height - 1) |> List.map (Tuple.pair x))
 
 
 overlappingCoords : Offset Vec2 -> Plane Vec2 a -> List Vec2
@@ -273,7 +270,7 @@ findOccurence allPlanes =
             allPlanes
                 |> List.foldl
                     (\pattern uniqueOthers ->
-                        if isAmong uniqueOthers pattern
+                        if pattern |> isAmong uniqueOthers
                             then uniqueOthers
                             else pattern :: uniqueOthers
                     )
@@ -295,6 +292,7 @@ findOccurence allPlanes =
 
 equalAt : List v -> Plane v a -> Plane v a -> Bool
 equalAt atCoords (Plane _ aF) (Plane _ bF) =
+    -- FIXME: use `equal`
     atCoords
         |> List.foldl
             (\coord before -> before && (aF coord == bF coord))

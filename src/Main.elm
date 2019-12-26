@@ -111,6 +111,12 @@ view model =
         , hr [] []
         , hr [] []
         , hr [] []
+        , testPlaneHex |> viewMaterialized
+        , hr [] []
+        , testPlaneHex |> rotate |> viewMaterialized
+        , hr [] []
+        , testPlaneHex |> rotate |> flip |> viewMaterialized
+        , hr [] []
         , testPlane |> viewRotationsAndFlips
         , hr [] []
         , testPlaneHex |> viewRotationsAndFlips
@@ -130,6 +136,10 @@ view model =
         , testPlane |> viewPatterns
         , hr [] []
         , testPlaneHex |> viewPatterns
+        -- , hr [] []
+        -- , testPlane |> viewAllSubPlanes
+        -- , hr [] []
+        -- , testPlaneHex |> viewAllSubPlanes
         ]
 
 
@@ -329,6 +339,22 @@ viewPeriodicSubPlanes plane =
         ]
 
 
+viewAllSubPlanes : TextPlane -> Html Msg
+viewAllSubPlanes plane =
+    div [ style "display" "flex"
+        , style "flex-direction" "column"
+        , style "justify-content" "space-evenly"
+        ]
+        <| List.indexedMap (\index display ->
+            div []
+                [ text <| String.fromInt index
+                , display
+                ]
+        )
+        <| List.map displayTextPlane
+        <| findAllSubs options.patternSearch options.patternSize plane
+
+
 viewAllViews : TextPlane -> Html Msg
 viewAllViews plane =
     div [ style "display" "flex"
@@ -358,6 +384,26 @@ viewPatterns plane =
                 ]
         )
         (WFC.findUniquePatterns options.patternSearch (N (2, 2)) plane)
+
+
+viewMaterialized : TextPlane -> Html Msg
+viewMaterialized plane =
+    div
+        [ style "display" "flex"
+        , style "flex-direction" "row"
+        , style "justify-content" "space-evenly"
+        ]
+        <| List.map displayCell
+        <| materializeFlatten plane
+
+
+displayCell : Cell Vec2 Char -> Html Msg
+displayCell ( (x, y), char ) =
+    div
+        []
+        [ text <| "(" ++ String.fromInt x ++ "," ++ String.fromInt y ++ "):"
+        , text <| Maybe.withDefault "%" <| Maybe.map String.fromChar <| char
+        ]
 
 
 occursText : Occured -> String
