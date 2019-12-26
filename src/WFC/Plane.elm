@@ -62,6 +62,29 @@ transform f (Plane size srcF) =
     Plane size (srcF << f)
 
 
+transformBy : (v -> z) -> (z -> v) -> Plane v a -> Plane z a
+transformBy vToZ zToV (Plane size srcF) =
+    Plane (vToZ size) (srcF << zToV)
+
+
+equalAt : List v -> Plane v a -> Plane v a -> Bool
+equalAt atCoords (Plane _ aF) (Plane _ bF) =
+    -- FIXME: use `equal`
+    atCoords
+        |> List.foldl
+            (\v before -> before && (aF v == bF v))
+            True
+
+
+cellToMaybe : Cell v a -> Maybe (v, a)
+cellToMaybe (v, maybeVal) =
+    maybeVal |> Maybe.map (Tuple.pair v)
+
+
+disregardOffsets : Plane (Offset v) a -> Plane v a
+disregardOffsets = transformBy (\(Offset off) -> off) Offset
+
+
 foldMap : (Cell Vec2 a -> b) -> Plane Vec2 a -> List (List b)
 foldMap f (Plane _ planeF as plane) =
     coords plane
@@ -73,6 +96,28 @@ foldl f def plane =
     foldMap identity plane
         |> List.concat
         |> List.foldl f def
+
+
+fromList : comparable -> List (Cell comparable a) -> Plane comparable a
+fromList size list =
+    list
+        |> List.map cellToMaybe
+        |> List.filterMap identity
+        |> Dict.fromList
+        |> fromDict size
+
+
+fromDict : comparable -> Dict comparable a -> Plane comparable a
+fromDict size dict =
+    Plane size <| \v -> Dict.get v dict
+
+
+toDict : Plane Vec2 a -> Dict Vec2 a
+toDict plane =
+    materializeFlatten plane
+        |> List.map cellToMaybe
+        |> List.filterMap identity
+        |> Dict.fromList
 
 
 sub : N Vec2 -> Plane Vec2 a -> Maybe (Plane Vec2 a)
@@ -118,12 +163,14 @@ equal (Plane sizeA fA as planeA) (Plane sizeB fB) =
 
 
 unpack : Plane Vec2 a -> List (List (Maybe a))
-unpack (Plane (width, height) f) =
-    List.repeat height []
-        |> List.indexedMap (\y _ ->
-                List.repeat width Nothing
-                    |> List.indexedMap (\x _ -> f (x, y))
-            )
+unpack = foldMap Tuple.second
+
+
+-- fold2d : a -> (a -> b) -> Plane Vec2 a -> b
+-- travel default f plane =
+--     unpack plane
+--         |> List.map (List.map <| Maybe.withDefault default)
+--         |> List.foldl
 
 
 materialize : Plane Vec2 a -> List (List (Cell Vec2 a))
@@ -132,6 +179,10 @@ materialize = foldMap identity
 
 materializeFlatten : Plane Vec2 a -> List (Cell Vec2 a)
 materializeFlatten = materialize >> List.concat
+
+
+toList : Plane Vec2 a -> List (Cell Vec2 a)
+toList = materializeFlatten
 
 
 rotate : Plane Vec2 a -> Plane Vec2 a
@@ -288,15 +339,6 @@ findOccurence allPlanes =
                         )
                 )
             |> List.sortBy (Tuple.first >> Occured.toInt)
-
-
-equalAt : List v -> Plane v a -> Plane v a -> Bool
-equalAt atCoords (Plane _ aF) (Plane _ bF) =
-    -- FIXME: use `equal`
-    atCoords
-        |> List.foldl
-            (\coord before -> before && (aF coord == bF coord))
-            True
 
 
 matchesAt : Offset Vec2 -> Dict Int (Plane Vec2 a) -> Plane Vec2 a -> List Int

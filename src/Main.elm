@@ -102,10 +102,10 @@ view model =
     div
         [ ]
         [ model.source
-            |> displayTextInBounds options.inputSize
+            |> viewTextInBounds options.inputSize
         , hr [] []
         , model.result
-            |> Maybe.map (displayTextInBounds options.outputSize)
+            |> Maybe.map (viewTextInBounds options.outputSize)
             |> Maybe.withDefault (div [] [])
         -- --------------------------
         , hr [] []
@@ -179,45 +179,57 @@ splitBy width src =
             [ next ]
 
 
-displayCharGrid : List (List Char) -> Html Msg
-displayCharGrid grid =
+viewChar : Char -> Html Msg
+viewChar c =
+    span
+        [ style "display" "inline-block"
+        , style "width" "9px"
+        , style "background-color" <| symbolBg c
+        , style "padding" "2px 8px"
+        , style "color" <|
+            if symbolBg c == "black" then
+                "rgba(255,255,255,0.3)"
+            else
+                "rgba(0,0,0,0.3)"
+        ]
+        [ text <| String.fromChar c ]
+
+
+viewGrid : (a -> Html Msg) -> List (List a) -> Html Msg
+viewGrid viewElem grid =
     grid
         |> List.map
             (\row ->
-                div [ style "flex" "row" ]
-                    (List.map
-                        (\c ->
-                            span
-                                [ style "display" "inline-block"
-                                , style "width" "9px"
-                                , style "background-color" <| symbolBg c
-                                , style "padding" "2px 8px"
-                                , style "color" <|
-                                    if symbolBg c == "black" then
-                                        "rgba(255,255,255,0.3)"
-                                    else
-                                        "rgba(0,0,0,0.3)"
-                                ]
-                                [ text <| String.fromChar c ]
-                        )
-                    row)
+                div [ style "display" "flex", style "flex-direction" "row" ]
+                    <| List.map viewElem row
             )
-        |> div [ style "flex" "column" ]
+        |> div [ style "display" "flex", style "flex-direction" "column" ]
 
 
-displayTextInBounds : Vec2 -> String -> Html Msg
-displayTextInBounds (width, height) string =
+viewPlane : a -> (a -> Html Msg) -> Plane Vec2 a -> Html Msg
+viewPlane default viewElem plane =
+    unpack plane
+        |> List.map (List.map <| Maybe.withDefault default)
+        |> viewGrid viewElem
+
+
+-- viewPlaneWith : a -> (Vec2 -> a -> Html Msg) -> Plane Vec2 a -> Html Msg
+-- viewPlaneWith default viewElem plane =
+--     foldMap plane
+--         |> List.map (List.map <| Maybe.withDefault default)
+--         |> viewGrid viewElem
+
+
+viewTextInBounds : Vec2 -> String -> Html Msg
+viewTextInBounds (width, height) string =
     string
         |> splitBy width
         |> List.map (String.toList)
-        |> displayCharGrid
+        |> viewGrid viewChar
 
 
-displayTextPlane : TextPlane -> Html Msg
-displayTextPlane plane =
-    unpack plane
-        |> List.map (List.map <| Maybe.withDefault '?')
-        |> displayCharGrid
+viewTextPlane : TextPlane -> Html Msg
+viewTextPlane = viewPlane '?' viewChar
 
 
 viewRotationsAndFlips : TextPlane -> Html Msg
@@ -226,34 +238,34 @@ viewRotationsAndFlips plane =
         , style "flex-direction" "row"
         , style "justify-content" "space-evenly"
         ]
-        [ displayTextPlane plane
+        [ viewTextPlane plane
         , text "North"
-        , displayTextPlane <| rotateTo North plane
+        , viewTextPlane <| rotateTo North plane
         , text "West"
-        , displayTextPlane <| rotateTo West plane
+        , viewTextPlane <| rotateTo West plane
         , text "South"
-        , displayTextPlane <| rotateTo South plane
+        , viewTextPlane <| rotateTo South plane
         , text "East"
-        , displayTextPlane <| rotateTo East plane
+        , viewTextPlane <| rotateTo East plane
         , text "Horz"
-        , displayTextPlane <| flipBy Horizontal plane
+        , viewTextPlane <| flipBy Horizontal plane
         , text "Vert"
-        , displayTextPlane <| flipBy Vertical plane
+        , viewTextPlane <| flipBy Vertical plane
         ]
 
         {-
         , text "rotate once"
-        , displayTextPlane <| rotate plane
+        , viewTextPlane <| rotate plane
         , text "rotate twice"
-        , displayTextPlane <| rotate <| rotate plane
+        , viewTextPlane <| rotate <| rotate plane
         , text "rotate triple times"
-        , displayTextPlane <| rotate <| rotate <| rotate plane
+        , viewTextPlane <| rotate <| rotate <| rotate plane
         , text "flip"
-        , displayTextPlane <| flip plane
+        , viewTextPlane <| flip plane
         , text "flip rotated"
-        , displayTextPlane <| flip <| rotate plane
+        , viewTextPlane <| flip <| rotate plane
         , text "rotate flipped"
-        , displayTextPlane <| rotate <| flip plane
+        , viewTextPlane <| rotate <| flip plane
         -}
 
 
@@ -263,38 +275,38 @@ viewSubPlanes plane =
         , style "flex-direction" "row"
         , style "justify-content" "space-evenly"
         ]
-        [ displayTextPlane plane
+        [ viewTextPlane plane
         , text "(0, 0) (2, 2)"
         , Plane.sub (N (2, 2)) plane
-            |> Maybe.map displayTextPlane
+            |> Maybe.map viewTextPlane
             |> Maybe.withDefault (text "<NONE>")
         , text "(0, 0) (3, 3)"
         , Plane.sub (N (3, 3)) plane
-            |> Maybe.map displayTextPlane
+            |> Maybe.map viewTextPlane
             |> Maybe.withDefault (text "<NONE>")
         , text "(1, 1) (2, 2)"
         , Plane.subAt (1, 1) (N (2, 2)) plane
-            |> Maybe.map displayTextPlane
+            |> Maybe.map viewTextPlane
             |> Maybe.withDefault (text "<NONE>")
         , text "(1, 1) (3, 3)"
         , Plane.subAt (1, 1) (N (3, 3)) plane
-            |> Maybe.map displayTextPlane
+            |> Maybe.map viewTextPlane
             |> Maybe.withDefault (text "<NONE>")
         , text "(0, 1) (3, 3)"
         , Plane.subAt (0, 1) (N (3, 3)) plane
-            |> Maybe.map displayTextPlane
+            |> Maybe.map viewTextPlane
             |> Maybe.withDefault (text "<NONE>")
         , text "(0, 1) (2, 3)"
         , Plane.subAt (0, 1) (N (2, 3)) plane
-            |> Maybe.map displayTextPlane
+            |> Maybe.map viewTextPlane
             |> Maybe.withDefault (text "<NONE>")
         , text "(3, 3) (1, 1)"
         , Plane.subAt (3, 3) (N (1, 1)) plane
-            |> Maybe.map displayTextPlane
+            |> Maybe.map viewTextPlane
             |> Maybe.withDefault (text "<NONE>")
         , text "(3, 3) (4, 4)"
         , Plane.subAt (3, 3) (N (4, 4)) plane
-            |> Maybe.map displayTextPlane
+            |> Maybe.map viewTextPlane
             |> Maybe.withDefault (text "<NONE>")
         ]
 
@@ -305,37 +317,37 @@ viewPeriodicSubPlanes plane =
         , style "flex-direction" "column"
         , style "justify-content" "space-evenly"
         ]
-        [ displayTextPlane plane
+        [ viewTextPlane plane
         , text "(0, 0) (2, 2)"
         , Plane.periodicSubAt (0, 0) (N (2, 2)) plane
-            |> displayTextPlane
+            |> viewTextPlane
         , text "(0, 0) (3, 3)"
         , Plane.periodicSubAt (0, 0) (N (3, 3)) plane
-            |> displayTextPlane
+            |> viewTextPlane
         , text "(1, 1) (2, 2)"
         , Plane.periodicSubAt (1, 1) (N (2, 2)) plane
-            |> displayTextPlane
+            |> viewTextPlane
         , text "(1, 1) (3, 3)"
         , Plane.periodicSubAt (1, 1) (N (3, 3)) plane
-            |> displayTextPlane
+            |> viewTextPlane
         , text "(0, 1) (3, 3)"
         , Plane.periodicSubAt (0, 1) (N (3, 3)) plane
-            |> displayTextPlane
+            |> viewTextPlane
         , text "(0, 1) (2, 3)"
         , Plane.periodicSubAt (0, 1) (N (2,3)) plane
-            |> displayTextPlane
+            |> viewTextPlane
         , text "(3, 3) (1, 1)"
         , Plane.periodicSubAt (3, 3) (N (1, 1)) plane
-            |> displayTextPlane
+            |> viewTextPlane
         , text "(3, 3) (4, 4)"
         , Plane.periodicSubAt (3, 3) (N (4, 4)) plane
-            |> displayTextPlane
+            |> viewTextPlane
         , text "(2, 3) (4, 4)"
         , Plane.periodicSubAt (2, 3) (N (4, 4)) plane
-            |> displayTextPlane
+            |> viewTextPlane
         , text "(-2, -2) (4, 4)"
         , Plane.periodicSubAt (-2, -2) (N (4, 4)) plane
-            |> displayTextPlane
+            |> viewTextPlane
         ]
 
 
@@ -345,14 +357,17 @@ viewAllSubPlanes plane =
         , style "flex-direction" "column"
         , style "justify-content" "space-evenly"
         ]
-        <| List.indexedMap (\index display ->
-            div []
-                [ text <| String.fromInt index
-                , display
-                ]
-        )
-        <| List.map displayTextPlane
+        <| List.indexedMap viewWithIndex
+        <| List.map viewTextPlane
         <| findAllSubs options.patternSearch options.patternSize plane
+
+
+viewWithIndex : Int -> Html Msg -> Html Msg
+viewWithIndex index subView =
+    div []
+        [ text <| String.fromInt index ++ "."
+        , subView
+        ]
 
 
 viewAllViews : TextPlane -> Html Msg
@@ -361,7 +376,7 @@ viewAllViews plane =
         , style "flex-direction" "row"
         , style "justify-content" "space-evenly"
         ]
-    <| List.map displayTextPlane
+    <| List.map viewTextPlane
     <| allViews plane
 
 
@@ -373,17 +388,38 @@ viewPatterns plane =
         ]
     <| Dict.values
     <| Dict.map
-        (\index {occured, pattern} ->
+        (\index {occured, pattern, matches} ->
             div
                 [ class <| "pattern-" ++ String.fromInt index
                 , style "margin" "10px 0"
                 ]
                 [ span [] [ text <| String.fromInt index ++ ". " ]
                 , span [] [ text <| occursText occured ]
-                , displayTextPlane <| fromPattern pattern
+                , viewTextPlane <| fromPattern pattern
+                , span [] [ text <| "Matches: " ]
+                , viewMatches matches
                 ]
         )
         (WFC.findUniquePatterns options.patternSearch (N (2, 2)) plane)
+
+
+viewMatches : Plane (Offset Vec2) (List Int) -> Html Msg
+viewMatches plane =
+    let
+        itemSpan = span [ style "padding" "5px" ]
+    in
+        disregardOffsets plane
+            |> viewPlane []
+                (\matchesList ->
+                    div [ style "width" "100px" ] <|
+                        List.map
+                            (String.fromInt
+                                >> text
+                                >> List.singleton
+                                >> itemSpan)
+                        matchesList
+                )
+
 
 
 viewMaterialized : TextPlane -> Html Msg
@@ -393,12 +429,15 @@ viewMaterialized plane =
         , style "flex-direction" "row"
         , style "justify-content" "space-evenly"
         ]
-        <| List.map displayCell
+        <| List.map viewCell
         <| materializeFlatten plane
 
 
-displayCell : Cell Vec2 Char -> Html Msg
-displayCell ( (x, y), char ) =
+-- viewMatches :
+
+
+viewCell : Cell Vec2 Char -> Html Msg
+viewCell ( (x, y), char ) =
     div
         []
         [ text <| "(" ++ String.fromInt x ++ "," ++ String.fromInt y ++ "):"
