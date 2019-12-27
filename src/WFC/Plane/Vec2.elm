@@ -1,30 +1,19 @@
-module WFC.Plane exposing (..)
+module WFC.Plane.Vec2 exposing (..)
 
 
-import Array
 import Dict
 import Dict exposing (Dict)
 
-import WFC.Neighbours exposing (..)
-import WFC.Occured exposing (Occured)
+import WFC.Vec2 exposing (..)
 import WFC.Occured as Occured
+import WFC.Occured exposing (Occured)
+import WFC.Plane.Plane exposing (..)
+import WFC.Plane.Offset exposing (..)
 
 
--- type Plane x v a = Plane x (v -> Maybe a)
-
-type Plane v a = Plane v (v -> Maybe a)
-
-
-type alias Cell v a = (v, Maybe a)
-
-
-type alias Vec2 = (Int, Int)
-
-
-type N v = N v -- FIXME: should be N Int, actually, since all patterns should have equal sides
-
-
-type Offset v = Offset v
+type SearchMethod
+    = Bounded
+    | Periodic
 
 
 type Orientation
@@ -39,52 +28,6 @@ type Flip
     | Vertical
 
 
-type SearchMethod
-    = Bounded
-    | Periodic
-
-
-empty : v -> Plane v a
-empty size = Plane size <| always Nothing
-
-
-getSize : Plane v a -> v
-getSize (Plane size _) = size
-
-
-map : (a -> b) -> Plane v a -> Plane v b
-map f (Plane size srcF) =
-    Plane size (Maybe.map f << srcF)
-
-
-transform : (v -> v) -> Plane v a -> Plane v a
-transform f (Plane size srcF) =
-    Plane size (srcF << f)
-
-
-transformBy : (v -> z) -> (z -> v) -> Plane v a -> Plane z a
-transformBy vToZ zToV (Plane size srcF) =
-    Plane (vToZ size) (srcF << zToV)
-
-
-equalAt : List v -> Plane v a -> Plane v a -> Bool
-equalAt atCoords (Plane _ aF) (Plane _ bF) =
-    -- FIXME: use `equal`
-    atCoords
-        |> List.foldl
-            (\v before -> before && (aF v == bF v))
-            True
-
-
-cellToMaybe : Cell v a -> Maybe (v, a)
-cellToMaybe (v, maybeVal) =
-    maybeVal |> Maybe.map (Tuple.pair v)
-
-
-disregardOffsets : Plane (Offset v) a -> Plane v a
-disregardOffsets = transformBy (\(Offset off) -> off) Offset
-
-
 foldMap : (Cell Vec2 a -> b) -> Plane Vec2 a -> List (List b)
 foldMap f (Plane _ planeF as plane) =
     coords plane
@@ -96,20 +39,6 @@ foldl f def plane =
     foldMap identity plane
         |> List.concat
         |> List.foldl f def
-
-
-fromList : comparable -> List (Cell comparable a) -> Plane comparable a
-fromList size list =
-    list
-        |> List.map cellToMaybe
-        |> List.filterMap identity
-        |> Dict.fromList
-        |> fromDict size
-
-
-fromDict : comparable -> Dict comparable a -> Plane comparable a
-fromDict size dict =
-    Plane size <| \v -> Dict.get v dict
 
 
 toDict : Plane Vec2 a -> Dict Vec2 a
@@ -193,11 +122,6 @@ flip : Plane Vec2 a -> Plane Vec2 a
 flip = flipBy Vertical
 
 
-shift : Offset Vec2 -> Plane Vec2 a -> Plane Vec2 a
-shift (Offset (offX, offY)) plane =
-    plane |> transform (\(x, y) -> (x + offX, y + offY))
-
-
 coordsFlat : Plane Vec2 a -> List Vec2
 -- coords = foldMap Tuple.first >> List.concat
 coordsFlat = coords >> List.concat
@@ -208,19 +132,6 @@ coords (Plane (width, height) _) =
     List.range 0 (width - 1)
         |> List.map (\x ->
             List.range 0 (height - 1) |> List.map (Tuple.pair x))
-
-
-overlappingCoords : Offset Vec2 -> Plane Vec2 a -> List Vec2
-overlappingCoords (Offset (offX, offY)) (Plane (width, height) _ as plane) =
-    coordsFlat plane
-        |> List.foldl
-            (\(x, y) prev ->
-                if (x + offX >= 0) &&
-                   (y + offY >= 0) &&
-                   (x + offX < width) &&
-                   (y + offY < height) then (x, y) :: prev else prev
-            )
-            []
 
 
 rotateTo : Orientation -> Plane Vec2 a -> Plane Vec2 a
@@ -341,6 +252,42 @@ findOccurence allPlanes =
             |> List.sortBy (Tuple.first >> Occured.toInt)
 
 
+limitsFor : Vec2 -> { from: Vec2, to: Vec2 }
+limitsFor (w, h) =
+    -- TODO: offsets for 1x1
+    if (w <= 0) || (h <= 0) then
+        { from = (0, 0), to = (0, 0 ) }
+    else
+        { from =
+            ( if w == 1 then 1 else -1 * (w - 1)
+            , if h == 1 then 1 else -1 * (h - 1)
+            )
+        , to =
+            ( if w == 1 then 1 else w - 1
+            , if h == 1 then 1 else h - 1
+            )
+        }
+
+
+
+shift : Offset Vec2 -> Plane Vec2 a -> Plane Vec2 a
+shift (Offset (offX, offY)) plane =
+    plane |> transform (\(x, y) -> (x + offX, y + offY))
+
+
+overlappingCoords : Offset Vec2 -> Plane Vec2 a -> List Vec2
+overlappingCoords (Offset (offX, offY)) (Plane (width, height) _ as plane) =
+    coordsFlat plane
+        |> List.foldl
+            (\(x, y) prev ->
+                if (x + offX >= 0) &&
+                   (y + offY >= 0) &&
+                   (x + offX < width) &&
+                   (y + offY < height) then (x, y) :: prev else prev
+            )
+            []
+
+
 matchesAt : Offset Vec2 -> Dict Int (Plane Vec2 a) -> Plane Vec2 a -> List Int
 matchesAt offset from plane =
     let oCoords = plane |> overlappingCoords offset
@@ -354,48 +301,25 @@ matchesAt offset from plane =
             []
 
 
-offsetsFor : Vec2 -> List (Offset Vec2)
-offsetsFor (w, h) =
-    -- TODO: offsets for 1x1
-    List.range (-1 * (h - 1)) (h - 1)
-        |> List.map (\y -> List.range (-1 * (w - 1)) (w - 1) |> List.map (Tuple.pair y))
-        |> List.concat
-        |> List.map Offset
+offsetsFor : { from: Vec2, to: Vec2 } -> List (Offset Vec2)
+offsetsFor { from, to } =
+    let
+        ( fromW, fromH ) = from
+        ( toW, toH ) = to
+    in
+        List.range fromH toH
+            |> List.map (\y -> List.range fromW toW |> List.map (Tuple.pair y))
+            |> List.concat
+            |> List.map Offset
 
 
- -- FIXME: size should be `Vec2` for the resulting plane, but the "key" should be `Offset`
-findMatches : Dict Int (Plane Vec2 a) -> Plane Vec2 a -> Plane (Offset Vec2) (List Int)
+findMatches : Dict Int (Plane Vec2 a) -> Plane Vec2 a -> OffsetPlane Vec2 (List Int)
 findMatches from (Plane size f as plane) =
     let
+        limits = limitsFor size
         offsetToMatches =
-            offsetsFor size
+            offsetsFor limits
                 |> List.map (\(Offset offset) -> ( offset, matchesAt (Offset offset) from plane ))
                 |> Dict.fromList
     in
-        Plane (Offset size) (\(Offset v) -> Dict.get v offsetToMatches)
-
-
-type alias TextPlane = Plane Vec2 Char
-
-
-makeTextPlane : Vec2 -> String -> TextPlane
-makeTextPlane ( width, height ) src =
-    let
-        charArray = String.toList src |> Array.fromList
-    in
-        Plane
-            ( width, height )
-            (\(x, y) ->
-                if (x < width) && (y < height) then
-                    charArray |>
-                        Array.get (y * height + x)
-                else Nothing
-            )
-
-
-textPlaneToString : TextPlane -> String
-textPlaneToString plane =
-    unpack plane
-        |> List.concat
-        |> List.filterMap identity
-        |> String.fromList
+        OffsetPlane limits (\(Offset v) -> Dict.get v offsetToMatches)

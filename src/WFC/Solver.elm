@@ -6,10 +6,14 @@ import Dict
 import Dict exposing (Dict)
 import Random
 
+import WFC.Vec2 exposing (..)
 import WFC.Occured exposing (Occured)
 import WFC.Occured as Occured
-import WFC.Plane exposing (..)
-import WFC.Plane as Plane exposing (foldl, coords, equal, sub, findMatches, map)
+import WFC.Plane.Plane exposing (Plane(..), N(..))
+import WFC.Plane.Plane as Plane exposing (map)
+import WFC.Plane.Vec2 as Plane
+    exposing (SearchMethod, foldl, coords, equal, sub, findMatches, findAllSubs, findOccurence)
+import WFC.Plane.Offset exposing (OffsetPlane(..))
 import WFC.Neighbours exposing (..)
 
 
@@ -44,12 +48,15 @@ type Step a
 type alias PatternId = Int
 
 
+type alias UniquePattern v a =
+    { pattern: Pattern v a
+    , occured : Occured
+    , matches : OffsetPlane v (List PatternId)
+    }
+
+
 type alias UniquePatterns v a =
-    Dict PatternId
-        { pattern: Pattern v a
-        , occured : Occured
-        , matches : Plane (Offset v) (List PatternId)
-        }
+    Dict PatternId (UniquePattern v a)
 
 
 type Solver v a =
@@ -68,7 +75,11 @@ type alias TextOptions = Options Vec2
 type alias TextSolver = Solver Vec2 Char
 
 
-findUniquePatterns : SearchMethod -> N Vec2 -> Plane Vec2 a -> UniquePatterns Vec2 a
+findUniquePatterns
+    :  SearchMethod
+    -> N Vec2
+    -> Plane Vec2 a
+    -> UniquePatterns Vec2 a
 findUniquePatterns method ofSize inPlane =
     let
         allSubplanes = findAllSubs method ofSize inPlane
@@ -120,7 +131,7 @@ findNeighbours from pattern =
 findMatches
     :  Dict PatternId (Pattern Vec2 a)
     -> Pattern Vec2 a
-    -> Plane (Offset Vec2) (List PatternId)
+    -> OffsetPlane Vec2 (List PatternId)
 findMatches from for =
     Plane.findMatches
         (from

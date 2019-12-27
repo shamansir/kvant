@@ -8,7 +8,8 @@ module WFC.Core exposing
 import Random
 
 
-import WFC.Plane exposing (..)
+import WFC.Vec2 exposing (..)
+import WFC.Plane.Text as TextPlane exposing (make, toString)
 import WFC.Solver exposing (..)
 
 
@@ -29,7 +30,7 @@ text options =
         \(step, input) ->
             let
                 -- plane : TextPlane
-                plane = input |> makeTextPlane options.inputSize
+                plane = input |> TextPlane.make options.inputSize
                 -- patterns : List ( Occured, TextPlane )
                 patterns
                     = findUniquePatterns
@@ -41,7 +42,7 @@ text options =
             in
                 solver
                     |> solve step
-                    |> Tuple.mapSecond textPlaneToString
+                    |> Tuple.mapSecond TextPlane.toString
 
 
 -- load : Instance -> WFC pos size fmt item

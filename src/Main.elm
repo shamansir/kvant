@@ -6,16 +6,25 @@ import Browser
 import Random
 import Task
 import Time
-import Dict
+-- import Dict
+import Dict exposing (Dict)
+import Dict as D exposing (map)
+import Array as A exposing (map)
 
 import Html exposing (..)
 import Html.Attributes exposing (..)
 
 import WFC.Core exposing (WFC, TextWFC)
 import WFC.Core as WFC
-import WFC.Plane exposing (..)
+import WFC.Vec2 exposing (..)
+import WFC.Plane.Plane exposing (N(..), Plane, Cell)
 import WFC.Occured exposing (Occured(..))
-import WFC.Plane as Plane exposing (sub ,subAt)
+import WFC.Plane.Vec2 as Plane exposing (SearchMethod(..), sub ,subAt, foldMap)
+import WFC.Plane.Vec2 exposing (flip, rotate, unpack, foldMap, rotateTo, flipBy, Orientation(..), Flip(..), allViews, findAllSubs, materializeFlatten)
+import WFC.Plane.Text exposing (TextPlane)
+import WFC.Plane.Text as TextPlane exposing (make)
+import WFC.Plane.Offset exposing (Offset, OffsetPlane)
+import WFC.Plane.Offset as Offsets exposing (foldMap)
 import WFC.Solver exposing (Approach(..), fromPattern)
 import WFC.Solver as WFC exposing (TextOptions)
 
@@ -77,7 +86,7 @@ update msg model =
 
 testPlane : TextPlane
 testPlane =
-    makeTextPlane (4, 4)
+    TextPlane.make (4, 4)
         (
             "0000" ++
             "0111" ++
@@ -88,7 +97,7 @@ testPlane =
 
 testPlaneHex : TextPlane
 testPlaneHex =
-    makeTextPlane (4, 4)
+    TextPlane.make (4, 4)
         (
             "0123" ++
             "4567" ++
@@ -206,6 +215,11 @@ viewGrid viewElem grid =
         |> div [ style "display" "flex", style "flex-direction" "column" ]
 
 
+viewGridV : (v -> a -> Html Msg) -> List (List (v, a)) -> Html Msg
+viewGridV viewElem grid =
+    viewGrid (\(v, a) -> viewElem v a) grid -- a.k.a. `uncurry`
+
+
 viewPlane : a -> (a -> Html Msg) -> Plane Vec2 a -> Html Msg
 viewPlane default viewElem plane =
     unpack plane
@@ -213,11 +227,28 @@ viewPlane default viewElem plane =
         |> viewGrid viewElem
 
 
--- viewPlaneWith : a -> (Vec2 -> a -> Html Msg) -> Plane Vec2 a -> Html Msg
--- viewPlaneWith default viewElem plane =
---     foldMap plane
---         |> List.map (List.map <| Maybe.withDefault default)
---         |> viewGrid viewElem
+viewPlaneWith : a -> (Vec2 -> a -> Html Msg) -> Plane Vec2 a -> Html Msg
+viewPlaneWith default viewElem plane =
+    Plane.foldMap
+        (\(v, maybeVal) -> maybeVal |> Maybe.withDefault default |> Tuple.pair v)
+        plane
+        |> viewGridV viewElem
+
+
+viewOffsetPlane : a -> (a -> Html Msg) -> OffsetPlane Vec2 a -> Html Msg
+viewOffsetPlane default viewElem plane =
+    Offsets.foldMap
+        (\(v, maybeVal) -> maybeVal |> Maybe.withDefault default)
+        plane
+        |> viewGrid viewElem
+
+
+viewOffsetPlaneWith : a -> (Vec2 -> a -> Html Msg) -> OffsetPlane Vec2 a -> Html Msg
+viewOffsetPlaneWith default viewElem plane =
+    Offsets.foldMap
+        (\(v, maybeVal) -> maybeVal |> Maybe.withDefault default |> Tuple.pair v)
+        plane
+        |> viewGridV viewElem
 
 
 viewTextInBounds : Vec2 -> String -> Html Msg
@@ -382,44 +413,100 @@ viewAllViews plane =
 
 viewPatterns : TextPlane -> Html Msg
 viewPatterns plane =
+    let
+        patterns = WFC.findUniquePatterns options.patternSearch options.patternSize plane
+    in
     div [ style "display" "flex"
         , style "flex-direction" "column"
         , style "justify-content" "space-evenly"
         ]
-    <| Dict.values
-    <| Dict.map
-        (\index {occured, pattern, matches} ->
-            div
-                [ class <| "pattern-" ++ String.fromInt index
-                , style "margin" "10px 0"
-                ]
-                [ span [] [ text <| String.fromInt index ++ ". " ]
-                , span [] [ text <| occursText occured ]
-                , viewTextPlane <| fromPattern pattern
-                , span [] [ text <| "Matches: " ]
-                , viewMatches matches
-                ]
-        )
-        (WFC.findUniquePatterns options.patternSearch (N (2, 2)) plane)
+        <| Dict.values
+        <| Dict.map
+            (\index {occured, pattern, matches} ->
+                div
+                    [ class <| "pattern-" ++ String.fromInt index
+                    , style "margin" "10px 0"
+                    ]
+                    [ span [] [ text <| String.fromInt index ++ ". " ]
+                    , span [] [ text <| occursText occured ]
+                    , viewTextPlane <| fromPattern pattern
+                    , span [] [ text <| "Matches: " ]
+                    -- , viewMatches matches
+                    , matches |> viewMatchesWithPatterns patterns
+                    ]
+            )
+            patterns
 
 
-viewMatches : Plane (Offset Vec2) (List Int) -> Html Msg
+viewMatches : OffsetPlane Vec2 (List Int) -> Html Msg
 viewMatches plane =
     let
-        itemSpan = span [ style "padding" "5px" ]
+        itemSpan =
+            span
+                [ style "padding" "3px"
+                ]
     in
-        disregardOffsets plane
-            |> viewPlane []
+        plane
+            |> viewOffsetPlane []
                 (\matchesList ->
-                    div [ style "width" "100px" ] <|
-                        List.map
+                    div
+                        [ style "height" "50px"
+                        , style "width" "50px"
+                        , style "border" "1px dashed gray"
+                        , style "display" "flex"
+                        , style "flex-wrap" "wrap"
+                        , style "font-size" "9px"
+                        ]
+                        <| List.map
                             (String.fromInt
                                 >> text
                                 >> List.singleton
                                 >> itemSpan)
-                        matchesList
+                            matchesList
                 )
 
+
+viewMatchesWithPatterns : WFC.UniquePatterns Vec2 Char -> OffsetPlane Vec2 (List Int) -> Html Msg
+viewMatchesWithPatterns patterns plane =
+    let
+        patternWrapper patternData =
+            div
+                [ style "display" "inline-block"
+                , style "padding" "1px"
+                , style "transform" "scale(0.4,0.6)"
+                , style "border" "1px solid"
+                , style "max-width" "50px"
+                , style "margin-right" "-20px"
+                ]
+                [ viewTextPlane
+                    <| WFC.fromPattern patternData.pattern
+                ]
+    in
+        plane
+            |> viewOffsetPlaneWith []
+                (\(x, y) matchesList ->
+                    div [ style "height" "130px"
+                        , style "width" "130px"
+                        , style "border" "1px dashed gray"
+                        ]
+                        [ text <| "(" ++ String.fromInt x ++ "," ++ String.fromInt y ++ ")"
+                        , div
+                            [ style "display" "flex"
+                            , style "flex-direction" "row"
+                            , style "align-items" "start"
+                            , style "flex-wrap" "wrap"
+                            , style "font-size" "9px"
+                            ]
+                            <| List.map
+                                (\match ->
+                                    patterns
+                                        |> Dict.get match
+                                        |> Maybe.map patternWrapper
+                                        |> Maybe.withDefault (div [] [ text "<NO>" ])
+                                )
+                                matchesList
+                        ]
+                )
 
 
 viewMaterialized : TextPlane -> Html Msg
