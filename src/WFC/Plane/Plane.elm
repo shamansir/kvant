@@ -47,6 +47,11 @@ transformBy vToZ zToV (Plane size srcF) =
     Plane (vToZ size) (srcF << zToV)
 
 
+adjust : (Cell v a -> Maybe b) -> Plane v a -> Plane v b
+adjust f (Plane size srcF) =
+    Plane size (\coord -> f (coord, srcF coord))
+
+
 equalAt : List v -> Plane v a -> Plane v a -> Bool
 equalAt atCoords (Plane _ aF) (Plane _ bF) =
     -- FIXME: use `equal`

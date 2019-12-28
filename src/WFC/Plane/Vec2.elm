@@ -42,11 +42,7 @@ foldl f def plane =
 
 
 toDict : Plane Vec2 a -> Dict Vec2 a
-toDict plane =
-    materializeFlatten plane
-        |> List.map cellToMaybe
-        |> List.filterMap identity
-        |> Dict.fromList
+toDict = materializeExists >> Dict.fromList
 
 
 sub : N Vec2 -> Plane Vec2 a -> Maybe (Plane Vec2 a)
@@ -108,6 +104,13 @@ materialize = foldMap identity
 
 materializeFlatten : Plane Vec2 a -> List (Cell Vec2 a)
 materializeFlatten = materialize >> List.concat
+
+
+materializeExists : Plane Vec2 a -> List (Vec2, a)
+materializeExists =
+    materializeFlatten
+        >> List.map cellToMaybe
+        >> List.filterMap identity
 
 
 toList : Plane Vec2 a -> List (Cell Vec2 a)
@@ -269,7 +272,21 @@ limitsFor (w, h) =
 
 shift : Offset Vec2 -> Plane Vec2 a -> Plane Vec2 a
 shift (Offset (offX, offY)) plane =
-    plane |> transform (\(x, y) -> (x + offX, y + offY))
+    plane |> transform (\(x, y) -> (x - offX, y - offY))
+
+
+shiftCut : Offset Vec2 -> Plane Vec2 a -> Plane Vec2 a
+shiftCut (Offset (offX, offY) as offset) (Plane (width, height) f as plane) =
+    plane
+        |> shift offset
+        |> adjust
+            (\((x, y), maybeV) ->
+                if
+                    (x >= 0) &&
+                    (y >= 0) &&
+                    (x < width) &&
+                    (y < height) then maybeV else Nothing
+            )
 
 
 overlappingCoords : Offset Vec2 -> Plane Vec2 a -> List Vec2
@@ -280,7 +297,7 @@ overlappingCoords (Offset (offX, offY)) (Plane (width, height) _ as plane) =
                 if (x + offX >= 0) &&
                    (y + offY >= 0) &&
                    (x + offX < width) &&
-                   (y + offY < height) then (x, y) :: prev else prev
+                   (y + offY < height) then (x + offX, y + offY) :: prev else prev
             )
             []
 
@@ -288,12 +305,16 @@ overlappingCoords (Offset (offX, offY)) (Plane (width, height) _ as plane) =
 matchesAt : Offset Vec2 -> Dict Int (Plane Vec2 a) -> Plane Vec2 a -> List Int
 matchesAt offset from plane =
     let
-        -- _ = Debug.log "offset" offset
-        oCoords = plane |> overlappingCoords offset -- |> Debug.log "coords"
+        oCoords = plane |> overlappingCoords offset
+        -- oCoords = plane |> overlappingCoords (Debug.log "offset" offset) |> Debug.log "coords"
     in from
         |> Dict.foldl
             (\idx otherPlane matches -> -- ensure plane is the same size as the source
-                if equalAt oCoords plane otherPlane
+                {- let
+                    _ = Debug.log "plane" <| materializeExists plane
+                    _ = Debug.log "otherPlane" <| materializeExists otherPlane
+                    _ = Debug.log "shiftedOtherPlane" <| materializeExists (otherPlane |> shift offset)
+                in -} if equalAt oCoords plane otherPlane
                     then idx :: matches
                     else matches
             )

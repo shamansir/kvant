@@ -112,6 +112,7 @@ view model =
         [ ]
         [ model.source
             |> viewTextInBounds options.inputSize
+        {-
         , hr [] []
         , model.result
             |> Maybe.map (viewTextInBounds options.outputSize)
@@ -142,13 +143,15 @@ view model =
         , hr [] []
         , testPlaneHex |> viewAllViews
         , hr [] []
+        -}
         , testPlane |> viewPatterns
-        , hr [] []
+        {- , hr [] []
         , testPlaneHex |> viewPatterns
         , hr [] []
         , testPlane |> viewAllSubPlanes
         , hr [] []
         , testPlaneHex |> viewAllSubPlanes
+        -}
         ]
 
 
