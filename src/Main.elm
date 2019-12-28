@@ -44,7 +44,7 @@ type Msg
 options : WFC.TextOptions
 options =
     { approach = Overlapping
-    , patternSearch = Bounded
+    , patternSearch = Bounded -- Periodic
     , patternSize = N ( 2, 2 )
     , inputSize = ( 4, 4 )
     , outputSize = ( 10, 10 )
@@ -208,7 +208,7 @@ viewChar c =
 
 
 viewCoord : ( Int, Int ) -> Html Msg
-viewCoord (x, y ) =
+viewCoord ( x, y ) =
     span
         [ style "position" "absolute"
         , style "font-size" "7px"
@@ -225,10 +225,10 @@ viewGrid viewElem grid =
     grid
         |> List.map
             (\row ->
-                div [ style "display" "flex", style "flex-direction" "column" ]
+                div [ style "display" "flex", style "flex-direction" "row" ]
                     <| List.map viewElem row
             )
-        |> div [ style "display" "flex", style "flex-direction" "row" ]
+        |> div [ style "display" "flex", style "flex-direction" "column" ]
 
 
 viewGridV : (v -> a -> Html Msg) -> List (List (v, a)) -> Html Msg
