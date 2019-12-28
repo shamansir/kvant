@@ -128,10 +128,7 @@ coordsFlat = coords >> List.concat
 
 
 coords : Plane Vec2 a -> List (List Vec2)
-coords (Plane (width, height) _) =
-    List.range 0 (width - 1)
-        |> List.map (\x ->
-            List.range 0 (height - 1) |> List.map (Tuple.pair x))
+coords (Plane size _) = above size
 
 
 rotateTo : Orientation -> Plane Vec2 a -> Plane Vec2 a
@@ -290,7 +287,9 @@ overlappingCoords (Offset (offX, offY)) (Plane (width, height) _ as plane) =
 
 matchesAt : Offset Vec2 -> Dict Int (Plane Vec2 a) -> Plane Vec2 a -> List Int
 matchesAt offset from plane =
-    let oCoords = plane |> overlappingCoords offset
+    let
+        -- _ = Debug.log "offset" offset
+        oCoords = plane |> overlappingCoords offset -- |> Debug.log "coords"
     in from
         |> Dict.foldl
             (\idx otherPlane matches -> -- ensure plane is the same size as the source
@@ -307,8 +306,8 @@ offsetsFor { from, to } =
         ( fromW, fromH ) = from
         ( toW, toH ) = to
     in
-        List.range fromH toH
-            |> List.map (\y -> List.range fromW toW |> List.map (Tuple.pair y))
+        List.range fromW toW
+            |> List.map (\x -> List.range fromH toH |> List.map (Tuple.pair x))
             |> List.concat
             |> List.map Offset
 

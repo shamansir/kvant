@@ -145,10 +145,10 @@ view model =
         , testPlane |> viewPatterns
         , hr [] []
         , testPlaneHex |> viewPatterns
-        -- , hr [] []
-        -- , testPlane |> viewAllSubPlanes
-        -- , hr [] []
-        -- , testPlaneHex |> viewAllSubPlanes
+        , hr [] []
+        , testPlane |> viewAllSubPlanes
+        , hr [] []
+        , testPlaneHex |> viewAllSubPlanes
         ]
 
 
@@ -204,15 +204,28 @@ viewChar c =
         [ text <| String.fromChar c ]
 
 
+viewCoord : ( Int, Int ) -> Html Msg
+viewCoord (x, y ) =
+    span
+        [ style "position" "absolute"
+        , style "font-size" "7px"
+        , style "background-color" "lightgray"
+        , style "padding" "2px"
+        , style "border-radius" "7px"
+        , style "opacity" "0.5"
+        ]
+        [ text <| "(" ++ String.fromInt x ++ "," ++ String.fromInt y ++ ")" ]
+
+
 viewGrid : (a -> Html Msg) -> List (List a) -> Html Msg
 viewGrid viewElem grid =
     grid
         |> List.map
             (\row ->
-                div [ style "display" "flex", style "flex-direction" "row" ]
+                div [ style "display" "flex", style "flex-direction" "column" ]
                     <| List.map viewElem row
             )
-        |> div [ style "display" "flex", style "flex-direction" "column" ]
+        |> div [ style "display" "flex", style "flex-direction" "row" ]
 
 
 viewGridV : (v -> a -> Html Msg) -> List (List (v, a)) -> Html Msg
@@ -260,7 +273,13 @@ viewTextInBounds (width, height) string =
 
 
 viewTextPlane : TextPlane -> Html Msg
-viewTextPlane = viewPlane '?' viewChar
+viewTextPlane = viewPlaneWith '?'
+    <| \coord char ->
+        span
+            []
+            [ viewCoord coord
+            , viewChar char
+            ]
 
 
 viewRotationsAndFlips : TextPlane -> Html Msg
@@ -484,12 +503,12 @@ viewMatchesWithPatterns patterns plane =
     in
         plane
             |> viewOffsetPlaneWith []
-                (\(x, y) matchesList ->
+                (\coord matchesList ->
                     div [ style "height" "130px"
                         , style "width" "130px"
                         , style "border" "1px dashed gray"
                         ]
-                        [ text <| "(" ++ String.fromInt x ++ "," ++ String.fromInt y ++ ")"
+                        [ viewCoord coord
                         , div
                             [ style "display" "flex"
                             , style "flex-direction" "row"
@@ -524,10 +543,10 @@ viewMaterialized plane =
 
 
 viewCell : Cell Vec2 Char -> Html Msg
-viewCell ( (x, y), char ) =
+viewCell ( coord, char ) =
     div
         []
-        [ text <| "(" ++ String.fromInt x ++ "," ++ String.fromInt y ++ "):"
+        [ viewCoord coord
         , text <| Maybe.withDefault "%" <| Maybe.map String.fromChar <| char
         ]
 
