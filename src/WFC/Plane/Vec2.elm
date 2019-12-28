@@ -198,7 +198,7 @@ memberAt : List (Plane Vec2 a) -> Plane Vec2 a -> Maybe Int
 memberAt planes subject =
     planes
         |> List.indexedMap Tuple.pair
-        |> List.foldl
+        |> List.foldr
                 (\(idx, other) wasBefore ->
                     case wasBefore of
                         Just _ -> wasBefore
@@ -212,7 +212,7 @@ memberAt planes subject =
 findAllSubs : SearchMethod -> N Vec2 -> Plane Vec2 a -> List (Plane Vec2 a)
 findAllSubs method ofSize inPlane =
     inPlane
-        |> allViews
+        |> allViews -- first rotate and then search for subs or search for subs and rotate them?
         |> List.concatMap
             (\view ->
                 coordsFlat view
@@ -225,12 +225,25 @@ findAllSubs method ofSize inPlane =
             )
 
 
+findAllSubsAlt : SearchMethod -> N Vec2 -> Plane Vec2 a -> List (Plane Vec2 a)
+findAllSubsAlt method ofSize inPlane =
+    inPlane
+        |> coordsFlat
+        |> (case method of
+            Periodic ->
+                List.map (\coord -> periodicSubAt coord ofSize inPlane)
+            Bounded ->
+                List.map (\coord -> subAt coord ofSize inPlane)
+                >> List.filterMap identity)
+        |> List.concatMap allViews
+
+
 findOccurence : List (Plane Vec2 a) -> List (Occured, Plane Vec2 a)
 findOccurence allPlanes =
     let
         unique =
             allPlanes
-                |> List.foldl
+                |> List.foldr
                     (\pattern uniqueOthers ->
                         if pattern |> isAmong uniqueOthers
                             then uniqueOthers
@@ -311,7 +324,7 @@ matchesAt offset from plane =
         oCoords = plane |> overlappingCoords offset
         -- oCoords = plane |> overlappingCoords (Debug.log "offset" offset) |> Debug.log "coords"
     in from
-        |> Dict.map (always <| shift offset)
+        |> Dict.map (always <| shiftCut offset)
         |> Dict.foldr
             (\idx otherPlane matches -> -- ensure plane is the same size as the source
                 {- let

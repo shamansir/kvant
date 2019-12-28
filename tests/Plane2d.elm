@@ -164,6 +164,56 @@ suite =
                 )
         )
 
+        , describe "stringify works" <|
+            ( [ (testPlane2x2, (2, 2), "1234") ]
+            |> List.map
+                (\(plane, (w, h), expectedStr) ->
+                    test ("for the plane of size " ++ String.fromInt w ++ "," ++ String.fromInt h)
+                        <| \_ ->
+                            Expect.equal
+                            (TextPlane.make (w, h) plane |> TextPlane.toString)
+                            expectedStr
+                )
+            )
+
+        , test "getting all views is working" <|
+            \_ ->
+                let
+                    sample
+                        =  "12"
+                        ++ "34"
+                    expectedViews =
+                        -- Initial
+                        [  "12"
+                        ++ "34"
+                        -- rotate
+                        ,  "31"
+                        ++ "42"
+                        -- rotate > rotate
+                        ,  "43"
+                        ++ "21"
+                        -- rotate > rotate > rotate
+                        ,  "24"
+                        ++ "13"
+                        -- flip
+                        ,  "34"
+                        ++ "12"
+                        -- rotate > flip
+                        ,  "42"
+                        ++ "31"
+                        -- rotate > rotate > flip
+                        ,  "21"
+                        ++ "43"
+                        -- flip > rotate
+                        ,  "13"
+                        ++ "24"
+                        ]
+            in
+                Expect.equal
+                    (Plane2D.allViews (TextPlane.make (2, 2) sample)
+                        |> List.map TextPlane.toString)
+                    expectedViews
+
         , test "properly finds matches to the known sample" <|
             \_ ->
                 let

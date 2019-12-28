@@ -12,7 +12,7 @@ import WFC.Occured as Occured
 import WFC.Plane.Plane exposing (Plane(..), N(..))
 import WFC.Plane.Plane as Plane exposing (map)
 import WFC.Plane.Vec2 as Plane
-    exposing (SearchMethod, foldl, coords, equal, sub, findMatches, findAllSubs, findOccurence)
+    exposing (SearchMethod, foldl, coords, equal, sub, findMatches, findAllSubs, findAllSubsAlt, findOccurence)
 import WFC.Plane.Offset exposing (OffsetPlane(..))
 import WFC.Neighbours exposing (..)
 

@@ -20,7 +20,7 @@ import WFC.Vec2 exposing (..)
 import WFC.Plane.Plane exposing (N(..), Plane, Cell)
 import WFC.Occured exposing (Occured(..))
 import WFC.Plane.Vec2 as Plane exposing (SearchMethod(..), sub ,subAt, foldMap)
-import WFC.Plane.Vec2 exposing (flip, rotate, unpack, foldMap, rotateTo, flipBy, Orientation(..), Flip(..), allViews, findAllSubs, materializeFlatten)
+import WFC.Plane.Vec2 exposing (flip, rotate, unpack, foldMap, rotateTo, flipBy, Orientation(..), Flip(..), allViews, findAllSubs, findAllSubsAlt, materializeFlatten)
 import WFC.Plane.Text exposing (TextPlane)
 import WFC.Plane.Text as TextPlane exposing (make)
 import WFC.Plane.Offset exposing (Offset, OffsetPlane)
@@ -112,7 +112,6 @@ view model =
         [ ]
         [ model.source
             |> viewTextInBounds options.inputSize
-        {-
         , hr [] []
         , model.result
             |> Maybe.map (viewTextInBounds options.outputSize)
@@ -143,15 +142,13 @@ view model =
         , hr [] []
         , testPlaneHex |> viewAllViews
         , hr [] []
-        -}
         , testPlane |> viewPatterns
-        {- , hr [] []
+        , hr [] []
         , testPlaneHex |> viewPatterns
         , hr [] []
         , testPlane |> viewAllSubPlanes
         , hr [] []
         , testPlaneHex |> viewAllSubPlanes
-        -}
         ]
 
 
@@ -413,7 +410,7 @@ viewAllSubPlanes plane =
         ]
         <| List.indexedMap viewWithIndex
         <| List.map viewTextPlane
-        <| findAllSubs options.patternSearch options.patternSize plane
+        <| findAllSubsAlt options.patternSearch options.patternSize plane
 
 
 viewWithIndex : Int -> Html Msg -> Html Msg
