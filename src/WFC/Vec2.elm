@@ -19,7 +19,7 @@ rect { from, to } =
         ( fromX, fromY ) = from
         ( toX, toY ) = to
     in
-        List.range fromX toX
-            |> List.map (\x ->
-                List.range fromY toY |> List.map (Tuple.pair x >> swap))
+        List.range fromY toY
+            |> List.map (\y ->
+                List.range fromY toY |> List.map (Tuple.pair y >> swap))
 

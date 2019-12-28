@@ -1,5 +1,7 @@
 module Plane2d exposing (suite)
 
+import Dict
+
 import Expect exposing (Expectation)
 import Fuzz exposing (Fuzzer, int, list, string)
 import Test exposing (..)
@@ -7,6 +9,7 @@ import Test exposing (..)
 import WFC.Plane.Offset exposing (Offset(..))
 import WFC.Plane.Vec2 as Plane2D
 import WFC.Plane.Text as TextPlane
+import WFC.Plane.Offset as OffsetPlane
 
 
 testPlane2x2
@@ -99,26 +102,33 @@ suite =
                         , [ ((0, 1), Just '1'), ((1, 1), Just '2') ]
                     ])
 
-        ,
+        , describe "shifts 2x2 plane properly" (
             [
                 ( Offset (-1, -1)
                 ,
-                    [ [ ((0, 0), Just '4'), ((1, 0), Nothing ) ]
-                    , [ ((0, 1), Nothing),  ((1, 1), Nothing ) ]
+                    [ [ ((0, 0), Just '4'), ((1, 0), Nothing) ]
+                    , [ ((0, 1), Nothing),  ((1, 1), Nothing) ]
                     ]
                 )
             ,
                 ( Offset (-1, 0)
                 ,
-                    [ [ ((0, 0), Just '2'), ((1, 0), Nothing ) ]
-                    , [ ((0, 1), Just '4'), ((1, 1), Nothing ) ]
+                    [ [ ((0, 0), Just '2'), ((1, 0), Nothing) ]
+                    , [ ((0, 1), Just '4'), ((1, 1), Nothing) ]
                     ]
                 )
             ,
                 ( Offset (1, 0)
                 ,
-                    [ [ ((0, 0), Just '1'), ((1, 0), Nothing ) ]
-                    , [ ((0, 1), Just '3'), ((1, 1), Nothing ) ]
+                    [ [ ((0, 0), Nothing), ((1, 0), Just '1') ]
+                    , [ ((0, 1), Nothing), ((1, 1), Just '3') ]
+                    ]
+                )
+            ,
+                ( Offset (0, 1)
+                ,
+                    [ [ ((0, 0), Nothing),  ((1, 0), Nothing) ]
+                    , [ ((0, 1), Just '1'), ((1, 1), Just '2') ]
                     ]
                 )
             ] |> List.map
@@ -127,13 +137,13 @@ suite =
                         \_ ->
                             Expect.equal
                             (TextPlane.make (2, 2) testPlane2x2
-                                |> Plane2D.shift offset
+                                |> Plane2D.shiftCut offset
                                 |> Plane2D.materialize)
                             sample
                 )
-            |> describe "shifts 2x2 plane properly"
+        )
 
-        ,
+        , describe "calculates overlapping points for 2x2 plane properly" (
             [ (Offset (-1, -1), [ (0, 0) ])
             , (Offset ( 0, -1), [ (0, 0), (1, 0) ])
             , (Offset ( 1, -1), [ (1, 0) ])
@@ -152,5 +162,72 @@ suite =
                                 |> Plane2D.overlappingCoords offset)
                             sample
                 )
-            |> describe "calculates overlapping points for 2x2 plane properly"
+        )
+
+        , test "properly finds matches to the known sample" <|
+            \_ ->
+                let
+                    sample
+                        =  "00"
+                        ++ "01"
+                    patterns =
+                        -- 0
+                        [  "00"
+                        ++ "01"
+                        -- 1
+                        ,  "00"
+                        ++ "10"
+                        -- 2
+                        ,  "01"
+                        ++ "00"
+                        -- 3
+                        ,  "10"
+                        ++ "00"
+                        -- 4
+                        ,  "00"
+                        ++ "11"
+                        -- 5
+                        ,  "01"
+                        ++ "01"
+                        -- 6
+                        ,  "10"
+                        ++ "10"
+                        -- 7
+                        ,  "11"
+                        ++ "00"
+                        -- 8
+                        ,  "11"
+                        ++ "12"
+                        -- 9
+                        ,  "11"
+                        ++ "21"
+                        -- 10
+                        ,  "12"
+                        ++ "11"
+                        -- 11
+                        ,  "21"
+                        ++ "11"
+                        ]
+                    expectations =
+                        [ ((-1, -1), [1, 2, 3, 6, 7])
+                        , (( 0, -1), [2, 3, 7])
+                        , (( 1, -1), [0, 2, 3, 5, 7])
+                        , ((-1,  0), [1, 3, 6])
+                        , (( 0,  0), [0])
+                        , (( 1,  0), [1, 4])
+                        , ((-1,  1), [0, 1, 3, 4, 6])
+                        , (( 0,  1), [2, 5])
+                        , (( 1,  1), [3, 6, 7, 8, 9, 10])
+                        ]
+                    samplePlane = TextPlane.make (2, 2) sample
+                in
+                    Expect.equal
+                            (Plane2D.findMatches
+                                (patterns
+                                    |> List.map (TextPlane.make (2, 2))
+                                    |> List.indexedMap Tuple.pair
+                                    |> Dict.fromList)
+                                samplePlane
+                                |> OffsetPlane.materializeExists)
+                            expectations
         ]

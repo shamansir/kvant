@@ -276,13 +276,14 @@ viewTextInBounds (width, height) string =
 
 
 viewTextPlane : TextPlane -> Html Msg
-viewTextPlane = viewPlaneWith '?'
-    <| \coord char ->
-        span
-            []
-            [ viewCoord coord
-            , viewChar char
-            ]
+viewTextPlane =
+    viewPlaneWith '?'
+        <| \coord char ->
+            span
+                []
+                [ viewCoord coord
+                , viewChar char
+                ]
 
 
 viewRotationsAndFlips : TextPlane -> Html Msg

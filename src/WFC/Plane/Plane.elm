@@ -16,6 +16,7 @@ import WFC.Occured as Occured
 
 
 type Plane v a = Plane v (v -> Maybe a)
+ -- TODO: should check incoming v's by `v -> Bool` before, like, if they fit?
 
 
 type alias Cell v a = (v, Maybe a)
@@ -26,6 +27,10 @@ type N v = N v -- FIXME: should be N Int, actually, since all patterns should ha
 
 empty : v -> Plane v a
 empty size = Plane size <| always Nothing
+
+
+get : Plane v a -> v -> Maybe a
+get (Plane _ f) = f
 
 
 getSize : Plane v a -> v

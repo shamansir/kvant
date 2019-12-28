@@ -272,7 +272,8 @@ limitsFor (w, h) =
 
 shift : Offset Vec2 -> Plane Vec2 a -> Plane Vec2 a
 shift (Offset (offX, offY)) plane =
-    plane |> transform (\(x, y) -> (x - offX, y - offY))
+    plane
+        |> transform (\(x, y) -> (x - offX, y - offY))
 
 
 shiftCut : Offset Vec2 -> Plane Vec2 a -> Plane Vec2 a
@@ -284,6 +285,8 @@ shiftCut (Offset (offX, offY) as offset) (Plane (width, height) f as plane) =
                 if
                     (x >= 0) &&
                     (y >= 0) &&
+                    (x >= offX) &&
+                    (y >= offY) &&
                     (x < width) &&
                     (y < height) then maybeV else Nothing
             )
@@ -292,7 +295,7 @@ shiftCut (Offset (offX, offY) as offset) (Plane (width, height) f as plane) =
 overlappingCoords : Offset Vec2 -> Plane Vec2 a -> List Vec2
 overlappingCoords (Offset (offX, offY)) (Plane (width, height) _ as plane) =
     coordsFlat plane
-        |> List.foldl
+        |> List.foldr
             (\(x, y) prev ->
                 if (x + offX >= 0) &&
                    (y + offY >= 0) &&
@@ -308,7 +311,8 @@ matchesAt offset from plane =
         oCoords = plane |> overlappingCoords offset
         -- oCoords = plane |> overlappingCoords (Debug.log "offset" offset) |> Debug.log "coords"
     in from
-        |> Dict.foldl
+        |> Dict.map (always <| shift offset)
+        |> Dict.foldr
             (\idx otherPlane matches -> -- ensure plane is the same size as the source
                 {- let
                     _ = Debug.log "plane" <| materializeExists plane
