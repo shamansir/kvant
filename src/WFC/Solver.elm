@@ -7,7 +7,7 @@ import Dict exposing (Dict)
 import Random
 
 import WFC.Vec2 exposing (..)
-import WFC.Occurrence exposing (Occurrence, Frequency, calculateFrequency)
+import WFC.Occurrence exposing (Occurrence, Frequency)
 import WFC.Occurrence as Occurrence
 import WFC.Plane.Plane exposing (Plane(..), N(..))
 import WFC.Plane.Plane as Plane exposing (map)
@@ -99,15 +99,10 @@ findUniquePatterns method ofSize inPlane =
         onlyPatternsDict =
             uniquePatternsDict
                 |> Dict.map (always Tuple.second)
-        frequencyDict =
-            uniquePatternsDict
-                |> Dict.map (always Tuple.first)
-                |> calculateFrequency
     in
         uniquePatternsDict
-                |> Dict.map (\id ( occurrence, pattern ) ->
-                        { frequency =
-                            ( occurrence, Dict.get id frequencyDict )
+                |> Dict.map (\_ ( frequency, pattern ) ->
+                        { frequency = frequency
                         , pattern = pattern
                         , matches =
                             findMatches

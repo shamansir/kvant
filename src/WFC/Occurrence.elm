@@ -51,21 +51,5 @@ frequencyToFloat : Frequency -> Float
 frequencyToFloat (Frequency v) = v
 
 
-calculateFrequency : Dict Int Occurrence -> Dict Int Frequency
-calculateFrequency occuredData =
-    let
-        maxValue
-            = occuredData
-                |> Dict.foldl
-                    (\_ val prevMax ->
-                        case val of
-                            Unknown -> prevMax
-                            Times n -> max prevMax n
-                    )
-                    0
-                |> toFloat
-    in
-        occuredData
-            |> Dict.map (always toInt)
-            |> Dict.filter (always <| (>) 0)
-            |> Dict.map (\_ v -> Frequency <| toFloat v / maxValue)
+frequencyFromFloat : Float -> Frequency
+frequencyFromFloat = Frequency

@@ -5,7 +5,7 @@ import Dict
 import Dict exposing (Dict)
 
 import WFC.Vec2 exposing (..)
-import WFC.Occurrence exposing (Occurrence)
+import WFC.Occurrence exposing (Occurrence, Frequency, frequencyFromFloat)
 import WFC.Occurrence as Occurrence
 import WFC.Plane.Plane exposing (..)
 import WFC.Plane.Offset exposing (..)
@@ -238,10 +238,10 @@ findAllSubsAlt method ofSize inPlane =
         |> List.concatMap allViews
 
 
-findOccurrence : List (Plane Vec2 a) -> List (Occurrence, Plane Vec2 a)
+findOccurrence : List (Plane Vec2 a) -> List ((Occurrence, Maybe Frequency), Plane Vec2 a)
 findOccurrence allPlanes =
     let
-        unique =
+        uniquePatterns =
             allPlanes
                 |> List.foldr
                     (\pattern uniqueOthers ->
@@ -250,19 +250,47 @@ findOccurrence allPlanes =
                             else pattern :: uniqueOthers
                     )
                     []
+        withOccurrence =
+             uniquePatterns
+                 |> List.map
+                     (
+                         \subPlane ->
+                             ( allPlanes
+                                 |> List.filter (equal subPlane)
+                                 |> List.length
+                                 |> Occurrence.times
+                             , subPlane
+                             )
+                     )
+                 |> List.sortBy (Tuple.first >> Occurrence.toInt)
+        maxOccurrence =
+             withOccurrence
+                |> List.foldl
+                    (\(occurrence, _) prevMax ->
+                        case occurrence
+                            |> Occurrence.toMaybe of
+                            Just v -> max prevMax v
+                            Nothing -> prevMax
+
+                    )
+                    0
+                 |> toFloat
     in
-        unique
+        withOccurrence
             |> List.map
-                (
-                    \subPlane ->
-                        ( allPlanes
-                            |> List.filter (equal subPlane)
-                            |> List.length
-                            |> Occurrence.times
-                        , subPlane
-                        )
+                (\(occurrence, v) ->
+                    (
+                        ( occurrence
+                        , occurrence
+                            |> Occurrence.toMaybe
+                            |> Maybe.map
+                                (\occurred ->
+                                    frequencyFromFloat <| toFloat occurred / maxOccurrence))
+                    , v
+                    )
                 )
-            |> List.sortBy (Tuple.first >> Occurrence.toInt)
+
+
 
 
 limitsFor : Vec2 -> { from: Vec2, to: Vec2 }
