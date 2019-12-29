@@ -2,14 +2,17 @@ module Plane2d exposing (suite)
 
 import Dict
 
-import Expect exposing (Expectation)
+import Expect exposing (Expectation, pass)
 import Fuzz exposing (Fuzzer, int, list, string)
 import Test exposing (..)
+-- import Test.Internal as Internal
 
 import WFC.Plane.Offset exposing (Offset(..))
-import WFC.Plane.Vec2 as Plane2D
+import WFC.Plane.Plane exposing (N(..))
+import WFC.Plane.Flat as Plane2D
 import WFC.Plane.Text as TextPlane
 import WFC.Plane.Offset as OffsetPlane
+-- import WFC.Frequency
 
 
 testPlane2x2
@@ -280,4 +283,129 @@ suite =
                                 samplePlane
                                 |> OffsetPlane.materializeExists)
                             expectations
+
+        , test "properly finds subplanes"
+            <| \_ ->
+                let
+                    expectations =
+                        [ (
+                            (0, 0), (2, 2)
+                            ,  "00"
+                            ++ "01"
+                        )
+                        , (
+                            (0, 0), (3, 3)
+                            ,  "000"
+                            ++ "011"
+                            ++ "012"
+                        )
+                        , (
+                            (1, 1), (2, 2)
+                            ,  "11"
+                            ++ "12"
+                        )
+                        , (
+                            (2, 2), (2, 2)
+                            ,  "21"
+                            ++ "11"
+                        )
+                        , (
+                            (1, 1), (3, 3)
+                            ,  "111"
+                            ++ "121"
+                            ++ "111"
+                        )
+                        , (
+                            (0, 1), (3, 3)
+                            ,  "011"
+                            ++ "012"
+                            ++ "011"
+                        )
+                        , (
+                            (0, 1), (2, 3)
+                            ,  "01"
+                            ++ "01"
+                            ++ "01"
+                        )
+                        , (
+                            (3, 3), (1, 1)
+                            ,  "1"
+                        )
+                        ]
+                in
+                    Expect.equal
+                        (expectations
+                            |> List.map (\(shift, size, _) ->
+                                testPlane4x4_
+                                    |> TextPlane.make (4, 4)
+                                    |> Plane2D.subAt shift (N size))
+                            |> List.filterMap identity
+                            |> List.map TextPlane.toString
+                            )
+                        (expectations |> List.map (\(_, _, str) -> str))
+
+        , test "materializing subplanes"
+            <| \_ ->
+                let
+                    expectation =
+                        [
+                            [ ((0,0), Just '0'), ((1,0), Just '1') ],
+                            [ ((0,1), Just '0'), ((1,1), Just '1') ],
+                            [ ((0,2), Just '0'), ((1,2), Just '1') ]
+                        ]
+                in
+                    Expect.equal
+                        (testPlane4x4_
+                            |> TextPlane.make (4, 4)
+                            |> Plane2D.subAt (0, 1) (N (2, 3))
+                            |> Maybe.map (Plane2D.materialize)
+                            |> Maybe.withDefault [ [] ])
+                        expectation
+
+        , test "finds unique subplanes in the plane"
+            <| \_ ->
+                let
+                    expectToContain =
+                        [
+                            [  "00"
+                            ++ "01"
+
+                            ,  "00"
+                            ++ "10"
+
+                            ,  "01"
+                            ++ "00"
+
+                            ,  "10"
+                            ++ "00"
+
+                            ,  "00"
+                            ++ "11"
+
+                            ,  "01"
+                            ++ "01"
+
+                            ,  "10"
+                            ++ "10"
+
+                            ,  "11"
+                            ++ "00"
+
+                            ,  "11"
+                            ++ "12"
+
+                            ,  "11"
+                            ++ "21"
+
+                            ,  "12"
+                            ++ "11"
+
+                            ,  "21"
+                            ++ "11"
+                            ]
+
+                        ]
+                in
+                    Expect.true "aa" True
         ]
+

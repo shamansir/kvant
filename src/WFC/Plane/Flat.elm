@@ -1,12 +1,12 @@
-module WFC.Plane.Vec2 exposing (..)
+module WFC.Plane.Flat exposing (..)
 
 
 import Dict
 import Dict exposing (Dict)
 
 import WFC.Vec2 exposing (..)
-import WFC.Occured as Occured
-import WFC.Occured exposing (Occured)
+import WFC.Occurence exposing (Occurence)
+import WFC.Occurence as Occurence
 import WFC.Plane.Plane exposing (..)
 import WFC.Plane.Offset exposing (..)
 
@@ -238,7 +238,7 @@ findAllSubsAlt method ofSize inPlane =
         |> List.concatMap allViews
 
 
-findOccurence : List (Plane Vec2 a) -> List (Occured, Plane Vec2 a)
+findOccurence : List (Plane Vec2 a) -> List (Occurence, Plane Vec2 a)
 findOccurence allPlanes =
     let
         unique =
@@ -258,11 +258,11 @@ findOccurence allPlanes =
                         ( allPlanes
                             |> List.filter (equal subPlane)
                             |> List.length
-                            |> Occured.times
+                            |> Occurence.times
                         , subPlane
                         )
                 )
-            |> List.sortBy (Tuple.first >> Occured.toInt)
+            |> List.sortBy (Tuple.first >> Occurence.toInt)
 
 
 limitsFor : Vec2 -> { from: Vec2, to: Vec2 }
@@ -322,16 +322,11 @@ matchesAt : Offset Vec2 -> Dict Int (Plane Vec2 a) -> Plane Vec2 a -> List Int
 matchesAt offset from plane =
     let
         oCoords = plane |> overlappingCoords offset
-        -- oCoords = plane |> overlappingCoords (Debug.log "offset" offset) |> Debug.log "coords"
     in from
         |> Dict.map (always <| shiftCut offset)
         |> Dict.foldr
             (\idx otherPlane matches -> -- ensure plane is the same size as the source
-                {- let
-                    _ = Debug.log "plane" <| materializeExists plane
-                    _ = Debug.log "otherPlane" <| materializeExists otherPlane
-                    _ = Debug.log "shiftedOtherPlane" <| materializeExists (otherPlane |> shift offset)
-                in -} if equalAt oCoords plane otherPlane
+                if equalAt oCoords plane otherPlane
                     then idx :: matches
                     else matches
             )

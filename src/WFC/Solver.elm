@@ -7,11 +7,11 @@ import Dict exposing (Dict)
 import Random
 
 import WFC.Vec2 exposing (..)
-import WFC.Occured exposing (Occured)
-import WFC.Occured as Occured
+import WFC.Occurence exposing (Occurence)
+import WFC.Occurence as Occurence
 import WFC.Plane.Plane exposing (Plane(..), N(..))
 import WFC.Plane.Plane as Plane exposing (map)
-import WFC.Plane.Vec2 as Plane
+import WFC.Plane.Flat as Plane
     exposing (SearchMethod, foldl, coords, equal, sub, findMatches, findAllSubs, findAllSubsAlt, findOccurence)
 import WFC.Plane.Offset exposing (OffsetPlane(..))
 import WFC.Neighbours exposing (..)
@@ -50,7 +50,7 @@ type alias PatternId = Int
 
 type alias UniquePattern v a =
     { pattern: Pattern v a
-    , occured : Occured
+    , occured : Occurence
     , matches : OffsetPlane v (List PatternId)
     }
 

@@ -5,9 +5,9 @@ import Array
 import Dict
 import Dict exposing (Dict)
 
-import WFC.Neighbours exposing (..)
-import WFC.Occured exposing (Occured)
-import WFC.Occured as Occured
+-- import WFC.Neighbours exposing (..)
+-- import WFC.Occurence exposing (Occurence)
+-- import WFC.Occurence as Occurence
 
 
 -- type Plane x v a = Plane x (v -> Maybe a)

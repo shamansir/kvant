@@ -18,9 +18,9 @@ import WFC.Core exposing (WFC, TextWFC)
 import WFC.Core as WFC
 import WFC.Vec2 exposing (..)
 import WFC.Plane.Plane exposing (N(..), Plane, Cell)
-import WFC.Occured exposing (Occured(..))
-import WFC.Plane.Vec2 as Plane exposing (SearchMethod(..), sub ,subAt, foldMap)
-import WFC.Plane.Vec2 exposing (flip, rotate, unpack, foldMap, rotateTo, flipBy, Orientation(..), Flip(..), allViews, findAllSubs, findAllSubsAlt, materializeFlatten)
+import WFC.Occurence exposing (Occurence(..))
+import WFC.Plane.Flat as Plane exposing (SearchMethod(..), sub ,subAt, foldMap)
+import WFC.Plane.Flat exposing (flip, rotate, unpack, foldMap, rotateTo, flipBy, Orientation(..), Flip(..), allViews, findAllSubs, findAllSubsAlt, materializeFlatten)
 import WFC.Plane.Text exposing (TextPlane)
 import WFC.Plane.Text as TextPlane exposing (make)
 import WFC.Plane.Offset exposing (Offset, OffsetPlane)
@@ -552,7 +552,7 @@ viewCell ( coord, char ) =
         ]
 
 
-occursText : Occured -> String
+occursText : Occurence -> String
 occursText occured =
     case occured of
         Unknown -> "occurs unknown amount of times"

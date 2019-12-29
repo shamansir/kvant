@@ -21,5 +21,5 @@ rect { from, to } =
     in
         List.range fromY toY
             |> List.map (\y ->
-                List.range fromY toY |> List.map (Tuple.pair y >> swap))
+                List.range fromX toX |> List.map (Tuple.pair y >> swap))
 
