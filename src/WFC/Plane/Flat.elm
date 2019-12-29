@@ -263,15 +263,11 @@ findOccurrence allPlanes =
                              )
                      )
                  |> List.sortBy (Tuple.first >> Occurrence.toInt)
-        maxOccurrence =
+        total =
              withOccurrence
                 |> List.foldl
-                    (\(occurrence, _) prevMax ->
-                        case occurrence
-                            |> Occurrence.toMaybe of
-                            Just v -> max prevMax v
-                            Nothing -> prevMax
-
+                    (\(occurrence, _) sum ->
+                         sum + Occurrence.toInt occurrence
                     )
                     0
                  |> toFloat
@@ -285,7 +281,7 @@ findOccurrence allPlanes =
                             |> Occurrence.toMaybe
                             |> Maybe.map
                                 (\occurred ->
-                                    frequencyFromFloat <| toFloat occurred / maxOccurrence))
+                                    frequencyFromFloat <| toFloat occurred / total))
                     , v
                     )
                 )

@@ -448,11 +448,11 @@ viewPatterns plane =
                     , style "margin" "10px 0"
                     ]
                     [ span [] [ text <| String.fromInt index ++ ". " ]
-                    , span [] [ text <| occursText <| Tuple.first frequency ]
-                    , span [] [ text <| "Frequency: " ++
+                    , span [] [ text <| (occursText <| Tuple.first frequency) ++ ". " ]
+                    , span [] [ text <| "frequency: " ++
                         (case Tuple.second frequency of
                             Just freq -> freq |> frequencyToFloat |> String.fromFloat
-                            Nothing -> "Unknown") ]
+                            Nothing -> "unknown") ]
                     , viewTextPlane <| fromPattern pattern
                     , span [] [ text <| "Matches: " ]
                     -- , viewMatches matches
