@@ -5,8 +5,8 @@ import Dict
 import Dict exposing (Dict)
 
 import WFC.Vec2 exposing (..)
-import WFC.Occurence exposing (Occurence)
-import WFC.Occurence as Occurence
+import WFC.Occurrence exposing (Occurrence)
+import WFC.Occurrence as Occurrence
 import WFC.Plane.Plane exposing (..)
 import WFC.Plane.Offset exposing (..)
 
@@ -230,16 +230,16 @@ findAllSubsAlt method ofSize inPlane =
     inPlane
         |> coordsFlat
         |> (case method of
-            Periodic ->
-                List.map (\coord -> periodicSubAt coord ofSize inPlane)
-            Bounded ->
-                List.map (\coord -> subAt coord ofSize inPlane)
-                >> List.filterMap identity)
+                Periodic ->
+                    List.map (\coord -> periodicSubAt coord ofSize inPlane)
+                Bounded ->
+                    List.map (\coord -> subAt coord ofSize inPlane)
+                    >> List.filterMap identity)
         |> List.concatMap allViews
 
 
-findOccurence : List (Plane Vec2 a) -> List (Occurence, Plane Vec2 a)
-findOccurence allPlanes =
+findOccurrence : List (Plane Vec2 a) -> List (Occurrence, Plane Vec2 a)
+findOccurrence allPlanes =
     let
         unique =
             allPlanes
@@ -258,11 +258,11 @@ findOccurence allPlanes =
                         ( allPlanes
                             |> List.filter (equal subPlane)
                             |> List.length
-                            |> Occurence.times
+                            |> Occurrence.times
                         , subPlane
                         )
                 )
-            |> List.sortBy (Tuple.first >> Occurence.toInt)
+            |> List.sortBy (Tuple.first >> Occurrence.toInt)
 
 
 limitsFor : Vec2 -> { from: Vec2, to: Vec2 }

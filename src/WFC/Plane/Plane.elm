@@ -17,6 +17,7 @@ import Dict exposing (Dict)
 
 type Plane v a = Plane v (v -> Maybe a)
  -- TODO: should check incoming v's by `v -> Bool` before, like, if they fit?
+ --       or some advancing, like `v -> Direction -> Maybe v`? which could never end?
 
 
 type alias Cell v a = (v, Maybe a)

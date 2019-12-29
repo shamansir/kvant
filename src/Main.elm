@@ -18,7 +18,7 @@ import WFC.Core exposing (WFC, TextWFC)
 import WFC.Core as WFC
 import WFC.Vec2 exposing (..)
 import WFC.Plane.Plane exposing (N(..), Plane, Cell)
-import WFC.Occurence exposing (Occurence(..))
+import WFC.Occurrence exposing (Occurrence(..), frequencyToFloat)
 import WFC.Plane.Flat as Plane exposing (SearchMethod(..), sub ,subAt, foldMap)
 import WFC.Plane.Flat exposing (flip, rotate, unpack, foldMap, rotateTo, flipBy, Orientation(..), Flip(..), allViews, findAllSubs, findAllSubsAlt, materializeFlatten)
 import WFC.Plane.Text exposing (TextPlane)
@@ -442,13 +442,17 @@ viewPatterns plane =
         ]
         <| Dict.values
         <| Dict.map
-            (\index {occured, pattern, matches} ->
+            (\index {frequency, pattern, matches} ->
                 div
                     [ class <| "pattern-" ++ String.fromInt index
                     , style "margin" "10px 0"
                     ]
                     [ span [] [ text <| String.fromInt index ++ ". " ]
-                    , span [] [ text <| occursText occured ]
+                    , span [] [ text <| occursText <| Tuple.first frequency ]
+                    , span [] [ text <| "Frequency: " ++
+                        (case Tuple.second frequency of
+                            Just freq -> freq |> frequencyToFloat |> String.fromFloat
+                            Nothing -> "Unknown") ]
                     , viewTextPlane <| fromPattern pattern
                     , span [] [ text <| "Matches: " ]
                     -- , viewMatches matches
@@ -552,7 +556,7 @@ viewCell ( coord, char ) =
         ]
 
 
-occursText : Occurence -> String
+occursText : Occurrence -> String
 occursText occured =
     case occured of
         Unknown -> "occurs unknown amount of times"

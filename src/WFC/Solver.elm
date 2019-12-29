@@ -7,12 +7,12 @@ import Dict exposing (Dict)
 import Random
 
 import WFC.Vec2 exposing (..)
-import WFC.Occurence exposing (Occurence)
-import WFC.Occurence as Occurence
+import WFC.Occurrence exposing (Occurrence, Frequency, calculateFrequency)
+import WFC.Occurrence as Occurrence
 import WFC.Plane.Plane exposing (Plane(..), N(..))
 import WFC.Plane.Plane as Plane exposing (map)
 import WFC.Plane.Flat as Plane
-    exposing (SearchMethod, foldl, coords, equal, sub, findMatches, findAllSubs, findAllSubsAlt, findOccurence)
+    exposing (SearchMethod, foldl, coords, equal, sub, findMatches, findAllSubs, findAllSubsAlt, findOccurrence)
 import WFC.Plane.Offset exposing (OffsetPlane(..))
 import WFC.Neighbours exposing (..)
 
@@ -50,7 +50,7 @@ type alias PatternId = Int
 
 type alias UniquePattern v a =
     { pattern: Pattern v a
-    , occured : Occurence
+    , frequency : ( Occurrence, Maybe Frequency )
     , matches : OffsetPlane v (List PatternId)
     }
 
@@ -83,7 +83,7 @@ findUniquePatterns
 findUniquePatterns method ofSize inPlane =
     let
         allSubplanes = findAllSubs method ofSize inPlane
-        uniqueSubplanes = findOccurence allSubplanes
+        uniqueSubplanes = findOccurrence allSubplanes
         uniquePatterns =
             uniqueSubplanes
                 |> List.map (Tuple.mapSecond toPattern)
@@ -99,11 +99,15 @@ findUniquePatterns method ofSize inPlane =
         onlyPatternsDict =
             uniquePatternsDict
                 |> Dict.map (always Tuple.second)
-
+        frequencyDict =
+            uniquePatternsDict
+                |> Dict.map (always Tuple.first)
+                |> calculateFrequency
     in
         uniquePatternsDict
-                |> Dict.map (\_ ( occurence, pattern ) ->
-                        { occured = occurence
+                |> Dict.map (\id ( occurrence, pattern ) ->
+                        { frequency =
+                            ( occurrence, Dict.get id frequencyDict )
                         , pattern = pattern
                         , matches =
                             findMatches

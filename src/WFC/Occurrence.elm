@@ -1,4 +1,4 @@
-module WFC.Occurence exposing (..)
+module WFC.Occurrence exposing (..)
 
 
 import Dict exposing (Dict)
@@ -8,46 +8,50 @@ import Dict as Dict
 type Frequency = Frequency Float
 
 
-type Occurence
+type Occurrence
     = Unknown
     | Times Int
 
 
-toInt : Occurence -> Int
+toInt : Occurrence -> Int
 toInt occured =
     case occured of
         Unknown -> 0
         Times howMuch -> howMuch
 
 
-toMaybe : Occurence -> Maybe Int
+toMaybe : Occurrence -> Maybe Int
 toMaybe occured =
     case occured of
         Unknown -> Nothing
         Times howMuch -> Just howMuch
 
 
-compare_ : Occurence -> Occurence -> Order
+compare_ : Occurrence -> Occurrence -> Order
 compare_ a b =
     compare (toInt a) (toInt b)
 
 
-once : Occurence
+once : Occurrence
 once = Times 1
 
 
-times : Int -> Occurence
+times : Int -> Occurrence
 times = Times
 
 
-inc : Occurence -> Occurence
+inc : Occurrence -> Occurrence
 inc occured =
     case occured of
         Unknown -> Times 1
         Times before -> Times <| before + 1
 
 
-calculateFrequency : Dict Int Occurence -> Dict Int Frequency
+frequencyToFloat : Frequency -> Float
+frequencyToFloat (Frequency v) = v
+
+
+calculateFrequency : Dict Int Occurrence -> Dict Int Frequency
 calculateFrequency occuredData =
     let
         maxValue
