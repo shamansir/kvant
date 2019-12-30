@@ -25,7 +25,7 @@ import WFC.Plane.Text exposing (TextPlane)
 import WFC.Plane.Text as TextPlane exposing (make)
 import WFC.Plane.Offset exposing (Offset, OffsetPlane)
 import WFC.Plane.Offset as Offsets exposing (foldMap)
-import WFC.Solver exposing (Approach(..), fromPattern)
+import WFC.Solver exposing (Approach(..))
 import WFC.Solver as WFC exposing (TextOptions)
 
 
@@ -453,7 +453,7 @@ viewPatterns plane =
                         (case Tuple.second frequency of
                             Just freq -> freq |> frequencyToFloat |> String.fromFloat
                             Nothing -> "unknown") ]
-                    , viewTextPlane <| fromPattern pattern
+                    , viewTextPlane pattern
                     , span [] [ text <| "Matches: " ]
                     -- , viewMatches matches
                     , matches |> viewMatchesWithPatterns patterns
@@ -502,8 +502,7 @@ viewMatchesWithPatterns patterns plane =
                 , style "max-width" "50px"
                 , style "margin-right" "-20px"
                 ]
-                [ viewTextPlane
-                    <| WFC.fromPattern patternData.pattern
+                [ viewTextPlane patternData.pattern
                 ]
     in
         plane

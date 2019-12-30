@@ -10,11 +10,11 @@ import Random
 
 import WFC.Vec2 exposing (..)
 import WFC.Plane.Text as TextPlane exposing (make, toString)
-import WFC.Solver exposing (..)
+import WFC.Solver as Solver exposing (initFlat, Step(..), findUniquePatterns)
 
 
 type WFC v fmt a =
-    WFC ( (Step a, fmt) -> (Step a, fmt) )
+    WFC ( (Solver.Step a, fmt) -> (Solver.Step a, fmt) )
 
 
 type Instance
@@ -24,24 +24,18 @@ type Instance
 type alias TextWFC = WFC Vec2 String Char
 
 
-text : TextOptions -> TextWFC
+text : Solver.TextOptions -> TextWFC
 text options =
     WFC <|
         \(step, input) ->
             let
                 -- plane : TextPlane
                 plane = input |> TextPlane.make options.inputSize
-                -- patterns : List ( Occured, TextPlane )
-                patterns
-                    = findUniquePatterns
-                        options.patternSearch
-                        options.patternSize
-                        plane
                 -- solver : TextSolver
-                solver = Solver options plane patterns
+                solver = Solver.initFlat plane options
             in
                 solver
-                    |> solve step
+                    |> Solver.solve step
                     |> Tuple.mapSecond TextPlane.toString
 
 
@@ -52,4 +46,4 @@ text options =
 
 
 run : Random.Seed -> fmt -> WFC v fmt a -> fmt
-run seed input (WFC wfc) = Tuple.second <| wfc ( Step 0 seed, input )
+run seed input (WFC wfc) = Tuple.second <| wfc ( Solver.Step 0 seed, input )

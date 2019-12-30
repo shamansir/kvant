@@ -18,12 +18,12 @@ import WFC.Neighbours exposing (..)
 
 
 type Cell
-    = Contradiction
-    | Entropy Int
+    = Contadiction
+    | Entropy Float
 
 
-type Pattern v a = Pattern v (v -> Maybe a)
-type Wave v = Wave v (v -> Maybe Cell)
+type alias Pattern v a = Plane v a
+type alias Wave v = Plane v (List PatternId)
 
 
 type Approach
@@ -32,11 +32,11 @@ type Approach
 
 
 type alias Options v =
-    { approach: Approach
-    , patternSearch: SearchMethod
-    , patternSize: N v
-    , inputSize: v
-    , outputSize: v
+    { approach : Approach
+    , patternSearch : SearchMethod
+    , patternSize : N v
+    , inputSize : v
+    , outputSize : v
     -- add symmetry etc.
     }
 
@@ -48,8 +48,11 @@ type Step a
 type alias PatternId = Int
 
 
+-- type Entropy = Entropy Float
+
+
 type alias UniquePattern v a =
-    { pattern: Pattern v a
+    { pattern : Pattern v a
     , frequency : ( Occurrence, Maybe Frequency )
     , matches : OffsetPlane v (List PatternId)
     }
@@ -61,14 +64,31 @@ type alias UniquePatterns v a =
 
 type Solver v a =
     Solver
-        (Options v)
-        (Plane v a) -- source plane
-        (UniquePatterns v a) -- pattern statistics
+        { options : Options v
+        , source : Plane v a
+        , patterns : UniquePatterns v a
+        , wave : Wave v
+        }
+
+
+initFlat : Plane Vec2 a -> Options Vec2 -> Solver Vec2 a
+initFlat (Plane size _ as source) options =
+    Solver
+        { options = options
+        , source = source
+        , patterns =
+            findUniquePatterns
+                options.patternSearch
+                options.patternSize
+                source
+        , wave = Plane.empty size
+        }
+
 
 
 solve : Step a -> Solver v a -> ( Step a, Plane v a )
-solve step (Solver options sourcePlane patterns) =
-    ( step, sourcePlane )
+solve step (Solver { options, source, patterns }) =
+    ( step, source )
 
 
 type alias TextOptions = Options Vec2
@@ -83,15 +103,7 @@ findUniquePatterns
 findUniquePatterns method ofSize inPlane =
     let
         allSubplanes = findAllSubs method ofSize inPlane
-        uniqueSubplanes = findOccurrence allSubplanes
-        uniquePatterns =
-            uniqueSubplanes
-                |> List.map (Tuple.mapSecond toPattern)
-        -- uniquePatternsWithIds =
-        --     uniquePatterns
-        --         |> List.map Tuple.second
-        --         |> List.indexedMap Tuple.pair
-                -- |> List.map (Tuple.mapFirst PatternId)
+        uniquePatterns = findOccurrence allSubplanes
         uniquePatternsDict =
             uniquePatterns
                 |> List.indexedMap Tuple.pair
@@ -125,22 +137,3 @@ findNeighbours from pattern =
         (neighboursAt W  from pattern)                               (neighboursAt  E from pattern)
         (neighboursAt SW from pattern) (neighboursAt S from pattern) (neighboursAt SE from pattern)
 -}
-
-
-findMatches
-    :  Dict PatternId (Pattern Vec2 a)
-    -> Pattern Vec2 a
-    -> OffsetPlane Vec2 (List PatternId)
-findMatches from for =
-    Plane.findMatches
-        (from
-            |> Dict.map (always fromPattern))
-        (fromPattern for)
-
-
-toPattern : Plane v a -> Pattern v a
-toPattern (Plane size f) = Pattern size f
-
-
-fromPattern : Pattern v a -> Plane v a
-fromPattern (Pattern size f) = Plane size f
