@@ -34,6 +34,12 @@ get : Plane v a -> v -> Maybe a
 get (Plane _ f) = f
 
 
+-- set : v -> a -> Plane v a -> Plane v a
+-- set pos value (Plane size f) =
+--     Plane size <| \otherPos ->
+--         if otherPos == pos then Just value else f otherPos
+
+
 getSize : Plane v a -> v
 getSize (Plane size _) = size
 

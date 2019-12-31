@@ -17,13 +17,13 @@ import WFC.Plane.Offset exposing (OffsetPlane(..))
 import WFC.Neighbours exposing (..)
 
 
-type Cell
+type State
     = Contadiction
     | Entropy Float
 
 
 type alias Pattern v a = Plane v a
-type alias Wave v = Plane v (List PatternId)
+type alias Wave v = Plane v (State, List PatternId)
 
 
 type Approach
@@ -41,8 +41,8 @@ type alias Options v =
     }
 
 
-type Step a
-    = Step Int Random.Seed
+type Step v
+    = Step Int Random.Seed (StepStatus v)
 
 
 type alias PatternId = Int
@@ -62,13 +62,39 @@ type alias UniquePatterns v a =
     Dict PatternId (UniquePattern v a)
 
 
+type alias Walker v =
+    { next : Direction -> v
+    , random : Random.Generator v
+    }
+
+
+type StepStatus v
+    = Initial
+    | InProgess (Wave v)
+    | Solved (Wave v)
+    | Terminated -- terminated by contradiction
+
+
+type Observation v
+    = Collapsed
+    | Contradiction
+    | LowestAt v
+    | Random v
+
+
 type Solver v a =
     Solver
         { options : Options v
         , source : Plane v a
         , patterns : UniquePatterns v a
         , wave : Wave v
+        , walker : Walker v
         }
+
+
+firstStep : Random.Seed -> Step v
+firstStep seed =
+    Step 0 seed Initial
 
 
 initFlat : Plane Vec2 a -> Options Vec2 -> Solver Vec2 a
@@ -82,13 +108,36 @@ initFlat (Plane size _ as source) options =
                 options.patternSize
                 source
         , wave = Plane.empty size
+        , walker = flatWalker size
         }
 
 
+flatWalker : Vec2 -> Walker Vec2
+flatWalker ( w, h ) =
+    { next = always (0, 0)
+    , random =
+        Random.map2
+            Tuple.pair
+            (Random.int 0 (w - 1))
+            (Random.int 0 (h - 1))
+    }
 
-solve : Step a -> Solver v a -> ( Step a, Plane v a )
+
+solve : Step v -> Solver v a -> ( Step v, Plane v a )
 solve step (Solver { options, source, patterns }) =
     ( step, source )
+
+
+minimumEntropy : Wave Vec2 -> Maybe Vec2
+minimumEntropy (Plane size wf) = Just (0, 0)
+
+
+observe : ( Int, Int ) -> ( Random.Seed, Wave Vec2 ) -> Vec2 -> ( Int, Random.Seed, Observation Vec2 )
+observe ( current, max ) ( seed, wave ) location = ( current, seed, Random (0, 0) )
+
+
+propagate : Observation Vec2 -> Wave Vec2 -> Wave Vec2
+propagate observation wave = wave
 
 
 type alias TextOptions = Options Vec2

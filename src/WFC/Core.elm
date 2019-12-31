@@ -14,7 +14,7 @@ import WFC.Solver as Solver exposing (initFlat, Step(..), findUniquePatterns)
 
 
 type WFC v fmt a =
-    WFC ( (Solver.Step a, fmt) -> (Solver.Step a, fmt) )
+    WFC ( (Solver.Step v, fmt) -> (Solver.Step v, fmt) )
 
 
 type Instance
@@ -46,4 +46,4 @@ text options =
 
 
 run : Random.Seed -> fmt -> WFC v fmt a -> fmt
-run seed input (WFC wfc) = Tuple.second <| wfc ( Solver.Step 0 seed, input )
+run seed input (WFC wfc) = Tuple.second <| wfc ( Solver.firstStep seed, input )
