@@ -37,6 +37,7 @@ type alias Options v =
     , patternSize : N v
     , inputSize : v
     , outputSize : v
+    , maxAttempts : Int
     -- add symmetry etc.
     }
 
@@ -70,7 +71,7 @@ type alias Walker v =
 
 type StepStatus v
     = Initial
-    | InProgess (Wave v)
+    | InProgress (Wave v)
     | Solved (Wave v)
     | Terminated -- terminated by contradiction
 
@@ -78,16 +79,14 @@ type StepStatus v
 type Observation v
     = Collapsed
     | Contradiction
-    | LowestAt v
-    | Random v
+    | Next v
 
 
 type Solver v a =
     Solver
         { options : Options v
         , source : Plane v a
-        , patterns : UniquePatterns v a
-        , wave : Wave v
+        , patterns : UniquePatterns v a -- a function which returns the adjastent matching tiles?
         , walker : Walker v
         }
 
@@ -107,7 +106,6 @@ initFlat (Plane size _ as source) options =
                 options.patternSearch
                 options.patternSize
                 source
-        , wave = Plane.empty size
         , walker = flatWalker size
         }
 
@@ -123,25 +121,46 @@ flatWalker ( w, h ) =
     }
 
 
-solve : Step v -> Solver v a -> ( Step v, Plane v a )
-solve step (Solver { options, source, patterns }) =
-    ( step, source )
+solve : Solver v a -> Step v -> Step v
+solve (Solver { options, source, patterns, walker } as solver) step  =
+    if getCount step < options.maxAttempts then
+        case getStatus step of
+            Initial ->
+                let
+                    wave = initWave source
+                in
+                    observe walker ( getSeed step, wave )
+                        |> propagate walker wave
+                        |> solve solver
+                        -- advance
+            InProgress wave ->
+                observe walker ( getSeed step, wave )
+                    |> propagate walker wave
+                    |> solve solver
+                    -- advance
+            _ -> step
+        -- nextStep (getSeed step) step
+    else step
+
+
+initWave : Plane v a -> Wave v
+initWave (Plane size _) = Plane.empty size
+
+
+apply : Plane v a -> Step v -> Plane v a
+apply source step = source
 
 
 minimumEntropy : Wave Vec2 -> Maybe Vec2
 minimumEntropy (Plane size wf) = Just (0, 0)
 
 
-observe : ( Int, Int ) -> ( Random.Seed, Wave Vec2 ) -> Vec2 -> ( Int, Random.Seed, Observation Vec2 )
-observe ( current, max ) ( seed, wave ) location = ( current, seed, Random (0, 0) )
+observe : Walker v -> ( Random.Seed, Wave v ) -> ( Random.Seed, Observation v )
+observe { next } ( seed, wave ) = ( seed, Next <| next S )
 
 
-propagate : Observation Vec2 -> Wave Vec2 -> Wave Vec2
-propagate observation wave = wave
-
-
-type alias TextOptions = Options Vec2
-type alias TextSolver = Solver Vec2 Char
+propagate : Walker v -> Wave v -> ( Random.Seed, Observation v ) -> ( Random.Seed, Wave v )
+propagate _ wave ( seed, observation ) = ( seed, wave )
 
 
 findUniquePatterns
@@ -173,6 +192,26 @@ findUniquePatterns method ofSize inPlane =
                     )
 
 
+getSeed : Step v -> Random.Seed
+getSeed (Step _ seed _) = seed
+
+
+getStatus : Step v -> StepStatus v
+getStatus (Step _ _ status) = status
+
+
+getCount : Step v -> Int
+getCount (Step n _ _) = n
+
+
+nextStep : Step v -> Random.Seed -> StepStatus v -> Step v
+nextStep (Step n _ _) seed status = Step (n + 1) seed status
+
+
+updateStatus : StepStatus v -> Step v -> Step v
+updateStatus status (Step n seed _) = Step n seed status
+
+
 {-
 neighboursAt : Direction -> List (PatternId, Pattern v a) -> Pattern v a -> List PatternId
 neighboursAt dir from (Pattern size f) =
@@ -186,3 +225,7 @@ findNeighbours from pattern =
         (neighboursAt W  from pattern)                               (neighboursAt  E from pattern)
         (neighboursAt SW from pattern) (neighboursAt S from pattern) (neighboursAt SE from pattern)
 -}
+
+
+type alias TextOptions = Options Vec2
+type alias TextSolver = Solver Vec2 Char

@@ -27,16 +27,19 @@ type alias TextWFC = WFC Vec2 String Char
 text : Solver.TextOptions -> TextWFC
 text options =
     WFC <|
-        \(step, input) ->
+        \(nextStep, input) ->
             let
                 -- plane : TextPlane
                 plane = input |> TextPlane.make options.inputSize
                 -- solver : TextSolver
                 solver = Solver.initFlat plane options
             in
-                solver
-                    |> Solver.solve step
-                    |> Tuple.mapSecond TextPlane.toString
+                case solver |> Solver.solve nextStep of
+                    lastStep ->
+                        ( lastStep
+                        , Solver.apply plane lastStep
+                            |> TextPlane.toString
+                        )
 
 
 -- load : Instance -> WFC pos size fmt item
