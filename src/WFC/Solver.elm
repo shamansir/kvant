@@ -17,6 +17,11 @@ import WFC.Plane.Offset exposing (OffsetPlane(..))
 import WFC.Neighbours exposing (..)
 
 
+type AdvanceRule
+    = MaximumAttempts Int
+    | AdvanceManually
+
+
 type State
     = Contadiction
     | Entropy Float
@@ -37,7 +42,7 @@ type alias Options v =
     , patternSize : N v
     , inputSize : v
     , outputSize : v
-    , maxAttempts : Int
+    , advanceRule : AdvanceRule
     -- add symmetry etc.
     }
 
@@ -134,17 +139,21 @@ solve (Solver { options, source, patterns, walker } as solver) step  =
                 ( oSeed, Next position ) ->
                     case propagate walker position ( oSeed, wave ) of
                         ( pSeed, newWave ) ->
-                            (nextStep step pSeed <| InProgress newWave)
-                                |> solve solver
+                            let
+                                next = nextStep step pSeed <| InProgress newWave
+                            in case options.advanceRule of
+                                MaximumAttempts count ->
+                                    if getCount step <= count
+                                    then next |> solve solver
+                                    else next
+                                AdvanceManually -> next
     in
-        if getCount step < options.maxAttempts then
-            case getStatus step of
-                Initial ->
-                    advance <| initWave source
-                InProgress wave ->
-                    advance wave
-                _ -> step
-        else step
+        case getStatus step of
+            Initial ->
+                advance <| initWave source
+            InProgress wave ->
+                advance wave
+            _ -> step
 
 
 initWave : Plane v a -> Wave v

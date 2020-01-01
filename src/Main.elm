@@ -48,7 +48,7 @@ options =
     , patternSize = N ( 2, 2 )
     , inputSize = ( 4, 4 )
     , outputSize = ( 10, 10 )
-    , maxAttempts = 50
+    , advanceRule = WFC.MaximumAttempts 50
     }
 
 

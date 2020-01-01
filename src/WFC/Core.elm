@@ -50,3 +50,6 @@ text options =
 
 run : Random.Seed -> fmt -> WFC v fmt a -> fmt
 run seed input (WFC wfc) = Tuple.second <| wfc ( Solver.firstStep seed, input )
+
+
+
