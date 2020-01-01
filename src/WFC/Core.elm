@@ -34,7 +34,7 @@ text options =
                 -- solver : TextSolver
                 solver = Solver.initFlat plane options
             in
-                case solver |> Solver.solve nextStep of
+                case Solver.solve solver nextStep of
                     lastStep ->
                         ( lastStep
                         , Solver.apply plane lastStep

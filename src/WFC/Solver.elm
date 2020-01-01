@@ -123,24 +123,28 @@ flatWalker ( w, h ) =
 
 solve : Solver v a -> Step v -> Step v
 solve (Solver { options, source, patterns, walker } as solver) step  =
-    if getCount step < options.maxAttempts then
-        case getStatus step of
-            Initial ->
-                let
-                    wave = initWave source
-                in
-                    observe walker ( getSeed step, wave )
-                        |> propagate walker wave
-                        |> solve solver
-                        -- advance
-            InProgress wave ->
-                observe walker ( getSeed step, wave )
-                    |> propagate walker wave
-                    |> solve solver
-                    -- advance
-            _ -> step
-        -- nextStep (getSeed step) step
-    else step
+    let
+        seed = getSeed step
+        advance wave =
+            case observe walker ( seed, wave ) of
+                ( oSeed, Collapsed ) ->
+                    nextStep step oSeed <| Solved wave
+                ( oSeed, Contradiction ) ->
+                    nextStep step oSeed <| Terminated
+                ( oSeed, Next position ) ->
+                    case propagate walker position ( oSeed, wave ) of
+                        ( pSeed, newWave ) ->
+                            (nextStep step pSeed <| InProgress newWave)
+                                |> solve solver
+    in
+        if getCount step < options.maxAttempts then
+            case getStatus step of
+                Initial ->
+                    advance <| initWave source
+                InProgress wave ->
+                    advance wave
+                _ -> step
+        else step
 
 
 initWave : Plane v a -> Wave v
@@ -159,8 +163,8 @@ observe : Walker v -> ( Random.Seed, Wave v ) -> ( Random.Seed, Observation v )
 observe { next } ( seed, wave ) = ( seed, Next <| next S )
 
 
-propagate : Walker v -> Wave v -> ( Random.Seed, Observation v ) -> ( Random.Seed, Wave v )
-propagate _ wave ( seed, observation ) = ( seed, wave )
+propagate : Walker v -> v -> ( Random.Seed, Wave v ) -> ( Random.Seed, Wave v )
+propagate _ coord ( seed, wave ) = ( seed, wave )
 
 
 findUniquePatterns
