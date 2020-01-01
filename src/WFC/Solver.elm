@@ -142,8 +142,8 @@ solve (Solver { options, source, patterns, walker } as solver) step  =
                             let
                                 next = nextStep step pSeed <| InProgress newWave
                             in case options.advanceRule of
-                                MaximumAttempts count ->
-                                    if getCount step <= count
+                                MaximumAttempts maxAttempts ->
+                                    if step |> exceeds maxAttempts
                                     then next |> solve solver
                                     else next
                                 AdvanceManually -> next
@@ -223,6 +223,10 @@ nextStep (Step n _ _) seed status = Step (n + 1) seed status
 
 updateStatus : StepStatus v -> Step v -> Step v
 updateStatus status (Step n seed _) = Step n seed status
+
+
+exceeds : Int -> Step v -> Bool
+exceeds count (Step stepN _ _) = count <= stepN
 
 
 {-
