@@ -1,7 +1,7 @@
 module WFC.Core exposing
     ( WFC, Instance(..)
     , text, TextWFC
-    , run
+    , run, step, firstStep
     )
 
 
@@ -20,7 +20,7 @@ type WFC v fmt a =
 
 
 type Instance
-    = Text (String -> TextWFC)
+    = Text (String -> TextWFC) (Step Vec2)
 
 
 type alias TextWFC = WFC Vec2 String Char
@@ -50,9 +50,12 @@ text options input =
 
 
 run : Random.Seed -> WFC v fmt a -> fmt
-run seed (WFC solver wfc) = Tuple.second <| wfc <| Solver.firstStep seed
+run seed = firstStep seed >> Tuple.second
 
 
 step : Step v -> WFC v fmt a -> ( Step v, fmt )
-step stepToPerform (WFC _ wfc) =
-    wfc stepToPerform
+step stepToPerform (WFC _ wfc) = wfc stepToPerform
+
+
+firstStep : Random.Seed -> WFC v fmt a -> ( Step v, fmt )
+firstStep = step << Solver.firstStep

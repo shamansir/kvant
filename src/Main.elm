@@ -13,6 +13,7 @@ import Array as A exposing (map)
 
 import Html exposing (..)
 import Html.Attributes exposing (..)
+import Html.Events exposing (..)
 
 import WFC.Core exposing (WFC, TextWFC)
 import WFC.Core as WFC
@@ -31,13 +32,19 @@ import WFC.Solver as WFC exposing (TextOptions)
 
 type alias Model =
     { source: String
-    , result: Maybe String
+    , current: Maybe String
+    , wfc : TextWFC
+    , lastStep : Maybe (WFC.Step Vec2)
     }
 
 
 type Msg
     = NoOp
-    | Calculate Random.Seed WFC.Instance
+    | TryRunOnce
+    | TryStartTracing
+    | Run Random.Seed
+    | StartTracing Random.Seed
+    | NextStep
 
 
 
@@ -64,8 +71,10 @@ init =
             )
     in
         Model
-        srcText
-        Nothing
+            srcText
+            Nothing
+            (WFC.text options srcText)
+            Nothing
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -73,14 +82,61 @@ update msg model =
     case msg of
         NoOp ->
             ( model, Cmd.none )
-        Calculate seed wfcInstance ->
+        TryRunOnce ->
             (
                 { model
-                | result =
-                    case wfcInstance of
-                        WFC.Text wfc ->
-                            Just ( wfc model.source |> WFC.run seed )
+                | current = Nothing
+                , lastStep = Nothing
                 }
+            , Task.perform
+                (\time ->
+                    Run <| Random.initialSeed <| Time.posixToMillis time
+                )
+                Time.now
+            )
+        TryStartTracing ->
+            (
+                { model
+                | current = Nothing
+                , lastStep = Nothing
+                }
+            , Task.perform
+                (\time ->
+                    StartTracing <| Random.initialSeed <| Time.posixToMillis time
+                )
+                Time.now
+            )
+        Run seed ->
+            (
+                { model
+                | current = Just (model.wfc |> WFC.run seed)
+                , lastStep = Nothing
+                }
+            , Cmd.none
+            )
+        StartTracing seed ->
+            (
+                let
+                    (lastStep, result) = model.wfc |> WFC.Core.firstStep seed
+                in
+                    { model
+                    | current = Just result
+                    , lastStep = Just lastStep
+                    }
+            , Cmd.none
+            )
+        NextStep ->
+            (
+                case model.lastStep of
+                    Just step ->
+                        let
+                            (lastStep, result) = model.wfc |> WFC.step step
+                        in
+                            { model
+                            | current = Just result
+                            , lastStep = Just lastStep
+                            }
+                    Nothing -> model
             , Cmd.none
             )
 
@@ -114,7 +170,14 @@ view model =
         [ model.source
             |> viewTextInBounds options.inputSize
         , hr [] []
-        , model.result
+        , button [ onClick TryRunOnce ] [ text "Run once" ]
+        , model.current
+            |> Maybe.map (viewTextInBounds options.outputSize)
+            |> Maybe.withDefault (div [] [])
+        , hr [] []
+        , button [ onClick TryStartTracing ] [ text "Start tracing" ]
+        , button [ onClick NextStep ] [ text "Next Step" ]
+        , model.current
             |> Maybe.map (viewTextInBounds options.outputSize)
             |> Maybe.withDefault (div [] [])
         -- --------------------------
@@ -156,16 +219,7 @@ view model =
 main : Program {} Model Msg
 main =
     Browser.application
-        { init = \_ _ _ ->
-                    ( init,
-                     Task.perform
-                        (\time ->
-                            Calculate
-                                (Random.initialSeed <| Time.posixToMillis time)
-                                <| WFC.Text <| WFC.text options
-                        )
-                        Time.now
-                    )
+        { init = \_ _ _ -> ( init, Cmd.none )
         , onUrlChange = always NoOp
         , onUrlRequest = always NoOp
         , subscriptions = always Sub.none
