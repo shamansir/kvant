@@ -79,7 +79,7 @@ update msg model =
                 | result =
                     case wfcInstance of
                         WFC.Text wfc ->
-                            Just ( wfc |> WFC.run seed model.source )
+                            Just ( wfc model.source |> WFC.run seed )
                 }
             , Cmd.none
             )

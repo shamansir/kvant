@@ -12,7 +12,7 @@ import WFC.Occurrence as Occurrence
 import WFC.Plane.Plane exposing (Plane(..), N(..))
 import WFC.Plane.Plane as Plane exposing (map)
 import WFC.Plane.Flat as Plane
-    exposing (SearchMethod, foldl, coords, equal, sub, findMatches, findAllSubs, findAllSubsAlt, findOccurrence)
+    exposing ( SearchMethod, foldl, coords, equal, sub, findMatches, findAllSubs, findAllSubsAlt, findOccurrence )
 import WFC.Plane.Offset exposing (OffsetPlane(..))
 import WFC.Neighbours exposing (..)
 
@@ -203,6 +203,10 @@ findUniquePatterns method ofSize inPlane =
                                 pattern
                         }
                     )
+
+
+getSource : Solver v a -> Plane v a
+getSource (Solver { source }) = source
 
 
 getSeed : Step v -> Random.Seed
