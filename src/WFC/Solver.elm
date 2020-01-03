@@ -79,6 +79,7 @@ type StepStatus v
     | InProgress (Wave v)
     | Solved (Wave v)
     | Terminated -- terminated by contradiction
+    | Exceeded Int
 
 
 type Observation v
@@ -142,11 +143,11 @@ solve (Solver { options, source, patterns, walker } as solver) step  =
                             let
                                 next = nextStep step pSeed <| InProgress newWave
                             in case options.advanceRule of
-                                MaximumAttempts maxAttempts ->
-                                    if step |> exceeds maxAttempts
-                                    then next |> solve solver
-                                    else next
                                 AdvanceManually -> next
+                                MaximumAttempts maxAttempts ->
+                                    if not (step |> exceeds maxAttempts)
+                                    then next |> solve solver
+                                    else next |> (updateStatus <| Exceeded maxAttempts)
     in
         case getStatus step of
             Initial ->

@@ -437,4 +437,5 @@ viewStepStatus (WFC.Step num _ status) =
            WFC.InProgress _ -> "(in progress)"
            WFC.Solved _ -> "(solved)"
            WFC.Terminated -> "(terminated)"
+           WFC.Exceeded attempts -> "(exceeded " ++ String.fromInt attempts ++ ")"
         ]
