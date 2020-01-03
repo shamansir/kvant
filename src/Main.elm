@@ -30,20 +30,26 @@ import WFC.Solver exposing (Approach(..))
 import WFC.Solver as WFC exposing (TextOptions)
 
 
+type Status
+    = None
+    | Busy
+    | Tracing (WFC.Step Vec2)
+
+
 type alias Model =
     { source: String
     , current: Maybe String
     , wfc : TextWFC
-    , lastStep : Maybe (WFC.Step Vec2)
+    , status : Status
     }
 
 
 type Msg
     = NoOp
-    | TryRunOnce
-    | TryStartTracing
+    | TriggerRunning
+    | TriggerTracing
     | Run Random.Seed
-    | StartTracing Random.Seed
+    | Trace Random.Seed
     | NextStep
 
 
@@ -82,11 +88,11 @@ update msg model =
     case msg of
         NoOp ->
             ( model, Cmd.none )
-        TryRunOnce ->
+        TriggerRunning ->
             (
                 { model
                 | current = Nothing
-                , lastStep = Nothing
+                , status = Busy
                 }
             , Task.perform
                 (\time ->
@@ -94,15 +100,15 @@ update msg model =
                 )
                 Time.now
             )
-        TryStartTracing ->
+        TriggerTracing ->
             (
                 { model
                 | current = Nothing
-                , lastStep = Nothing
+                , status = Busy
                 }
             , Task.perform
                 (\time ->
-                    StartTracing <| Random.initialSeed <| Time.posixToMillis time
+                    Trace <| Random.initialSeed <| Time.posixToMillis time
                 )
                 Time.now
             )
@@ -110,33 +116,33 @@ update msg model =
             (
                 { model
                 | current = Just (model.wfc |> WFC.run seed)
-                , lastStep = Nothing
+                , status = None
                 }
             , Cmd.none
             )
-        StartTracing seed ->
+        Trace seed ->
             (
                 let
                     (lastStep, result) = model.wfc |> WFC.Core.firstStep seed
                 in
                     { model
                     | current = Just result
-                    , lastStep = Just lastStep
+                    , status = Tracing lastStep
                     }
             , Cmd.none
             )
         NextStep ->
             (
-                case model.lastStep of
-                    Just step ->
+                case model.status of
+                    Tracing step ->
                         let
                             (lastStep, result) = model.wfc |> WFC.step step
                         in
                             { model
                             | current = Just result
-                            , lastStep = Just lastStep
+                            , status = Tracing lastStep
                             }
-                    Nothing -> model
+                    _ -> model
             , Cmd.none
             )
 
@@ -170,12 +176,12 @@ view model =
         [ model.source
             |> viewTextInBounds options.inputSize
         , hr [] []
-        , button [ onClick TryRunOnce ] [ text "Run once" ]
+        , button [ onClick TriggerRunning ] [ text "Run once" ]
         , model.current
             |> Maybe.map (viewTextInBounds options.outputSize)
             |> Maybe.withDefault (div [] [])
         , hr [] []
-        , button [ onClick TryStartTracing ] [ text "Start tracing" ]
+        , button [ onClick TriggerTracing ] [ text "Start tracing" ]
         , button [ onClick NextStep ] [ text "Next Step" ]
         , model.current
             |> Maybe.map (viewTextInBounds options.outputSize)
