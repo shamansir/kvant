@@ -424,3 +424,17 @@ symbolBg symbol =
         'E' -> "#BFC9CA"
         'F' -> "#2E86C1"
         _ -> "lightgray"
+
+
+viewStepStatus : WFC.Step Vec2 -> Html msg
+viewStepStatus (WFC.Step num _ status) =
+    span
+        []
+        [ text <| String.fromInt num
+        , text " "
+        , text <| case status of
+           WFC.Initial -> "(initial)"
+           WFC.InProgress _ -> "(in progress)"
+           WFC.Solved _ -> "(solved)"
+           WFC.Terminated -> "(terminated)"
+        ]

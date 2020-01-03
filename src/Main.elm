@@ -50,6 +50,7 @@ type Msg
     | Run Random.Seed
     | Trace Random.Seed
     | NextStep
+    | Stop
 
 
 
@@ -144,6 +145,13 @@ update msg model =
                     _ -> model
             , Cmd.none
             )
+        Stop ->
+            (
+                { model
+                -- | current = Nothing
+                | status = None
+                }
+            , Cmd.none )
 
 
 testPlane : TextPlane
@@ -168,20 +176,55 @@ testPlaneHex =
         )
 
 
+doingSomething : Status -> Bool
+doingSomething status =
+    case status of
+        None -> False
+        Busy -> True
+        Tracing _ -> True
+
+
+maybeStep : Status -> Maybe (WFC.Step Vec2)
+maybeStep status =
+    case status of
+        None -> Nothing
+        Busy -> Nothing
+        Tracing step -> Just step
+
+
 view : Model -> Html Msg
 view model =
     div
         [ ]
         [ model.source
             |> viewTextInBounds options.inputSize
+        , text <| if model.status /= None then  "Busy" else "Ready"
         , hr [] []
-        , button [ onClick TriggerRunning ] [ text "Run once" ]
+        , button
+            [ onClick TriggerRunning
+            , disabled <| doingSomething model.status
+            ]
+            [ text "Run once" ]
         , model.current
             |> Maybe.map (viewTextInBounds options.outputSize)
             |> Maybe.withDefault (div [] [])
         , hr [] []
-        , button [ onClick TriggerTracing ] [ text "Start tracing" ]
-        , button [ onClick NextStep ] [ text "Next Step" ]
+        , button
+            [ onClick TriggerTracing
+            , disabled <| doingSomething model.status
+            ]
+            [ text "Start tracing" ]
+        , button
+            [ onClick NextStep
+            , disabled <| model.status == None
+            ]
+            [ text "Next Step" ]
+        , model.status |> maybeStep |> Maybe.map viewStepStatus |> Maybe.withDefault (span [] [])
+        , button
+            [ onClick Stop
+            , disabled <| model.status == None
+            ]
+            [ text "Stop" ]
         , model.current
             |> Maybe.map (viewTextInBounds options.outputSize)
             |> Maybe.withDefault (div [] [])
