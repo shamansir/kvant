@@ -8,14 +8,15 @@ import Html.Attributes exposing (..)
 import Html.Events exposing (..)
 
 import WFC.Vec2 exposing (..)
-import WFC.Plane.Plane exposing (N(..), Plane, Cell)
+import WFC.Plane exposing (N(..), Plane, Cell)
 import WFC.Occurrence exposing (Occurrence(..), frequencyToFloat)
 import WFC.Plane.Flat as Plane exposing (SearchMethod(..), sub ,subAt, foldMap)
 import WFC.Plane.Flat exposing (..)
-import WFC.Plane.Text exposing (TextPlane)
+import WFC.Plane.Impl.Text exposing (TextPlane)
 import WFC.Plane.Offset exposing (Offset, OffsetPlane)
 import WFC.Plane.Offset as Offsets exposing (foldMap)
 import WFC.Solver as WFC
+import WFC.Solver.Flat as WFC
 
 
 splitBy : Int -> String -> List String

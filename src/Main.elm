@@ -20,13 +20,13 @@ import View exposing (..)
 import WFC.Core exposing (WFC, TextWFC)
 import WFC.Core as WFC
 import WFC.Vec2 exposing (..)
-import WFC.Plane.Plane exposing (N(..))
+import WFC.Plane exposing (N(..))
 import WFC.Plane.Flat as Plane exposing (SearchMethod(..))
 import WFC.Plane.Flat exposing (flip, rotate)
-import WFC.Plane.Text exposing (TextPlane)
-import WFC.Plane.Text as TextPlane exposing (make)
+import WFC.Plane.Impl.Text exposing (TextPlane)
+import WFC.Plane.Impl.Text as TextPlane exposing (make)
 import WFC.Solver exposing (Approach(..))
-import WFC.Solver as WFC exposing (TextOptions)
+import WFC.Solver as WFC exposing (Step, Options)
 
 
 type Status
@@ -54,7 +54,7 @@ type Msg
 
 
 
-options : WFC.TextOptions
+options : WFC.Options Vec2
 options =
     { approach = Overlapping
     , patternSearch = Bounded -- Periodic

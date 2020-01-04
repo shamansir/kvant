@@ -1,10 +1,10 @@
-module WFC.Plane.Text exposing (..)
+module WFC.Plane.Impl.Text exposing (..)
 
 import Array
 
 
 import WFC.Vec2 exposing (..)
-import WFC.Plane.Plane exposing (..)
+import WFC.Plane exposing (..)
 import WFC.Plane.Flat exposing (..)
 
 

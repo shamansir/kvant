@@ -9,8 +9,8 @@ import Random
 import WFC.Vec2 exposing (..)
 import WFC.Occurrence exposing (Occurrence, Frequency)
 import WFC.Occurrence as Occurrence
-import WFC.Plane.Plane exposing (Plane(..), N(..))
-import WFC.Plane.Plane as Plane exposing (map)
+import WFC.Plane exposing (Plane(..), N(..))
+import WFC.Plane as Plane exposing (map)
 import WFC.Plane.Flat as Plane
     exposing ( SearchMethod, foldl, coords, equal, sub, findMatches, findAllSubs, findAllSubsAlt, findOccurrence )
 import WFC.Plane.Offset exposing (OffsetPlane(..))
@@ -114,29 +114,6 @@ init options patterns walker source =
         }
 
 
-initFlat : Plane Vec2 a -> Options Vec2 -> Solver Vec2 a
-initFlat (Plane size _ as source) options =
-    init
-        options
-        (findUniquePatterns
-                options.patternSearch
-                options.patternSize
-                source)
-        (flatWalker size)
-        source
-
-
-flatWalker : Vec2 -> Walker Vec2
-flatWalker ( w, h ) =
-    { next = always (0, 0)
-    , random =
-        Random.map2
-            Tuple.pair
-            (Random.int 0 (w - 1))
-            (Random.int 0 (h - 1))
-    }
-
-
 solve : Solver v a -> Step v -> Step v
 solve (Solver { options, source, patterns, walker } as solver) step  =
     let
@@ -167,14 +144,6 @@ solve (Solver { options, source, patterns, walker } as solver) step  =
             _ -> step
 
 
-initWave : Plane v a -> Wave v
-initWave (Plane size _) = Plane.empty size
-
-
-apply : Plane v a -> Step v -> Plane v a
-apply source step = source
-
-
 minimumEntropy : Wave Vec2 -> Maybe Vec2
 minimumEntropy wave =
     Plane.foldl
@@ -191,33 +160,12 @@ propagate : Walker v -> v -> ( Random.Seed, Wave v ) -> ( Random.Seed, Wave v )
 propagate _ coord ( seed, wave ) = ( seed, wave )
 
 
-findUniquePatterns
-    :  SearchMethod
-    -> N Vec2
-    -> Plane Vec2 a
-    -> UniquePatterns Vec2 a
-findUniquePatterns method ofSize inPlane =
-    let
-        allSubplanes = findAllSubs method ofSize inPlane
-        uniquePatterns = findOccurrence allSubplanes
-        uniquePatternsDict =
-            uniquePatterns
-                |> List.indexedMap Tuple.pair
-                |> Dict.fromList
-        onlyPatternsDict =
-            uniquePatternsDict
-                |> Dict.map (always Tuple.second)
-    in
-        uniquePatternsDict
-                |> Dict.map (\_ ( frequency, pattern ) ->
-                        { frequency = frequency
-                        , pattern = pattern
-                        , matches =
-                            findMatches
-                                onlyPatternsDict
-                                pattern
-                        }
-                    )
+initWave : Plane v a -> Wave v
+initWave (Plane size _) = Plane.empty size
+
+
+apply : Plane v a -> Step v -> Plane v a
+apply source step = source
 
 
 getSource : Solver v a -> Plane v a
@@ -261,7 +209,3 @@ findNeighbours from pattern =
         (neighboursAt W  from pattern)                               (neighboursAt  E from pattern)
         (neighboursAt SW from pattern) (neighboursAt S from pattern) (neighboursAt SE from pattern)
 -}
-
-
-type alias TextOptions = Options Vec2
-type alias TextSolver = Solver Vec2 Char

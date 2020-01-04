@@ -1,4 +1,4 @@
-module WFC.Plane.Plane exposing (..)
+module WFC.Plane exposing (..)
 
 
 import Array

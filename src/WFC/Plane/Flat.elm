@@ -7,7 +7,7 @@ import Dict exposing (Dict)
 import WFC.Vec2 exposing (..)
 import WFC.Occurrence exposing (Occurrence, Frequency, frequencyFromFloat)
 import WFC.Occurrence as Occurrence
-import WFC.Plane.Plane exposing (..)
+import WFC.Plane exposing (..)
 import WFC.Plane.Offset exposing (..)
 
 
@@ -287,8 +287,6 @@ findOccurrence allPlanes =
                 )
 
 
-
-
 limitsFor : Vec2 -> { from: Vec2, to: Vec2 }
 limitsFor (w, h) =
     -- TODO: offsets for 1x1
@@ -304,7 +302,6 @@ limitsFor (w, h) =
             , if h == 1 then 1 else h - 1
             )
         }
-
 
 
 shift : Offset Vec2 -> Plane Vec2 a -> Plane Vec2 a

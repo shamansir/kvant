@@ -9,10 +9,11 @@ import Random
 
 
 import WFC.Vec2 exposing (..)
-import WFC.Plane.Text as TextPlane exposing (make, toString)
-import WFC.Plane.Plane exposing (Plane)
+import WFC.Plane.Impl.Text as TextPlane exposing (make, toString)
+import WFC.Plane exposing (Plane)
 import WFC.Solver exposing (Solver)
-import WFC.Solver as Solver exposing (initFlat, Step(..), findUniquePatterns, getSource)
+import WFC.Solver as Solver exposing (Step(..), getSource)
+import WFC.Solver.Flat as FlatSolver exposing (init)
 
 
 type WFC v fmt a =
@@ -26,12 +27,12 @@ type Instance
 type alias TextWFC = WFC Vec2 String Char
 
 
-text : Solver.TextOptions -> (String -> TextWFC)
+text : Solver.Options Vec2 -> (String -> TextWFC)
 text options input =
     let
         plane = input |> TextPlane.make options.inputSize
         -- solver : TextSolver
-        solver = Solver.initFlat plane options
+        solver = FlatSolver.init plane options
     in
         make TextPlane.toString solver <| input
 
