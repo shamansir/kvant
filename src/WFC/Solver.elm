@@ -17,25 +17,6 @@ import WFC.Plane.Offset exposing (OffsetPlane(..))
 import WFC.Neighbours exposing (..)
 
 
-type AdvanceRule
-    = MaximumAttempts Int
-    | AdvanceManually
-
-
-type State
-    = Contadiction
-    | Entropy Float
-
-
-type alias Pattern v a = Plane v a
-type alias Wave v = Plane v (State, List PatternId)
-
-
-type Approach
-    = Overlapping
-    | Tiled {- Rules -}
-
-
 type alias Options v =
     { approach : Approach
     , patternSearch : SearchMethod
@@ -47,14 +28,30 @@ type alias Options v =
     }
 
 
+type alias Pattern v a = Plane v a
+type alias Wave v = Plane v (State, List PatternId)
+
+
+type AdvanceRule
+    = MaximumAttempts Int
+    | AdvanceManually
+
+
+type State
+    = Contadiction
+    | Entropy Float
+
+
+type Approach
+    = Overlapping
+    | Tiled {- Rules -}
+
+
 type Step v
     = Step Int Random.Seed (StepStatus v)
 
 
 type alias PatternId = Int
-
-
--- type Entropy = Entropy Float
 
 
 type alias UniquePattern v a =
@@ -102,18 +99,31 @@ firstStep seed =
     Step 0 seed Initial
 
 
-initFlat : Plane Vec2 a -> Options Vec2 -> Solver Vec2 a
-initFlat (Plane size _ as source) options =
+init
+    :  Options v -- FIXME: only `advanceRule` used in solving atm
+    -> UniquePatterns v a
+    -> Walker v
+    -> Plane v a
+    -> Solver v a
+init options patterns walker source =
     Solver
         { options = options
         , source = source
-        , patterns =
-            findUniquePatterns
+        , patterns = patterns
+        , walker = walker
+        }
+
+
+initFlat : Plane Vec2 a -> Options Vec2 -> Solver Vec2 a
+initFlat (Plane size _ as source) options =
+    init
+        options
+        (findUniquePatterns
                 options.patternSearch
                 options.patternSize
-                source
-        , walker = flatWalker size
-        }
+                source)
+        (flatWalker size)
+        source
 
 
 flatWalker : Vec2 -> Walker Vec2
@@ -166,7 +176,11 @@ apply source step = source
 
 
 minimumEntropy : Wave Vec2 -> Maybe Vec2
-minimumEntropy (Plane size wf) = Just (0, 0)
+minimumEntropy wave =
+    Plane.foldl
+        (\cell prev -> Just (0, 0))
+        Nothing
+        wave
 
 
 observe : Walker v -> ( Random.Seed, Wave v ) -> ( Random.Seed, Observation v )

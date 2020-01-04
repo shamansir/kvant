@@ -33,20 +33,20 @@ text options input =
         -- solver : TextSolver
         solver = Solver.initFlat plane options
     in
-        WFC solver <|
-            \nextStep ->
-                case Solver.solve solver nextStep of
-                    lastStep ->
-                        ( lastStep
-                        , Solver.apply plane lastStep
-                            |> TextPlane.toString
-                        )
+        make TextPlane.toString solver <| input
 
 
--- load : Instance -> WFC pos size fmt item
--- load instance =
---     case instance of
---         Text wfc -> wfc
+make : (Plane v a -> fmt) -> Solver v a -> (fmt -> WFC v fmt a)
+make convert solver input =
+    WFC solver <|
+        \nextStep ->
+            let
+                lastStep = Solver.solve solver nextStep
+            in
+                ( lastStep
+                , Solver.apply (Solver.getSource solver) lastStep
+                    |> convert
+                )
 
 
 run : Random.Seed -> WFC v fmt a -> fmt
