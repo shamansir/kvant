@@ -17,7 +17,7 @@ import Html.Events exposing (..)
 
 import View exposing (..)
 
-import WFC.Core exposing (WFC, TextWFC)
+import WFC.Core exposing (WFC, TextWFC, TextTracingWFC, TextTracingPlane)
 import WFC.Core as WFC
 import WFC.Vec2 exposing (..)
 import WFC.Plane exposing (N(..))
@@ -29,16 +29,19 @@ import WFC.Solver exposing (Approach(..))
 import WFC.Solver as WFC exposing (Step, Options)
 
 
+type TracingStep v = TracingStep (WFC.Step v)
+
+
 type Status
     = None
     | Busy
-    | Tracing (WFC.Step Vec2)
+    | Tracing (WFC.Step Vec2, TracingStep Vec2)
 
 
 type alias Model =
     { source: String
-    , current: Maybe String
-    , wfc : TextWFC
+    , current: Maybe ( String, TextTracingPlane )
+    , wfc : ( TextWFC, TextTracingWFC )
     , status : Status
     }
 
@@ -80,7 +83,9 @@ init =
         Model
             srcText
             Nothing
-            (WFC.text options srcText)
+            ( WFC.text options srcText
+            , WFC.textTracing options srcText
+            )
             None
 
 
@@ -116,7 +121,12 @@ update msg model =
         Run seed ->
             (
                 { model
-                | current = Just (model.wfc |> WFC.run seed)
+                | current = Just
+                    ( model.wfc
+                        |> Tuple.mapBoth
+                                (WFC.run seed)
+                                (WFC.run seed)
+                    )
                 , status = None
                 }
             , Cmd.none
@@ -124,24 +134,30 @@ update msg model =
         Trace seed ->
             (
                 let
-                    (lastStep, result) = model.wfc |> WFC.Core.firstStep seed
+                    (lastStep, result) =
+                        model.wfc |> Tuple.first |> WFC.Core.firstStep seed
+                    (lastTracingStep, tracingResult) =
+                        model.wfc |> Tuple.second |> WFC.Core.firstStep seed
                 in
                     { model
-                    | current = Just result
-                    , status = Tracing lastStep
+                    | current = Just ( result, tracingResult )
+                    , status = Tracing ( lastStep, TracingStep lastTracingStep )
                     }
             , Cmd.none
             )
         NextStep ->
             (
                 case model.status of
-                    Tracing step ->
+                    Tracing ( step, TracingStep tracingStep ) ->
                         let
-                            (lastStep, result) = model.wfc |> WFC.step step
+                            (lastStep, result) =
+                                model.wfc |> Tuple.first |> WFC.step step
+                            (lastTracingStep, tracingResult) =
+                                model.wfc |> Tuple.second |> WFC.step tracingStep
                         in
                             { model
-                            | current = Just result
-                            , status = Tracing lastStep
+                            | current = Just ( result, tracingResult )
+                            , status = Tracing ( lastStep, TracingStep lastTracingStep )
                             }
                     _ -> model
             , Cmd.none
@@ -190,7 +206,7 @@ maybeStep status =
     case status of
         None -> Nothing
         Busy -> Nothing
-        Tracing step -> Just step
+        Tracing ( step, _ ) -> Just step
 
 
 view : Model -> Html Msg
@@ -207,6 +223,7 @@ view model =
             ]
             [ text "Run once" ]
         , model.current
+            |> Maybe.map Tuple.first
             |> Maybe.map (viewTextInBounds options.outputSize)
             |> Maybe.withDefault (div [] [])
         , hr [] []
@@ -227,6 +244,7 @@ view model =
             ]
             [ text "Stop" ]
         , model.current
+            |> Maybe.map Tuple.first
             |> Maybe.map (viewTextInBounds options.outputSize)
             |> Maybe.withDefault (div [] [])
         -- --------------------------
