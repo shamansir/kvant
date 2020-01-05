@@ -9,7 +9,7 @@ import WFC.Plane exposing (..)
 import WFC.Plane.Flat exposing (SearchMethod, findAllSubs, findOccurrence, findMatches)
 import WFC.Vec2 exposing (..)
 import WFC.Solver exposing (..)
-import WFC.Solver as S exposing (init)
+import WFC.Solver as S exposing (init, CellState)
 
 
 init : Plane Vec2 a -> Options Vec2 -> Solver Vec2 a
@@ -62,3 +62,10 @@ findUniquePatterns method ofSize inPlane =
                                 pattern
                         }
                     )
+
+apply : Plane Vec2 a -> Step v -> Plane Vec2 a
+apply source step = source
+
+
+applyTracing : Plane Vec2 (S.CellState, List a) -> Step v -> Plane Vec2 (S.CellState, List a)
+applyTracing source step = source

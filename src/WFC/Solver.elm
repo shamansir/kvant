@@ -29,7 +29,7 @@ type alias Options v =
 
 
 type alias Pattern v a = Plane v a
-type alias Wave v = Plane v (State, List PatternId)
+type alias Wave v = Plane v (CellState, List PatternId)
 
 
 type AdvanceRule
@@ -37,8 +37,8 @@ type AdvanceRule
     | AdvanceManually
 
 
-type State
-    = Contadiction
+type CellState
+    = NoMatches
     | Entropy Float
 
 
