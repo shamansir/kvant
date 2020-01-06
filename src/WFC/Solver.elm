@@ -164,8 +164,12 @@ initWave : Plane v a -> Wave v
 initWave (Plane size _) = Plane.empty size
 
 
-apply : Plane v a -> Step v -> Plane v a
-apply source step = source
+render : Step v -> Plane v a -> Plane v a
+render step source = source
+
+
+renderTracing : Step v -> Plane v a -> Plane v (CellState, List a)
+renderTracing step (Plane size _) = Plane.empty size
 
 
 getSource : Solver v a -> Plane v a

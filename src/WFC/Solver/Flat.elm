@@ -12,8 +12,8 @@ import WFC.Solver exposing (..)
 import WFC.Solver as S exposing (init, CellState)
 
 
-init : Plane Vec2 a -> Options Vec2 -> Solver Vec2 a
-init (Plane size _ as source) options =
+init : Options Vec2 -> Plane Vec2 a -> Solver Vec2 a
+init options (Plane size _ as source)  =
     S.init
         options
         (findUniquePatterns
@@ -63,9 +63,9 @@ findUniquePatterns method ofSize inPlane =
                         }
                     )
 
-apply : Plane Vec2 a -> Step v -> Plane Vec2 a
+apply : Plane Vec2 a -> Step Vec2 -> Plane Vec2 a
 apply source step = source
 
 
-applyTracing : Plane Vec2 (S.CellState, List a) -> Step v -> Plane Vec2 (S.CellState, List a)
+applyTracing : Plane Vec2 (S.CellState, List a) -> Step Vec2 -> Plane Vec2 (S.CellState, List a)
 applyTracing source step = source
