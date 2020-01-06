@@ -68,6 +68,7 @@ type alias UniquePatterns v a =
 type alias Walker v =
     { next : Direction -> v
     , random : Random.Generator v
+    , all : () -> List v
     }
 
 
@@ -144,16 +145,34 @@ solve (Solver { options, source, patterns, walker } as solver) step  =
             _ -> step
 
 
-minimumEntropy : Wave Vec2 -> Maybe Vec2
-minimumEntropy wave =
-    Plane.foldl
-        (\cell prev -> Just (0, 0))
+
+-- FIXME: if Walker will be the part of every Plane, then we won't need to pass the list of `v`-s
+minimumEntropy : List v -> Wave v -> Maybe v
+minimumEntropy all (Plane _ f) =
+    List.foldl
+        (\curCoord prev ->
+            case
+                ( prev
+                , f curCoord
+                    |> Maybe.map Tuple.first
+                    |> Maybe.andThen waveCellToMaybe )
+                of
+                ( Nothing, Just curEntropy )
+                    -> Just ( curEntropy, curCoord )
+                ( Just ( prevMinEntropy, prevCoord ), Just curEntropy )
+                    ->
+                        if curEntropy < prevMinEntropy then
+                            Just ( curEntropy, curCoord )
+                        else Just ( prevMinEntropy, prevCoord )
+                _ -> prev
+        )
         Nothing
-        wave
+        all
+        |> Maybe.map Tuple.second
 
 
 observe : Walker v -> ( Random.Seed, Wave v ) -> ( Random.Seed, Observation v )
-observe { next } ( seed, wave ) = ( seed, Next <| next S )
+observe { all, next } ( seed, wave ) = ( seed, Next <| next S )
 
 
 propagate : Walker v -> v -> ( Random.Seed, Wave v ) -> ( Random.Seed, Wave v )
@@ -198,6 +217,13 @@ updateStatus status (Step n seed _) = Step n seed status
 
 exceeds : Int -> Step v -> Bool
 exceeds count (Step stepN _ _) = count <= stepN
+
+
+waveCellToMaybe : CellState -> Maybe Float
+waveCellToMaybe state =
+    case state of
+        NoMatches -> Nothing
+        Entropy entropy -> Just entropy
 
 
 {-

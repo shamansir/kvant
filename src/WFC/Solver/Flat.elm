@@ -32,6 +32,7 @@ walker ( w, h ) =
             Tuple.pair
             (Random.int 0 (w - 1))
             (Random.int 0 (h - 1))
+    , all = above (w, h) |> List.concat |> always
     }
 
 
