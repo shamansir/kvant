@@ -29,7 +29,7 @@ type alias Options v =
 
 
 type alias Pattern v a = Plane v a
-type alias Wave v = Plane v (CellState, List PatternId)
+type alias Wave v = Plane v (List PatternId)
 
 
 type AdvanceRule
@@ -145,34 +145,54 @@ solve (Solver { options, source, patterns, walker } as solver) step  =
             _ -> step
 
 
+entropyOf : Random.Seed -> Int -> List PatternId -> (Random.Seed, CellState)
+entropyOf seed uniquePatterns patterns =
+    case List.length patterns of
+        0 -> (seed, NoMatches) -- contradiction
+        1 -> (seed, Entropy 0)
+        _ -> (seed, Entropy 12) -- FIXME: calculate actual one
 
--- FIXME: if Walker will be the part of every Plane, then we won't need to pass the list of `v`-s
-minimumEntropy : List v -> Wave v -> Maybe v
-minimumEntropy all (Plane _ f) =
+
+findMinimumEntropy
+    :  Int -- unique pattern count
+    -> Walker v
+    -> ( Random.Seed, Wave v )
+    -> ( Random.Seed, Maybe v, CellState )
+findMinimumEntropy uniquePatterns { all } ( seed, (Plane _ waveF) ) =
     List.foldl
-        (\curCoord prev ->
+        (\curCoord ( prevSeed, maybePrevCoord, prevState ) ->
             case
-                ( prev
-                , f curCoord
-                    |> Maybe.map Tuple.first
-                    |> Maybe.andThen waveCellToMaybe )
+                ( prevState
+                , waveF curCoord
+                )
                 of
-                ( Nothing, Just curEntropy )
-                    -> Just ( curEntropy, curCoord )
-                ( Just ( prevMinEntropy, prevCoord ), Just curEntropy )
+                ( NoMatches, _ )
+                    -> ( prevSeed, maybePrevCoord, prevState )
+                ( Entropy _, Nothing )
+                    -> ( prevSeed, maybePrevCoord, prevState )
+                ( Entropy prevMinEntropy, Just matches )
                     ->
-                        if curEntropy < prevMinEntropy then
-                            Just ( curEntropy, curCoord )
-                        else Just ( prevMinEntropy, prevCoord )
-                _ -> prev
+                        case matches |> entropyOf prevSeed uniquePatterns of
+                            ( nextSeed, NoMatches ) ->
+                                ( nextSeed, Nothing, NoMatches )
+                            ( nextSeed, Entropy curEntropy ) ->
+                                if curEntropy < prevMinEntropy then
+                                    ( nextSeed, Just curCoord, Entropy curEntropy )
+                                else ( nextSeed, maybePrevCoord, prevState )
         )
-        Nothing
-        all
-        |> Maybe.map Tuple.second
+        ( seed, Nothing, Entropy 1 )
+        ( all () )
 
 
 observe : Walker v -> ( Random.Seed, Wave v ) -> ( Random.Seed, Observation v )
-observe { all, next } ( seed, wave ) = ( seed, Next <| next S )
+observe walker ( seed, wave ) =
+    let
+        ( nextSeed, maybeCoord, result ) =
+            ( seed, wave ) |> findMinimumEntropy 11 walker
+                -- FIXME: if Walker will be the part of every Plane
+                -- , then we won't need to pass it inside and just use
+                -- Walker's folding mechanics
+    in ( nextSeed, Collapsed )
 
 
 propagate : Walker v -> v -> ( Random.Seed, Wave v ) -> ( Random.Seed, Wave v )
