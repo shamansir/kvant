@@ -7,7 +7,7 @@ import Dict exposing (Dict)
 import Random
 
 import WFC.Vec2 exposing (..)
-import WFC.Occurrence exposing (Occurrence, Frequency)
+import WFC.Occurrence exposing (Occurrence, Frequency, frequencyToFloat)
 import WFC.Occurrence as Occurrence
 import WFC.Plane exposing (Plane(..), N(..))
 import WFC.Plane as Plane exposing (map)
@@ -65,6 +65,9 @@ type alias UniquePatterns v a =
     Dict PatternId (UniquePattern v a)
 
 
+type UniquePatternsCount = UniquePatternsCount Int
+
+
 type alias Walker v =
     { next : Direction -> v
     , random : Random.Generator v
@@ -120,7 +123,7 @@ solve (Solver { options, source, patterns, walker } as solver) step  =
     let
         seed = getSeed step
         advance wave =
-            case observe walker ( seed, wave ) of
+            case observe walker patterns ( seed, wave ) of
                 ( oSeed, Collapsed ) ->
                     nextStep step oSeed <| Solved wave
                 ( oSeed, Contradiction ) ->
@@ -145,16 +148,41 @@ solve (Solver { options, source, patterns, walker } as solver) step  =
             _ -> step
 
 
-entropyOf : Random.Seed -> Int -> List PatternId -> (Random.Seed, CellState)
+entropyOf : Random.Seed -> UniquePatterns v a -> List PatternId -> (Random.Seed, CellState)
 entropyOf seed uniquePatterns patterns =
     case List.length patterns of
         0 -> (seed, NoMatches) -- contradiction
         1 -> (seed, Entropy 0)
-        _ -> (seed, Entropy 12) -- FIXME: calculate actual one
-
+        _ ->
+            if (List.length patterns == Dict.size uniquePatterns)
+                then (seed, Entropy 1)
+            else
+                let
+                    patternFrequency : PatternId -> Maybe Frequency
+                    patternFrequency patternId =
+                        Dict.get patternId uniquePatterns |>
+                            Maybe.map .frequency |>
+                            Maybe.andThen Tuple.second
+                    -- TODO: prepare frequency lists in advance, before calculation
+                    weights =
+                        patterns
+                            |> List.map patternFrequency
+                            |> List.filterMap identity
+                            |> List.map frequencyToFloat
+                    sumOfWeights = List.foldl (+) 0 weights
+                    sumOfLoggedWeights =
+                        weights
+                            |> List.map (logBase 2)
+                            |> List.foldl (+) 0
+                    pureEntropy =
+                        (logBase 2 sumOfWeights) - (sumOfLoggedWeights / sumOfWeights)
+                in
+                    ( seed
+                    , Entropy pureEntropy
+                    )
 
 findMinimumEntropy
-    :  Int -- unique pattern count
+    :  UniquePatterns v a
     -> Walker v
     -> ( Random.Seed, Wave v )
     -> ( Random.Seed, Maybe v, CellState )
@@ -184,11 +212,15 @@ findMinimumEntropy uniquePatterns { all } ( seed, (Plane _ waveF) ) =
         ( all () )
 
 
-observe : Walker v -> ( Random.Seed, Wave v ) -> ( Random.Seed, Observation v )
-observe walker ( seed, wave ) =
+observe
+    :  Walker v
+    -> UniquePatterns v a
+    -> ( Random.Seed, Wave v )
+    -> ( Random.Seed, Observation v )
+observe walker uniquePatterns ( seed, wave ) =
     let
         ( nextSeed, maybeCoord, result ) =
-            ( seed, wave ) |> findMinimumEntropy 11 walker
+            ( seed, wave ) |> findMinimumEntropy uniquePatterns walker
                 -- FIXME: if Walker will be the part of every Plane
                 -- , then we won't need to pass it inside and just use
                 -- Walker's folding mechanics

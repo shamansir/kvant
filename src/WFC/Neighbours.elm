@@ -2,6 +2,8 @@ module WFC.Neighbours
     exposing ( Neighbours(..), Direction(..) )
 
 
+-- TODO: Move to Plane.Walker
+
 type Neighbours a =
     Neighbours
         a a a
