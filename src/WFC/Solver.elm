@@ -123,16 +123,16 @@ solve (Solver { options, source, patterns, walker } as solver) step  =
         advance wave =
             case observe walker patterns ( seed, wave ) of
                 ( oSeed, Collapsed ) ->
-                    nextStep step oSeed <| Solved wave
+                    nextStep oSeed step  <| Solved wave
                 ( oSeed, Contradiction ) ->
-                    nextStep step oSeed <| Terminated
+                    nextStep oSeed step <| Terminated
                 ( oSeed, Unknown ) ->
-                    nextStep step oSeed <| Terminated
+                    nextStep oSeed step <| Terminated
                 ( oSeed, Lowest position _ matches ) ->
-                    case propagate walker ( position, matches ) ( oSeed, wave ) of
+                    case propagate oSeed walker ( position, matches ) wave of
                         ( pSeed, newWave ) ->
                             let
-                                next = nextStep step pSeed <| InProgress newWave
+                                next = nextStep pSeed step <| InProgress newWave
                             in case options.advanceRule of
                                 AdvanceManually -> next
                                 MaximumAttempts maxAttempts ->
@@ -148,7 +148,7 @@ solve (Solver { options, source, patterns, walker } as solver) step  =
             _ -> step
 
 
-entropyOf : Random.Seed -> UniquePatterns v a -> Matches PatternId -> (Random.Seed, Maybe Float)
+entropyOf : Random.Seed -> UniquePatterns v a -> Matches PatternId -> ( Random.Seed, Maybe Float )
 entropyOf seed uniquePatterns matches =
     case Matches.count matches of
         0 -> (seed, Nothing) -- contradiction
@@ -183,11 +183,12 @@ entropyOf seed uniquePatterns matches =
                     )
 
 findLowestEntropy
-    :  UniquePatterns v a
+    :  Random.Seed
+    -> UniquePatterns v a
     -> Walker v
-    -> ( Random.Seed, Wave v )
+    -> Wave v
     -> ( Random.Seed, Observation v )
-findLowestEntropy uniquePatterns { all } ( seed, (Plane _ waveF) ) =
+findLowestEntropy seed uniquePatterns { all } (Plane _ waveF) =
     let
         foldingF curCoord ( prevSeed, prevState ) =
             case ( prevState, waveF curCoord ) of
@@ -203,7 +204,7 @@ findLowestEntropy uniquePatterns { all } ( seed, (Plane _ waveF) ) =
                                 case maybeEntropy of
                                     Just curEntropy ->
                                         case otherThanContradiction of
-                                            Lowest prevCoord prevMinEntropy prevMatches ->
+                                            Lowest prevCoord prevMinEntropy _ ->
                                                 if curEntropy > 0 && curEntropy < prevMinEntropy
                                                 then
                                                     Lowest curCoord curEntropy matches
@@ -234,7 +235,7 @@ observe
 observe walker uniquePatterns ( seed, wave ) =
     let
         ( nextSeed, result ) =
-            ( seed, wave ) |> findLowestEntropy uniquePatterns walker
+            wave |> findLowestEntropy seed uniquePatterns walker
     in
         case result of
             Lowest _ minEntropy _ ->
@@ -249,8 +250,8 @@ observe walker uniquePatterns ( seed, wave ) =
                 ( nextSeed, result )
 
 
-propagate : Walker v -> ( v, Matches PatternId ) -> ( Random.Seed, Wave v ) -> ( Random.Seed, Wave v )
-propagate _ coord ( seed, wave ) = ( seed, wave )
+propagate : Random.Seed -> Walker v -> ( v, Matches PatternId ) -> Wave v -> ( Random.Seed, Wave v )
+propagate seed _ coord wave = ( seed, wave )
 
 
 initWave : Plane v a -> Wave v
@@ -281,8 +282,8 @@ getCount : Step v -> Int
 getCount (Step n _ _) = n
 
 
-nextStep : Step v -> Random.Seed -> StepStatus v -> Step v
-nextStep (Step n _ _) seed status = Step (n + 1) seed status
+nextStep : Random.Seed -> Step v -> StepStatus v -> Step v
+nextStep seed (Step n _ _) status = Step (n + 1) seed status
 
 
 updateStatus : StepStatus v -> Step v -> Step v
