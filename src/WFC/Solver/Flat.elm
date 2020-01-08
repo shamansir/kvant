@@ -8,8 +8,9 @@ import Dict
 import WFC.Plane exposing (..)
 import WFC.Plane.Flat exposing (SearchMethod, findAllSubs, findOccurrence, findMatches)
 import WFC.Vec2 exposing (..)
+import WFC.Matches exposing (..)
 import WFC.Solver exposing (..)
-import WFC.Solver as S exposing (init, CellState)
+import WFC.Solver as S exposing (init)
 
 
 init : Options Vec2 -> Plane Vec2 a -> Solver Vec2 a
@@ -68,5 +69,8 @@ apply : Plane Vec2 a -> Step Vec2 -> Plane Vec2 a
 apply source step = source
 
 
-applyTracing : Plane Vec2 (S.CellState, List a) -> Step Vec2 -> Plane Vec2 (S.CellState, List a)
+applyTracing
+    :  Plane Vec2 (Matches PatternId, List a)
+    -> Step Vec2
+    -> Plane Vec2 (Matches PatternId, List a)
 applyTracing source step = source

@@ -4,15 +4,16 @@ import Array
 
 
 import WFC.Vec2 exposing (..)
+import WFC.Matches exposing (..)
 import WFC.Plane exposing (..)
 import WFC.Plane.Flat exposing (..)
-import WFC.Solver exposing (CellState(..))
+import WFC.Solver exposing (PatternId)
 
 
-type alias TracingCell a = (CellState, List a)
+type alias TracingCell a = (Matches PatternId, List a)
 
 type alias TracingPlane v a = Plane v (TracingCell a)
 
 
 initFrom : Plane v a -> TracingPlane v a
-initFrom = map (List.singleton >> Tuple.pair (Entropy 1.0))
+initFrom = map (List.singleton >> Tuple.pair none)

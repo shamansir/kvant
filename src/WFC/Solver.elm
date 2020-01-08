@@ -7,6 +7,8 @@ import Dict exposing (Dict)
 import Random
 
 import WFC.Vec2 exposing (..)
+import WFC.Matches exposing (Matches)
+import WFC.Matches as Matches exposing (..)
 import WFC.Occurrence exposing (Occurrence, Frequency, frequencyToFloat)
 import WFC.Occurrence as Occurrence
 import WFC.Plane exposing (Plane(..), N(..))
@@ -29,18 +31,12 @@ type alias Options v =
 
 
 type alias Pattern v a = Plane v a
-type alias Wave v = Plane v (List PatternId)
+type alias Wave v = Plane v (Matches PatternId)
 
 
 type AdvanceRule
     = MaximumAttempts Int
     | AdvanceManually
-
-
-type CellState
-    = NoMatches
-    | SingleMatch
-    | Entropy Float -- greater than zero
 
 
 type Approach
@@ -85,9 +81,10 @@ type StepStatus v
 
 
 type Observation v
-    = Collapsed
+    = Unknown
+    | Collapsed
     | Contradiction
-    | Next v
+    | Lowest v Float (Matches PatternId)
 
 
 type Solver v a =
@@ -129,8 +126,10 @@ solve (Solver { options, source, patterns, walker } as solver) step  =
                     nextStep step oSeed <| Solved wave
                 ( oSeed, Contradiction ) ->
                     nextStep step oSeed <| Terminated
-                ( oSeed, Next position ) ->
-                    case propagate walker position ( oSeed, wave ) of
+                ( oSeed, Unknown ) ->
+                    nextStep step oSeed <| Terminated
+                ( oSeed, Lowest position _ matches ) ->
+                    case propagate walker ( position, matches ) ( oSeed, wave ) of
                         ( pSeed, newWave ) ->
                             let
                                 next = nextStep step pSeed <| InProgress newWave
@@ -149,14 +148,14 @@ solve (Solver { options, source, patterns, walker } as solver) step  =
             _ -> step
 
 
-entropyOf : Random.Seed -> UniquePatterns v a -> List PatternId -> (Random.Seed, CellState)
-entropyOf seed uniquePatterns patterns =
-    case List.length patterns of
-        0 -> (seed, NoMatches) -- contradiction
-        1 -> (seed, Entropy 0)
-        _ ->
-            if (List.length patterns == Dict.size uniquePatterns)
-                then (seed, Entropy 1)
+entropyOf : Random.Seed -> UniquePatterns v a -> Matches PatternId -> (Random.Seed, Maybe Float)
+entropyOf seed uniquePatterns matches =
+    case Matches.count matches of
+        0 -> (seed, Nothing) -- contradiction
+        1 -> (seed, Just 0)
+        count ->
+            if (count == Dict.size uniquePatterns)
+                then (seed, Just 1)
             else
                 let
                     patternFrequency : PatternId -> Maybe Frequency
@@ -166,7 +165,8 @@ entropyOf seed uniquePatterns patterns =
                             Maybe.andThen Tuple.second
                     -- TODO: prepare frequency lists in advance, before calculation
                     weights =
-                        patterns
+                        matches
+                            |> Matches.toList
                             |> List.map patternFrequency
                             |> List.filterMap identity
                             |> List.map frequencyToFloat
@@ -179,47 +179,51 @@ entropyOf seed uniquePatterns patterns =
                         (logBase 2 sumOfWeights) - (sumOfLoggedWeights / sumOfWeights)
                 in
                     ( seed
-                    , Entropy pureEntropy
+                    , Just pureEntropy -- FIXME: add randomness
                     )
 
 findLowestEntropy
     :  UniquePatterns v a
     -> Walker v
     -> ( Random.Seed, Wave v )
-    -> ( Random.Seed, Maybe v, CellState )
+    -> ( Random.Seed, Observation v )
 findLowestEntropy uniquePatterns { all } ( seed, (Plane _ waveF) ) =
     let
-        foldingF curCoord ( prevSeed, maybePrevCoord, prevState ) =
-            case
-                ( waveF curCoord
-                , prevState
-                )
-                of
-                ( Just matches, SingleMatch )
-                    ->
-                        case matches |> entropyOf prevSeed uniquePatterns of
-                            ( nextSeed, Entropy curEntropy ) ->
-                                if curEntropy > 0 then
-                                    ( nextSeed, Just curCoord, Entropy curEntropy )
-                                else ( nextSeed, maybePrevCoord, prevState )
-                            ( nextSeed, otherState ) -> -- NoMatches, SingleMatch
-                                ( nextSeed, Nothing, otherState )
-                ( Just matches, Entropy prevMinEntropy )
-                    ->
-                        case matches |> entropyOf prevSeed uniquePatterns of
-                            ( nextSeed, Entropy curEntropy ) ->
-                                if curEntropy > 0 && curEntropy < prevMinEntropy then
-                                    ( nextSeed, Just curCoord, Entropy curEntropy )
-                                else ( nextSeed, maybePrevCoord, prevState )
-                            ( nextSeed, otherState ) -> -- NoMatches, SingleMatch
-                                ( nextSeed, Nothing, otherState )
-                _ -> -- ( _, NoMatches ), ( Nothing, SingleMatch ), ( Nothing, Entropy _ )
-                    ( prevSeed, maybePrevCoord, prevState )
+        foldingF curCoord ( prevSeed, prevState ) =
+            case ( prevState, waveF curCoord ) of
+                ( _, Nothing ) ->
+                    ( prevSeed, prevState )
+                ( Contradiction, _ ) ->
+                    ( prevSeed, prevState )
+                ( otherThanContradiction, Just matches ) ->
+                    matches
+                        |> entropyOf prevSeed uniquePatterns
+                        |> Tuple.mapSecond
+                            (\maybeEntropy ->
+                                case maybeEntropy of
+                                    Just curEntropy ->
+                                        case otherThanContradiction of
+                                            Lowest prevCoord prevMinEntropy prevMatches ->
+                                                if curEntropy > 0 && curEntropy < prevMinEntropy
+                                                then
+                                                    Lowest curCoord curEntropy matches
+                                                else otherThanContradiction
+                                            _ ->
+                                                if curEntropy > 0 then
+                                                    Lowest curCoord curEntropy matches
+                                                else if curEntropy == 0 then
+                                                    Collapsed
+                                                else otherThanContradiction
+                                    Nothing -> Contradiction
+                            )
     in
         List.foldl
             foldingF
-            ( seed, Nothing, Entropy 1 )
+            ( seed, Unknown )
             ( all () )
+                -- FIXME: if Walker will be the part of every Plane
+                -- , then we won't need to pass it inside and just use
+                -- Walker's folding mechanics
 
 
 observe
@@ -229,21 +233,23 @@ observe
     -> ( Random.Seed, Observation v )
 observe walker uniquePatterns ( seed, wave ) =
     let
-        ( nextSeed, maybeCoord, result ) =
+        ( nextSeed, result ) =
             ( seed, wave ) |> findLowestEntropy uniquePatterns walker
-                -- FIXME: if Walker will be the part of every Plane
-                -- , then we won't need to pass it inside and just use
-                -- Walker's folding mechanics
     in
-        ( nextSeed
-        , case ( maybeCoord, result ) of
-            ( _, NoMatches )   -> Contradiction
-            ( _, SingleMatch ) -> Collapsed
-            ( Nothing, _ )     -> Contradiction
-            ( Just v, _ )      -> Next v
-        )
+        case result of
+            Lowest _ minEntropy _ ->
+                if abs (minEntropy - 1.0) < 0.001 then
+                    -- FIXME: find the random cell on the plane
+                    ( nextSeed, result )
+                else
+                    -- TODO: choose a fitting pattern
+                    ( nextSeed, result )
+            _ ->
+                -- TODO: choose a fitting pattern
+                ( nextSeed, result )
 
-propagate : Walker v -> v -> ( Random.Seed, Wave v ) -> ( Random.Seed, Wave v )
+
+propagate : Walker v -> ( v, Matches PatternId ) -> ( Random.Seed, Wave v ) -> ( Random.Seed, Wave v )
 propagate _ coord ( seed, wave ) = ( seed, wave )
 
 
@@ -255,7 +261,7 @@ render : Step v -> Plane v a -> Plane v a
 render step source = source
 
 
-renderTracing : Step v -> Plane v a -> Plane v (CellState, List a)
+renderTracing : Step v -> Plane v a -> Plane v (Matches PatternId, List a)
 renderTracing step (Plane size _) = Plane.empty size
 
 
@@ -285,14 +291,6 @@ updateStatus status (Step n seed _) = Step n seed status
 
 exceeds : Int -> Step v -> Bool
 exceeds count (Step stepN _ _) = count <= stepN
-
-
-waveCellToMaybe : CellState -> Maybe Float
-waveCellToMaybe state =
-    case state of
-        NoMatches -> Nothing
-        SingleMatch -> Just 0
-        Entropy entropy -> Just entropy
 
 
 {-
