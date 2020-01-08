@@ -39,7 +39,8 @@ type AdvanceRule
 
 type CellState
     = NoMatches
-    | Entropy Float
+    | SingleMatch
+    | Entropy Float -- greater than zero
 
 
 type Approach
@@ -181,35 +182,44 @@ entropyOf seed uniquePatterns patterns =
                     , Entropy pureEntropy
                     )
 
-findMinimumEntropy
+findLowestEntropy
     :  UniquePatterns v a
     -> Walker v
     -> ( Random.Seed, Wave v )
     -> ( Random.Seed, Maybe v, CellState )
-findMinimumEntropy uniquePatterns { all } ( seed, (Plane _ waveF) ) =
-    List.foldl
-        (\curCoord ( prevSeed, maybePrevCoord, prevState ) ->
+findLowestEntropy uniquePatterns { all } ( seed, (Plane _ waveF) ) =
+    let
+        foldingF curCoord ( prevSeed, maybePrevCoord, prevState ) =
             case
-                ( prevState
-                , waveF curCoord
+                ( waveF curCoord
+                , prevState
                 )
                 of
-                ( NoMatches, _ )
-                    -> ( prevSeed, maybePrevCoord, prevState )
-                ( Entropy _, Nothing )
-                    -> ( prevSeed, maybePrevCoord, prevState )
-                ( Entropy prevMinEntropy, Just matches )
+                ( Just matches, SingleMatch )
                     ->
                         case matches |> entropyOf prevSeed uniquePatterns of
-                            ( nextSeed, NoMatches ) ->
-                                ( nextSeed, Nothing, NoMatches )
                             ( nextSeed, Entropy curEntropy ) ->
-                                if curEntropy < prevMinEntropy then
+                                if curEntropy > 0 then
                                     ( nextSeed, Just curCoord, Entropy curEntropy )
                                 else ( nextSeed, maybePrevCoord, prevState )
-        )
-        ( seed, Nothing, Entropy 1 )
-        ( all () )
+                            ( nextSeed, otherState ) -> -- NoMatches, SingleMatch
+                                ( nextSeed, Nothing, otherState )
+                ( Just matches, Entropy prevMinEntropy )
+                    ->
+                        case matches |> entropyOf prevSeed uniquePatterns of
+                            ( nextSeed, Entropy curEntropy ) ->
+                                if curEntropy > 0 && curEntropy < prevMinEntropy then
+                                    ( nextSeed, Just curCoord, Entropy curEntropy )
+                                else ( nextSeed, maybePrevCoord, prevState )
+                            ( nextSeed, otherState ) -> -- NoMatches, SingleMatch
+                                ( nextSeed, Nothing, otherState )
+                _ -> -- ( _, NoMatches ), ( Nothing, SingleMatch ), ( Nothing, Entropy _ )
+                    ( prevSeed, maybePrevCoord, prevState )
+    in
+        List.foldl
+            foldingF
+            ( seed, Nothing, Entropy 1 )
+            ( all () )
 
 
 observe
@@ -220,12 +230,18 @@ observe
 observe walker uniquePatterns ( seed, wave ) =
     let
         ( nextSeed, maybeCoord, result ) =
-            ( seed, wave ) |> findMinimumEntropy uniquePatterns walker
+            ( seed, wave ) |> findLowestEntropy uniquePatterns walker
                 -- FIXME: if Walker will be the part of every Plane
                 -- , then we won't need to pass it inside and just use
                 -- Walker's folding mechanics
-    in ( nextSeed, Collapsed )
-
+    in
+        ( nextSeed
+        , case ( maybeCoord, result ) of
+            ( _, NoMatches )   -> Contradiction
+            ( _, SingleMatch ) -> Collapsed
+            ( Nothing, _ )     -> Contradiction
+            ( Just v, _ )      -> Next v
+        )
 
 propagate : Walker v -> v -> ( Random.Seed, Wave v ) -> ( Random.Seed, Wave v )
 propagate _ coord ( seed, wave ) = ( seed, wave )
@@ -275,6 +291,7 @@ waveCellToMaybe : CellState -> Maybe Float
 waveCellToMaybe state =
     case state of
         NoMatches -> Nothing
+        SingleMatch -> Just 0
         Entropy entropy -> Just entropy
 
 

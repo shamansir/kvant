@@ -10,16 +10,6 @@ defn Run():
     OutputObservations()
 
 
-defn Observe(coefficient_matrix):
-    FindLowestEntropy()
-    If there is a contradiction, throw an error and quit
-    If all cells are at entropy 0, processing is complete:
-        Return CollapsedObservations()
-    Else:
-        Choose a pattern by a random sample, weighted by the pattern frequency in the source data
-        Set the boolean array in this cell to false, except for the chosen pattern
-
-
 defn FindLowestEntropy(coefficient_matrix):
     Return the cell that has the lowest greater-than-zero
 entropy, defined as:
@@ -28,6 +18,16 @@ entropy, defined as:
         Else:
             the entropy is based on the sum of the frequency that the patterns appear in the source data, plus
             Use some random noise to break ties and near-ties.
+
+
+defn Observe(coefficient_matrix):
+    FindLowestEntropy()
+    If there is a contradiction, throw an error and quit
+    If all cells are at entropy 0, processing is complete:
+        Return CollapsedObservations()
+    Else:
+        Choose a pattern by a random sample, weighted by the pattern frequency in the source data
+        Set the boolean array in this cell to false, except for the chosen pattern
 
 
 defn Propagate(coefficient_matrix):
