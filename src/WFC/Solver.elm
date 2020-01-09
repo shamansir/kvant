@@ -66,7 +66,8 @@ type UniquePatternsCount = UniquePatternsCount Int
 
 
 type alias Walker v =
-    { next : Direction -> v
+    { first : v
+    , next : Direction -> v -> v
     , random : Random.Generator v
     , all : () -> List v
     }
@@ -240,7 +241,7 @@ observe seed walker uniquePatterns wave =
         in
             case result of
                 Just coord -> ( nextSeed, Focus coord 1 ) -- FIXME: find actual Pattern ID
-                Nothing -> ( nextSeed, Focus (walker.next S) 1 ) -- FIXME: find random coordinate
+                Nothing -> ( nextSeed, Focus (walker.next S walker.first) 1 ) -- FIXME: find random coordinate
 
 
 propagate : Random.Seed -> Walker v -> v -> PatternId -> Wave v -> ( Random.Seed, Wave v )
@@ -284,14 +285,29 @@ render : Step v -> Plane v a -> Plane v a
 render step source = source
 
 
-renderTracing : Step v -> UniquePatterns v a -> Plane v a -> Plane v (Matches PatternId, List a)
-renderTracing (Step _ _ status) uniquePatterns (Plane size _ as source) =
+renderTracing
+    :  a
+    -> Solver v a
+    -> Step v
+    -> Plane v (Matches PatternId, List a)
+renderTracing fallback (Solver { patterns, walker, source }) (Step _ _ status) =
     let
+        (Plane size _) = source
+        loadValues : Matches PatternId -> List a
+        loadValues matches =
+            matches
+                |> Matches.toList
+                |> List.map (\patternId ->
+                    patterns
+                        |> Dict.get patternId
+                        |> Maybe.andThen (\p -> Plane.get walker.first p.pattern)
+                        |> Maybe.withDefault fallback
+                    )
         fromWave : Wave v -> Plane v (Matches PatternId, List a)
         fromWave wave = wave |> Plane.map (\matches -> (matches, []))
     in
         fromWave <| case status of
-            Initial -> source |> initWave uniquePatterns
+            Initial -> source |> initWave patterns
             InProgress wave -> wave
             Solved wave -> wave
             Terminated -> Plane.empty size
@@ -304,6 +320,10 @@ getSource (Solver { source }) = source
 
 getPatterns : Solver v a -> UniquePatterns v a
 getPatterns (Solver { patterns }) = patterns
+
+
+getWalker : Solver v a -> Walker v
+getWalker (Solver { walker }) = walker
 
 
 getSeed : Step v -> Random.Seed

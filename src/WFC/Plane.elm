@@ -18,7 +18,7 @@ import Dict exposing (Dict)
 type Plane v a = Plane v (v -> Maybe a)
  -- TODO: should check incoming v's by `v -> Bool` before, like, if they fit?
  --       or some advancing, like `v -> Direction -> Maybe v`? which could never end?
-
+ -- TODO: Include Walker and default value in every plane
 
 type alias Cell v a = (v, Maybe a)
 
@@ -30,8 +30,8 @@ empty : v -> Plane v a
 empty size = Plane size <| always Nothing
 
 
-get : Plane v a -> v -> Maybe a
-get (Plane _ f) = f
+get : v -> Plane v a -> Maybe a
+get v (Plane _ f) = f v
 
 
 -- set : v -> a -> Plane v a -> Plane v a

@@ -27,7 +27,8 @@ init options (Plane size _ as source)  =
 
 walker : Vec2 -> Walker Vec2
 walker ( w, h ) =
-    { next = always (0, 0)
+    { first = (0, 0)
+    , next = always <| always (0, 0)
     , random =
         Random.map2
             Tuple.pair

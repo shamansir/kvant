@@ -49,7 +49,7 @@ textTracing options input =
     input
         |> TextPlane.make options.inputSize
         |> FlatSolver.init options
-        |> makeTracing
+        |> makeTracing 'x'
 
 
 make : (Plane v a -> fmt) -> Solver v a -> WFC v fmt a
@@ -66,16 +66,15 @@ make convert solver =
                 )
 
 
-makeTracing : Solver v a -> TracingWFC v a
-makeTracing solver =
+makeTracing : a -> Solver v a -> TracingWFC v a
+makeTracing fallback solver  =
     WFC solver <|
         \nextStep ->
             let
                 lastStep = Solver.solve solver nextStep
             in
                 ( lastStep
-                , Solver.getSource solver
-                    |> Solver.renderTracing lastStep (Solver.getPatterns solver)
+                , lastStep |> Solver.renderTracing fallback solver
                 )
 
 
