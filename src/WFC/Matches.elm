@@ -2,7 +2,7 @@ module WFC.Matches exposing
     ( MoreThanOne
     , Matches
     , none, single, some, safeSome
-    , count, extract
+    , count, isNone, extract
     , toList, fromList
     , fromMaybe
     )
@@ -42,6 +42,13 @@ count matches =
         None -> 0
         Single _ -> 1
         Some (MoreThanOne list) -> List.length list
+
+
+isNone : Matches a -> Bool
+isNone matches =
+    case matches of
+        None -> True
+        _ -> False
 
 
 toList : Matches a -> List a

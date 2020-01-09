@@ -84,7 +84,7 @@ type Observation v
     = Unknown
     | Collapsed
     | Contradiction
-    | Lowest v Float (Matches PatternId)
+    | Focus v PatternId
 
 
 type Solver v a =
@@ -121,15 +121,15 @@ solve (Solver { options, source, patterns, walker } as solver) step  =
     let
         seed = getSeed step
         advance wave =
-            case observe walker patterns ( seed, wave ) of
+            case observe seed walker patterns wave of
                 ( oSeed, Collapsed ) ->
-                    nextStep oSeed step  <| Solved wave
+                    nextStep oSeed step <| Solved wave
                 ( oSeed, Contradiction ) ->
                     nextStep oSeed step <| Terminated
                 ( oSeed, Unknown ) ->
                     nextStep oSeed step <| Terminated
-                ( oSeed, Lowest position _ matches ) ->
-                    case propagate oSeed walker ( position, matches ) wave of
+                ( oSeed, Focus position pattern ) ->
+                    case propagate oSeed walker position pattern wave of
                         ( pSeed, newWave ) ->
                             let
                                 next = nextStep pSeed step <| InProgress newWave
@@ -182,76 +182,97 @@ entropyOf seed uniquePatterns matches =
                     , Just pureEntropy -- FIXME: add randomness
                     )
 
+
 findLowestEntropy
     :  Random.Seed
     -> UniquePatterns v a
     -> Walker v
     -> Wave v
-    -> ( Random.Seed, Observation v )
+    -> ( Random.Seed, Maybe v )
 findLowestEntropy seed uniquePatterns { all } (Plane _ waveF) =
     let
-        foldingF curCoord ( prevSeed, prevState ) =
-            case ( prevState, waveF curCoord ) of
+        withEntropy prevSeed matches f =
+            matches
+                |> entropyOf prevSeed uniquePatterns
+                |> Tuple.mapSecond (Maybe.andThen f)
+        foldingF curCoord ( prevSeed, maybePrevLowest ) =
+            case ( maybePrevLowest, waveF curCoord ) of
                 ( _, Nothing ) ->
-                    ( prevSeed, prevState )
-                ( Contradiction, _ ) ->
-                    ( prevSeed, prevState )
-                ( otherThanContradiction, Just matches ) ->
-                    matches
-                        |> entropyOf prevSeed uniquePatterns
-                        |> Tuple.mapSecond
-                            (\maybeEntropy ->
-                                case maybeEntropy of
-                                    Just curEntropy ->
-                                        case otherThanContradiction of
-                                            Lowest prevCoord prevMinEntropy _ ->
-                                                if curEntropy > 0 && curEntropy < prevMinEntropy
-                                                then
-                                                    Lowest curCoord curEntropy matches
-                                                else otherThanContradiction
-                                            _ ->
-                                                if curEntropy > 0 then
-                                                    Lowest curCoord curEntropy matches
-                                                else if curEntropy == 0 then
-                                                    Collapsed
-                                                else otherThanContradiction
-                                    Nothing -> Contradiction
-                            )
+                    ( prevSeed, maybePrevLowest )
+                ( Nothing, Just matches ) ->
+                    withEntropy prevSeed matches
+                        <| \curEntropy ->
+                            if curEntropy > 0
+                            then Just ( curCoord, curEntropy )
+                            else maybePrevLowest
+                ( Just ( _, prevMinEntropy ), Just matches ) ->
+                    withEntropy prevSeed matches
+                        <| \curEntropy ->
+                            if curEntropy > 0 && curEntropy < prevMinEntropy
+                            then Just ( curCoord, curEntropy )
+                            else maybePrevLowest
     in
         List.foldl
             foldingF
-            ( seed, Unknown )
+            ( seed, Nothing )
             ( all () )
+            |> Tuple.mapSecond (Maybe.map Tuple.first)
                 -- FIXME: if Walker will be the part of every Plane
                 -- , then we won't need to pass it inside and just use
                 -- Walker's folding mechanics
 
 
 observe
-    :  Walker v
+    :  Random.Seed
+    -> Walker v
     -> UniquePatterns v a
-    -> ( Random.Seed, Wave v )
+    -> Wave v
     -> ( Random.Seed, Observation v )
-observe walker uniquePatterns ( seed, wave ) =
-    let
-        ( nextSeed, result ) =
-            wave |> findLowestEntropy seed uniquePatterns walker
-    in
-        case result of
-            Lowest _ minEntropy _ ->
-                if abs (minEntropy - 1.0) < 0.001 then
-                    -- FIXME: find the random cell on the plane
-                    ( nextSeed, result )
-                else
-                    -- TODO: choose a fitting pattern
-                    ( nextSeed, result )
-            _ ->
-                -- TODO: choose a fitting pattern
-                ( nextSeed, result )
+observe seed walker uniquePatterns wave =
+    if wave |> hasAContradiction walker then
+        ( seed, Contradiction )
+    else if wave |> isWaveCollapsed walker then
+        ( seed, Collapsed )
+    else
+        let
+            ( nextSeed, result ) =
+                wave |> findLowestEntropy seed uniquePatterns walker
+        in
+            case result of
+                Just coord -> ( nextSeed, Focus coord 1 ) -- FIXME: find actual Pattern ID
+                Nothing ->  ( nextSeed, Focus (walker.next S) 1 ) -- FIXME: find random coordinate
 
 
-propagate : Random.Seed -> Walker v -> ( v, Matches PatternId ) -> Wave v -> ( Random.Seed, Wave v )
-propagate seed _ coord wave = ( seed, wave )
+propagate : Random.Seed -> Walker v -> v -> PatternId -> Wave v -> ( Random.Seed, Wave v )
+propagate seed _ coord pattern wave = ( seed, wave )
+
+
+ -- FIXME: Maybe Bool
+hasAContradiction : Walker v -> Wave v -> Bool
+hasAContradiction { all } (Plane _ waveF) =
+    List.foldl
+        (\coord wasAContradiction ->
+            wasAContradiction ||
+                (waveF coord
+                    |> Maybe.map Matches.isNone
+                    |> Maybe.withDefault False)
+        )
+        False
+        ( all () )
+
+
+ -- FIXME: Maybe Bool
+isWaveCollapsed : Walker v -> Wave v -> Bool
+isWaveCollapsed { all } (Plane _ waveF) =
+    List.foldl
+        (\coord wasCollapsed ->
+            wasCollapsed &&
+                (waveF coord
+                    |> Maybe.map (\matches -> Matches.count matches == 1)
+                    |> Maybe.withDefault True)
+        )
+        True
+        ( all () )
 
 
 initWave : Plane v a -> Wave v
