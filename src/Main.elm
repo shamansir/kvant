@@ -244,8 +244,8 @@ view model =
             ]
             [ text "Stop" ]
         , model.current
-            |> Maybe.map Tuple.first
-            |> Maybe.map (viewTextInBounds options.outputSize)
+            |> Maybe.map Tuple.second
+            |> Maybe.map viewTracingPlane
             |> Maybe.withDefault (div [] [])
         -- --------------------------
         , hr [] []

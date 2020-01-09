@@ -7,12 +7,14 @@ import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (..)
 
+import WFC.Matches as Matches exposing (..)
 import WFC.Vec2 exposing (..)
 import WFC.Plane exposing (N(..), Plane, Cell)
 import WFC.Occurrence exposing (Occurrence(..), frequencyToFloat)
 import WFC.Plane.Flat as Plane exposing (SearchMethod(..), sub ,subAt, foldMap)
 import WFC.Plane.Flat exposing (..)
 import WFC.Plane.Impl.Text exposing (TextPlane)
+import WFC.Plane.Impl.Tracing exposing (TracingCell, TracingPlane)
 import WFC.Plane.Offset exposing (Offset, OffsetPlane)
 import WFC.Plane.Offset as Offsets exposing (foldMap)
 import WFC.Solver as WFC
@@ -123,6 +125,17 @@ viewTextPlane =
                 []
                 [ viewCoord coord
                 , viewChar char
+                ]
+
+
+viewTracingPlane : TracingPlane Vec2 Char -> Html msg
+viewTracingPlane =
+    viewPlaneWith (Matches.none, [])
+        <| \coord tracingCell ->
+            span
+                []
+                [ viewCoord coord
+                , viewTracingCell tracingCell
                 ]
 
 
@@ -395,6 +408,37 @@ viewCell ( coord, char ) =
         []
         [ viewCoord coord
         , text <| Maybe.withDefault "%" <| Maybe.map String.fromChar <| char
+        ]
+
+
+viewTracingCell : TracingCell Char -> Html msg
+viewTracingCell ( matches, chars ) =
+    span
+        [ ]
+        [ span
+            [ style "display" "inline-block"
+            , style "min-width" "30px"
+            ]
+            [
+                Matches.count matches
+                    |> String.fromInt
+                    |> text
+            ]
+        , span
+            [ style "display" "inline-block"
+            , style "min-width" "30px"
+            , style "overflow" "hidden"
+            ]
+            [
+                text <|
+                    case
+                        chars
+                        |> List.map String.fromChar
+                        |> String.join "|"
+                        of
+                        "" -> "∅"
+                        nonEmpty -> "(" ++ nonEmpty ++ ")"
+            ]
         ]
 
 
