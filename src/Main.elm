@@ -237,7 +237,10 @@ view model =
             , disabled <| model.status == None
             ]
             [ text "Next Step" ]
-        , model.status |> maybeStep |> Maybe.map viewStepStatus |> Maybe.withDefault (span [] [])
+        , model.status
+            |> maybeStep
+            |> Maybe.map viewStepStatus
+            |> Maybe.withDefault (span [] [])
         , button
             [ onClick Stop
             , disabled <| model.status == None

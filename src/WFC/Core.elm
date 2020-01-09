@@ -75,7 +75,7 @@ makeTracing solver =
             in
                 ( lastStep
                 , Solver.getSource solver
-                    |> Solver.renderTracing lastStep
+                    |> Solver.renderTracing lastStep (Solver.getPatterns solver)
                 )
 
 

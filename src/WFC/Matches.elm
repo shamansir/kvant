@@ -15,6 +15,7 @@ type Matches a
     = None
     | Single a
     | Some (MoreThanOne a)
+    -- TODO: Any
 
 
 none : Matches a

@@ -142,7 +142,7 @@ solve (Solver { options, source, patterns, walker } as solver) step  =
     in
         case getStatus step of
             Initial ->
-                advance <| initWave source
+                advance <| initWave patterns source
             InProgress wave ->
                 advance wave
             _ -> step
@@ -240,7 +240,7 @@ observe seed walker uniquePatterns wave =
         in
             case result of
                 Just coord -> ( nextSeed, Focus coord 1 ) -- FIXME: find actual Pattern ID
-                Nothing ->  ( nextSeed, Focus (walker.next S) 1 ) -- FIXME: find random coordinate
+                Nothing -> ( nextSeed, Focus (walker.next S) 1 ) -- FIXME: find random coordinate
 
 
 propagate : Random.Seed -> Walker v -> v -> PatternId -> Wave v -> ( Random.Seed, Wave v )
@@ -255,7 +255,7 @@ hasAContradiction { all } (Plane _ waveF) =
             wasAContradiction ||
                 (waveF coord
                     |> Maybe.map Matches.isNone
-                    |> Maybe.withDefault False)
+                    |> Maybe.withDefault True)
         )
         False
         ( all () )
@@ -269,26 +269,41 @@ isWaveCollapsed { all } (Plane _ waveF) =
             wasCollapsed &&
                 (waveF coord
                     |> Maybe.map (\matches -> Matches.count matches == 1)
-                    |> Maybe.withDefault True)
+                    |> Maybe.withDefault False)
         )
         True
         ( all () )
 
 
-initWave : Plane v a -> Wave v
-initWave (Plane size _) = Plane.empty size
+initWave : UniquePatterns v a -> Plane v a -> Wave v
+initWave uniquePatterns (Plane size _) =
+    Plane.filled size <| Matches.fromList <| Dict.keys uniquePatterns
 
 
 render : Step v -> Plane v a -> Plane v a
 render step source = source
 
 
-renderTracing : Step v -> Plane v a -> Plane v (Matches PatternId, List a)
-renderTracing step (Plane size _) = Plane.empty size
+renderTracing : Step v -> UniquePatterns v a -> Plane v a -> Plane v (Matches PatternId, List a)
+renderTracing (Step _ _ status) uniquePatterns (Plane size _ as source) =
+    let
+        fromWave : Wave v -> Plane v (Matches PatternId, List a)
+        fromWave wave = wave |> Plane.map (\matches -> (matches, []))
+    in
+        fromWave <| case status of
+            Initial -> source |> initWave uniquePatterns
+            InProgress wave -> wave
+            Solved wave -> wave
+            Terminated -> Plane.empty size
+            Exceeded _ -> Plane.empty size
 
 
 getSource : Solver v a -> Plane v a
 getSource (Solver { source }) = source
+
+
+getPatterns : Solver v a -> UniquePatterns v a
+getPatterns (Solver { patterns }) = patterns
 
 
 getSeed : Step v -> Random.Seed

@@ -46,7 +46,17 @@ getSize (Plane size _) = size
 
 map : (a -> b) -> Plane v a -> Plane v b
 map f (Plane size srcF) =
-    Plane size (Maybe.map f << srcF)
+    Plane size (srcF >> Maybe.map f)
+
+
+andThen : (a -> Maybe b) -> Plane v a -> Plane v b
+andThen f (Plane size srcF) =
+    Plane size (srcF >> Maybe.andThen f)
+
+
+filled : v -> a -> Plane v a
+filled size v =
+    Plane size <| always <| Just v
 
 
 transform : (v -> v) -> Plane v a -> Plane v a

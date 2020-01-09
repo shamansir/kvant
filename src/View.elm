@@ -417,17 +417,21 @@ viewTracingCell ( matches, chars ) =
         [ ]
         [ span
             [ style "display" "inline-block"
-            , style "min-width" "30px"
+            , style "width" "100px"
+            , style "overflow" "hidden"
+            , style "text-overflow" "ellipsis"
             ]
             [
-                Matches.count matches
-                    |> String.fromInt
+                Matches.toList matches
+                    |> List.map String.fromInt
+                    |> String.join "|"
                     |> text
             ]
         , span
             [ style "display" "inline-block"
-            , style "min-width" "30px"
+            , style "width" "100px"
             , style "overflow" "hidden"
+            , style "text-overflow" "ellipsis"
             ]
             [
                 text <|
