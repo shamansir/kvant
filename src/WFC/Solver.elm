@@ -123,15 +123,15 @@ solve (Solver { options, source, patterns, walker } as solver) step  =
         seed = getSeed step
         advance wave =
             case observe seed walker patterns wave of
-                ( oSeed, Collapsed ) ->
+                ( Collapsed, oSeed ) ->
                     nextStep oSeed step <| Solved wave
-                ( oSeed, Contradiction ) ->
+                ( Contradiction, oSeed ) ->
                     nextStep oSeed step <| Terminated
-                ( oSeed, Unknown ) ->
+                ( Unknown, oSeed ) ->
                     nextStep oSeed step <| Terminated
-                ( oSeed, Focus position pattern ) ->
+                ( Focus position pattern, oSeed ) ->
                     case propagate oSeed walker position pattern wave of
-                        ( pSeed, newWave ) ->
+                        ( newWave, pSeed ) ->
                             let
                                 next = nextStep pSeed step <| InProgress newWave
                             in case options.advanceRule of
@@ -149,14 +149,14 @@ solve (Solver { options, source, patterns, walker } as solver) step  =
             _ -> step
 
 
-entropyOf : Random.Seed -> UniquePatterns v a -> Matches PatternId -> ( Random.Seed, Maybe Float )
+entropyOf : Random.Seed -> UniquePatterns v a -> Matches PatternId -> ( Maybe Float, Random.Seed )
 entropyOf seed uniquePatterns matches =
     case Matches.count matches of
-        0 -> (seed, Nothing) -- contradiction
-        1 -> (seed, Just 0)
+        0 -> ( Nothing, seed ) -- contradiction
+        1 -> ( Just 0, seed )
         count ->
             if (count == Dict.size uniquePatterns)
-                then (seed, Just 1)
+                then ( Just 1, seed )
             else
                 let
                     patternFrequency : PatternId -> Maybe Frequency
@@ -179,8 +179,8 @@ entropyOf seed uniquePatterns matches =
                     pureEntropy =
                         (logBase 2 sumOfWeights) - (sumOfLoggedWeights / sumOfWeights)
                 in
-                    ( seed
-                    , Just pureEntropy -- FIXME: add randomness
+                    ( Just pureEntropy -- FIXME: add randomness
+                    , seed
                     )
 
 
@@ -189,35 +189,39 @@ findLowestEntropy
     -> UniquePatterns v a
     -> Walker v
     -> Wave v
-    -> ( Random.Seed, Maybe v )
+    -> ( Maybe v, Random.Seed )
 findLowestEntropy seed uniquePatterns { all } (Plane _ waveF) =
     let
+        epsilon = 0.01 -- entropy is considered 1.0 if less than (1.0 - ε)
         withEntropy prevSeed matches f =
             matches
                 |> entropyOf prevSeed uniquePatterns
-                |> Tuple.mapSecond (Maybe.andThen f)
-        foldingF curCoord ( prevSeed, maybePrevLowest ) =
-            case ( maybePrevLowest, waveF curCoord ) of
-                ( _, Nothing ) ->
-                    ( prevSeed, maybePrevLowest )
-                ( Nothing, Just matches ) ->
+                |> Tuple.mapFirst (Maybe.andThen f)
+        foldingF curCoord ( maybePrevLowest, prevSeed ) =
+            case ( waveF curCoord, maybePrevLowest ) of
+                ( Nothing, _ ) ->
+                    ( maybePrevLowest, prevSeed )
+                ( Just matches, Nothing ) ->
                     withEntropy prevSeed matches
                         <| \curEntropy ->
                             if curEntropy > 0
+                                && curEntropy < 1 - epsilon
                             then Just ( curCoord, curEntropy )
                             else maybePrevLowest
-                ( Just ( _, prevMinEntropy ), Just matches ) ->
+                ( Just matches, Just ( _, prevMinEntropy ) ) ->
                     withEntropy prevSeed matches
                         <| \curEntropy ->
-                            if curEntropy > 0 && curEntropy < prevMinEntropy
+                            if curEntropy > 0
+                                && curEntropy < 1 - epsilon
+                                && curEntropy < prevMinEntropy
                             then Just ( curCoord, curEntropy )
                             else maybePrevLowest
     in
         List.foldl
             foldingF
-            ( seed, Nothing )
+            ( Nothing, seed )
             ( all () )
-            |> Tuple.mapSecond (Maybe.map Tuple.first)
+            |> Tuple.mapFirst (Maybe.map Tuple.first)
                 -- FIXME: if Walker will be the part of every Plane
                 -- , then we won't need to pass it inside and just use
                 -- Walker's folding mechanics
@@ -228,24 +232,40 @@ observe
     -> Walker v
     -> UniquePatterns v a
     -> Wave v
-    -> ( Random.Seed, Observation v )
+    -> ( Observation v, Random.Seed )
 observe seed walker uniquePatterns wave =
     if wave |> hasAContradiction walker then
-        ( seed, Contradiction )
+        ( Contradiction, seed )
     else if wave |> isWaveCollapsed walker then
-        ( seed, Collapsed )
+        ( Collapsed, seed )
     else
         let
-            ( nextSeed, result ) =
+            ( result, eSeed ) =
                 wave |> findLowestEntropy seed uniquePatterns walker
+            ( coord, cSeed ) =
+                case result of
+                    Just c -> ( c, eSeed )
+                    Nothing ->
+                        Random.step walker.random eSeed
         in
-            case result of
-                Just coord -> ( nextSeed, Focus coord 1 ) -- FIXME: find actual Pattern ID
-                Nothing -> ( nextSeed, Focus (walker.next S walker.first) 1 ) -- FIXME: find random coordinate
+            Plane.get coord wave
+                |> Maybe.map (\matches ->
+                    let
+                        patternChoiceGenerator =
+                            randomPattern uniquePatterns <| Matches.toList matches
+                    in
+                        Random.step patternChoiceGenerator cSeed
+                            |> Tuple.mapFirst (Focus coord)
+                    )
+                |> Maybe.withDefault ( Contradiction, cSeed )
 
 
-propagate : Random.Seed -> Walker v -> v -> PatternId -> Wave v -> ( Random.Seed, Wave v )
-propagate seed _ coord pattern wave = ( seed, wave )
+propagate : Random.Seed -> Walker v -> v -> PatternId -> Wave v -> ( Wave v, Random.Seed )
+propagate seed _ coord pattern wave = ( wave, seed )
+
+
+randomPattern : UniquePatterns v a -> List PatternId -> Random.Generator PatternId
+randomPattern _ _ = Random.int 1 1
 
 
  -- FIXME: Maybe Bool
