@@ -304,7 +304,7 @@ renderTracing fallback (Solver { patterns, walker, source }) (Step _ _ status) =
                         |> Maybe.withDefault fallback
                     )
         fromWave : Wave v -> Plane v (Matches PatternId, List a)
-        fromWave wave = wave |> Plane.map (\matches -> (matches, []))
+        fromWave wave = wave |> Plane.map (\matches -> (matches, loadValues matches))
     in
         fromWave <| case status of
             Initial -> source |> initWave patterns

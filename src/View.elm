@@ -430,19 +430,13 @@ viewTracingCell ( matches, chars ) =
         , span
             [ style "display" "inline-block"
             , style "width" "100px"
+            , style "max-width" "100px"
             , style "overflow" "hidden"
             , style "text-overflow" "ellipsis"
             ]
-            [
-                text <|
-                    case
-                        chars
-                        |> List.map String.fromChar
-                        |> String.join "|"
-                        of
-                        "" -> "∅"
-                        nonEmpty -> "(" ++ nonEmpty ++ ")"
-            ]
+            <| case List.length chars of
+                    0 -> [ text "∅" ]
+                    _ -> chars |> List.map viewChar
         ]
 
 
