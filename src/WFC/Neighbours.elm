@@ -2,6 +2,8 @@ module WFC.Neighbours
     exposing (..)
 
 
+import WFC.Vec2 exposing (..)
+
 -- TODO: Move to Plane.Walker
 
 type Neighbours a =
@@ -34,7 +36,11 @@ fill a =
 
 
 map : (a -> b) -> Neighbours a -> Neighbours b
-map f neighbours =
+map = mapBy << always
+
+
+mapBy : (Direction -> a -> b) -> Neighbours a -> Neighbours b
+mapBy f neighbours =
     let
         (Neighbours
             nw n ne
@@ -43,9 +49,9 @@ map f neighbours =
                 neighbours
     in
         Neighbours
-            (f nw) (f n) (f ne)
-            (f  w) (f x) (f e )
-            (f sw) (f s) (f se)
+            (f NW nw) (f N n) (f NE ne)
+            (f  W  w) (f X x) (f E  e )
+            (f SW sw) (f S s) (f SE se)
 
 
 create : (Direction -> a) -> Neighbours a
@@ -56,49 +62,9 @@ create f =
         (f SW) (f S) (f SE)
 
 
-apply : (a -> Direction -> b) -> Neighbours a -> Neighbours b
-apply f neighbours =
-    let
-        (Neighbours
-            nw n ne
-             w x e
-            sw s se) =
-                neighbours
-    in
-        Neighbours
-            (f nw NW) (f n N) (f ne NE)
-            (f  w  W) (f x X) (f e  E )
-            (f sw SW) (f s S) (f se SE)
-
-
-
 allDirections : List Direction
 allDirections =
     [ NW, N, NE, W, X, E, SW, S, SE ]
-
-
-offsets : Neighbours ( Int, Int )
-offsets = create offsetFor
-
-
-offsetFor : Direction -> ( Int, Int )
-offsetFor direction =
-    case direction of
-        NW -> ( -1, -1 )
-        N  -> (  0, -1 )
-        NE -> (  1, -1 )
-        W  -> ( -1,  0 )
-        X  -> (  0,  0 )
-        E  -> (  1,  0 )
-        SW -> ( -1,  1 )
-        S  -> (  0,  1 )
-        SE -> (  1,  1 )
-
-
-move : ( Int, Int ) -> Direction -> ( Int, Int )
-move (x, y) direction =
-    case offsetFor direction of
-        ( offX, offY ) -> ( x + offX, y + offY )
 
 
 get : Direction -> Neighbours a -> a
@@ -122,11 +88,38 @@ get dir neighbours =
             SE -> se
 
 
-
 collect : v -> (v -> Direction -> v) -> (v -> Maybe a) -> Neighbours (Maybe a)
 collect focus customMove f =
     create (f << customMove focus)
 
 
-collectFlat : ( Int, Int ) -> ((Int, Int) -> Maybe a) -> Neighbours (Maybe a)
+offsets : Neighbours Vec2
+offsets = create offsetFor
+
+
+offsetFor : Direction -> Vec2
+offsetFor direction =
+    case direction of
+        NW -> ( -1, -1 )
+        N  -> (  0, -1 )
+        NE -> (  1, -1 )
+        W  -> ( -1,  0 )
+        X  -> (  0,  0 )
+        E  -> (  1,  0 )
+        SW -> ( -1,  1 )
+        S  -> (  0,  1 )
+        SE -> (  1,  1 )
+
+
+move : Vec2 -> Direction -> Vec2
+move (x, y) direction =
+    case offsetFor direction of
+        ( offX, offY ) -> ( x + offX, y + offY )
+
+
+withOffsets : Neighbours a -> Neighbours (Vec2, a)
+withOffsets = mapBy (offsetFor >> Tuple.pair)
+
+
+collectFlat : Vec2 -> (Vec2 -> Maybe a) -> Neighbours (Maybe a)
 collectFlat focus = collect focus move

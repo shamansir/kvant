@@ -15,8 +15,10 @@ import WFC.Plane exposing (Plane(..), N(..))
 import WFC.Plane as Plane exposing (map)
 import WFC.Plane.Flat as Plane
     exposing ( SearchMethod, foldl, coords, equal, sub, findMatches, findAllSubs, findAllSubsAlt, findOccurrence )
-import WFC.Plane.Offset exposing (OffsetPlane(..))
-import WFC.Neighbours exposing (..)
+import WFC.Plane.Offset exposing (OffsetPlane(..), toOffset)
+import WFC.Plane.Offset as OffsetPlane exposing (get)
+import WFC.Neighbours as Neighbours exposing (..)
+import WFC.Neighbours exposing (Neighbours)
 
 
 type alias Options v =
@@ -61,6 +63,7 @@ type alias PatternId = Int
 type alias UniquePattern v a =
     { pattern : Pattern v a
     , frequency : ( Occurrence, Maybe Frequency )
+     -- TODO: change `macthes` to Neighbours, but each neigbour may contain more Neigbours
     , matches : OffsetPlane v (List PatternId)
     }
 
@@ -74,7 +77,7 @@ type UniquePatternsCount = UniquePatternsCount Int
 
 type alias Walker v =
     { first : v
-    , next : Direction -> v -> v
+    , next : v -> Direction -> v
     , random : Random.Generator v
     , all : () -> List v
     }
@@ -129,7 +132,7 @@ solve (Solver { options, source, patterns, walker } as solver) step  =
                 ( Unknown, oSeed ) ->
                     nextStep oSeed step <| Terminated
                 ( Focus position pattern, oSeed ) ->
-                    case propagate oSeed walker position pattern wave of
+                    case propagate oSeed patterns walker position pattern wave of
                         ( newWave, pSeed ) ->
                             let
                                 next = nextStep pSeed step <| InProgress newWave
@@ -270,14 +273,60 @@ loadFrequencies uniquePatterns =
     Dict.map (always <| (.frequency >> Tuple.second)) uniquePatterns
 
 
-propagate : Random.Seed -> Walker v -> v -> PatternId -> Wave v -> ( Wave v, Random.Seed )
-propagate seed _ coord pattern wave =
+propagate
+    :  Random.Seed
+    -> UniquePatterns v a
+    -> Walker v
+    -> v
+    -> PatternId
+    -> Wave v
+    -> ( Wave v, Random.Seed )
+propagate seed uniquePatterns walker focus pattern (Plane waveSize waveF as wave) =
     -- FIXME: update the wave with coord <-> pattern
     --        but it's better to record all the updates as a batch
     --        and then apply them together.
     --        just use the updates as the first source during the propagation
     let
-        changes = List.singleton ( coord, Matches.single pattern )
+        neighbours : Neighbours (Matches PatternId)
+        neighbours =
+            Neighbours.collect focus walker.next waveF
+                |> Neighbours.map (Maybe.withDefault Matches.none)
+
+        updateMatches : Direction -> Matches PatternId -> Matches PatternId
+        updateMatches dir curMatches =
+            curMatches
+                |> Matches.toList
+                |> List.concatMap (\curMatchingPattern ->
+                    Dict.get pattern uniquePatterns
+                        |> Maybe.map .matches
+                        |> Maybe.andThen (\offsetPlane ->
+                            let
+                                offset =
+                                    walker.next walker.first dir
+                                        |> toOffset
+                            in
+                                offsetPlane
+                                |> OffsetPlane.get offset
+                                |> Maybe.map (List.filter ((==) curMatchingPattern))
+                        )
+                        |> Maybe.withDefault []
+                )
+                |> Matches.fromList
+        changes : List (Direction, Matches PatternId)
+        changes =
+            Neighbours.allDirections
+                |> List.map (\dir -> (dir, Neighbours.get dir neighbours))
+                |> List.foldl
+                    (\(dir, curMatches) prevMatches ->
+                        ( dir
+                        , updateMatches dir curMatches
+                        ) :: prevMatches
+                    )
+                    []
+
+            -- FIXME:
+            -- List.singleton ( focus, Matches.single pattern )
+            --     |> List.append (Neighbours.allDirections)
     in
         ( wave, seed )
 

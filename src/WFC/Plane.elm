@@ -126,3 +126,8 @@ addFrom values (Plane size f) =
                         |> Dict.get v
                         |> Maybe.map Just
                         |> Maybe.withDefault (f v)
+
+
+-- addBy : (v -> Maybe a) -> Plane v a -> Plane v a
+-- addBy f (Plane size srcF) =
+--     Plane size (\v -> f v |> (Maybe.withDefault <| srcF v))

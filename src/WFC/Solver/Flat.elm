@@ -29,9 +29,7 @@ init options (Plane size _ as source)  =
 walker : Vec2 -> Walker Vec2
 walker ( w, h ) =
     { first = (0, 0)
-    , next =
-        \direction coord ->
-            Dir.move coord direction
+    , next = Dir.move
     , random =
         Random.map2
             Tuple.pair

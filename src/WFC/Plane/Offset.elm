@@ -17,6 +17,10 @@ type Offset v = Offset v
 type OffsetPlane v a = OffsetPlane { from: v, to: v } (Offset v -> Maybe a)
 
 
+get : Offset v -> OffsetPlane v a -> Maybe a
+get offset (OffsetPlane _ f) = f offset
+
+
 -- disregard : Plane (Offset v) a -> Plane v a
 -- disregard = transformBy (\(Offset off) -> off) Offset
 
@@ -40,6 +44,10 @@ materializeExists =
     materializeFlatten
         >> List.map cellToMaybe
         >> List.filterMap identity
+
+
+toOffset : v -> Offset v
+toOffset = Offset
 
 
 toDirection : Offset Vec2 -> Direction
