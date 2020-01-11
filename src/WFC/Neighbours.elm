@@ -88,9 +88,64 @@ get dir neighbours =
             SE -> se
 
 
+set : Direction -> a -> Neighbours a -> Neighbours a
+set dir val =
+    mapBy
+        (\otherDir cur ->
+            if otherDir == dir then val else cur
+        )
+
+
+setCenter : a -> Neighbours a -> Neighbours a
+setCenter = set X
+
+
+-- TODO: focus should not be needed, just `(Direction -> v)`
 collect : v -> (v -> Direction -> v) -> (v -> Maybe a) -> Neighbours (Maybe a)
 collect focus customMove f =
     create (f << customMove focus)
+
+
+toList : Neighbours a -> List (Direction, a)
+toList neighbours =
+    allDirections
+        |> List.map (\dir -> (dir, get dir neighbours))
+
+
+foldl : (Direction -> a -> b -> b) -> b -> Neighbours a -> b
+foldl f init =
+    toList >>
+        List.foldl
+            (\(dir, val) prev ->
+                f dir val prev
+            )
+            init
+
+
+load : a -> List (Direction, a) -> Neighbours a
+load default =
+    List.foldl
+        (\(dir, val) neighbours ->
+            neighbours |> set dir val
+        )
+        (fill default)
+
+
+-- FIXME: we also need `equals` here
+byCoord : v -> (v -> Direction -> v) -> Neighbours a -> (v -> Maybe a)
+byCoord focus customMove neighbours =
+    \otherCoord ->
+        -- FIXME: improve somehow
+        if      otherCoord == customMove focus NW then Just <| get NW neighbours
+        else if otherCoord == customMove focus N  then Just <| get N  neighbours
+        else if otherCoord == customMove focus NE then Just <| get NE neighbours
+        else if otherCoord == customMove focus W  then Just <| get W  neighbours
+        else if otherCoord == customMove focus X  then Just <| get X  neighbours
+        else if otherCoord == customMove focus E  then Just <| get E  neighbours
+        else if otherCoord == customMove focus SW then Just <| get SW neighbours
+        else if otherCoord == customMove focus S  then Just <| get S  neighbours
+        else if otherCoord == customMove focus SE then Just <| get SE neighbours
+        else Nothing
 
 
 offsets : Neighbours Vec2
@@ -123,3 +178,6 @@ withOffsets = mapBy (offsetFor >> Tuple.pair)
 
 collectFlat : Vec2 -> (Vec2 -> Maybe a) -> Neighbours (Maybe a)
 collectFlat focus = collect focus move
+
+
+

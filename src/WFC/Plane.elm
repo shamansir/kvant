@@ -5,6 +5,9 @@ import Array
 import Dict
 import Dict exposing (Dict)
 
+import WFC.Neighbours exposing (Neighbours)
+import WFC.Neighbours as Neighbours exposing (..)
+
 -- import WFC.Neighbours exposing (..)
 -- import WFC.Occurence exposing (Occurence)
 -- import WFC.Occurence as Occurence
@@ -109,25 +112,46 @@ fromDict size dict =
 
 -- could be very slow if overused, see comments about stacking above
 add : v -> a -> Plane v a -> Plane v a
-add v a (Plane size f) =
-    Plane size
-        <| \otherV ->
-                if otherV == v then Just a else f otherV
+add v a =
+    adjust
+        (\(otherV, cur) ->
+            if otherV == v then Just a else cur
+        )
+
 
 
 addFrom : List (comparable, a) -> Plane comparable a -> Plane comparable a
-addFrom values (Plane size f) =
+addFrom values =
     let
         valuesDict = values |> Dict.fromList
     in
-        Plane size
-            <| \v ->
-                    valuesDict
+        adjust
+            (\(v, cur) ->
+                valuesDict
                         |> Dict.get v
                         |> Maybe.map Just
-                        |> Maybe.withDefault (f v)
+                        |> Maybe.withDefault cur)
 
 
 -- addBy : (v -> Maybe a) -> Plane v a -> Plane v a
 -- addBy f (Plane size srcF) =
 --     Plane size (\v -> f v |> (Maybe.withDefault <| srcF v))
+
+
+loadNeighbours : v -> (v -> Direction -> v) -> Plane v a -> Neighbours (Maybe a)
+loadNeighbours focus move (Plane _ f) =
+    Neighbours.collect focus move f
+
+
+apply : v -> (v -> Direction -> v) -> Neighbours a -> Plane v a -> Plane v a
+apply focus move neighbours plane =
+    let
+        fromNeighbours = Neighbours.byCoord focus move neighbours
+    in
+        plane
+            |> adjust
+                (\(v, maybeCur) ->
+                    fromNeighbours v
+                        |> Maybe.map Just
+                        |> Maybe.withDefault maybeCur
+                )

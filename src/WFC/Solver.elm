@@ -289,8 +289,10 @@ propagate seed uniquePatterns walker focus pattern (Plane waveSize waveF as wave
     let
         neighbours : Neighbours (Matches PatternId)
         neighbours =
-            Neighbours.collect focus walker.next waveF
+            wave
+                |> Plane.loadNeighbours focus walker.next
                 |> Neighbours.map (Maybe.withDefault Matches.none)
+                -- |> Neighbours.setCenter (Matches.single pattern)
 
         updateMatches : Direction -> Matches PatternId -> Matches PatternId
         updateMatches dir curMatches =
@@ -299,36 +301,30 @@ propagate seed uniquePatterns walker focus pattern (Plane waveSize waveF as wave
                 |> List.concatMap (\curMatchingPattern ->
                     Dict.get pattern uniquePatterns
                         |> Maybe.map .matches
-                        |> Maybe.andThen (\offsetPlane ->
+                        |> Maybe.andThen (\matchesByOffset ->
                             let
                                 offset =
                                     walker.next walker.first dir
                                         |> toOffset
                             in
-                                offsetPlane
-                                |> OffsetPlane.get offset
-                                |> Maybe.map (List.filter ((==) curMatchingPattern))
+                                matchesByOffset
+                                    |> OffsetPlane.get offset
+                                    |> Maybe.map (List.filter ((==) curMatchingPattern))
                         )
                         |> Maybe.withDefault []
                 )
                 |> Matches.fromList
-        changes : List (Direction, Matches PatternId)
-        changes =
-            Neighbours.allDirections
-                |> List.map (\dir -> (dir, Neighbours.get dir neighbours))
-                |> List.foldl
-                    (\(dir, curMatches) prevMatches ->
-                        ( dir
-                        , updateMatches dir curMatches
-                        ) :: prevMatches
-                    )
-                    []
 
-            -- FIXME:
-            -- List.singleton ( focus, Matches.single pattern )
-            --     |> List.append (Neighbours.allDirections)
+        changes : Neighbours (Matches PatternId)
+        changes =
+            neighbours
+                |> Neighbours.mapBy updateMatches
+                |> Neighbours.setCenter (Matches.single pattern)
     in
-        ( wave, seed )
+        ( wave
+            |> Plane.apply focus walker.next changes
+        , seed
+        )
 
 
  -- TODO: produce several IDs?
