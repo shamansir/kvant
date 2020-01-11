@@ -5,6 +5,7 @@ module WFC.Matches exposing
     , count, isNone, extract
     , toList, fromList
     , fromMaybe
+    , run
     )
 
 
@@ -80,3 +81,9 @@ extract matches =
         asList = toList matches
     in ( List.length asList, asList )
 
+
+run : (() -> x) -> (a -> List a -> x) -> Matches a -> x
+run fNone fSome matches =
+    case matches |> toList of
+        head::tail -> fSome head tail
+        [] -> fNone ()

@@ -11,6 +11,7 @@ import WFC.Vec2 exposing (..)
 import WFC.Matches exposing (..)
 import WFC.Solver exposing (..)
 import WFC.Solver as S exposing (init)
+import WFC.Neighbours as Dir exposing (Direction(..), move)
 
 
 init : Options Vec2 -> Plane Vec2 a -> Solver Vec2 a
@@ -28,7 +29,9 @@ init options (Plane size _ as source)  =
 walker : Vec2 -> Walker Vec2
 walker ( w, h ) =
     { first = (0, 0)
-    , next = always <| always (0, 0)
+    , next =
+        \direction coord ->
+            Dir.move coord direction
     , random =
         Random.map2
             Tuple.pair

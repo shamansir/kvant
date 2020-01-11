@@ -376,3 +376,8 @@ findMatches from (Plane size f as plane) =
                 |> Dict.fromList
     in
         OffsetPlane limits (\(Offset v) -> Dict.get v offsetToMatches)
+
+
+-- neighbours : SearchMethod -> Vec2 -> Plane Vec2 a -> List ( Direction, Vec2 )
+-- neighbours v (x, y) =
+

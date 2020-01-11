@@ -251,7 +251,7 @@ observe seed walker uniquePatterns wave =
                 |> Maybe.map (\matches ->
                     let
                         maybePatternChoiceGenerator =
-                            -- FIXME: 
+                            -- FIXME: use Matches.run + Maybe.andThen
                             randomPattern uniquePatterns <| Matches.toList matches
                     in
                         case maybePatternChoiceGenerator of
@@ -271,7 +271,15 @@ loadFrequencies uniquePatterns =
 
 
 propagate : Random.Seed -> Walker v -> v -> PatternId -> Wave v -> ( Wave v, Random.Seed )
-propagate seed _ coord pattern wave = ( wave, seed )
+propagate seed _ coord pattern wave =
+    -- FIXME: update the wave with coord <-> pattern
+    --        but it's better to record all the updates as a batch
+    --        and then apply them together.
+    --        just use the updates as the first source during the propagation
+    let
+        changes = List.singleton ( coord, Matches.single pattern )
+    in
+        ( wave, seed )
 
 
  -- TODO: produce several IDs?

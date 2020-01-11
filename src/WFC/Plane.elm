@@ -19,6 +19,11 @@ type Plane v a = Plane v (v -> Maybe a)
  -- TODO: should check incoming v's by `v -> Bool` before, like, if they fit?
  --       or some advancing, like `v -> Direction -> Maybe v`? which could never end?
  -- TODO: Include Walker and default value in every plane
+ -- TODO: store privately some stack counter since if we change a function a lot of times but keep
+ --       it dependent on the previous function, it will require more and more memory to hold,
+ --       getting over the stack limit could trigger the recalculation of all the items and using --       the dictionary as the backing function (`coords` -> `f coord` -> `Dict` -> make `f` from
+ --       `Dict.get`, I would name it `refill`), which is slow, but guarantees not to blow up
+ --       the Panel at some point.
 
 type alias Cell v a = (v, Maybe a)
 
@@ -100,3 +105,24 @@ fromList size list =
 fromDict : comparable -> Dict comparable a -> Plane comparable a
 fromDict size dict =
     Plane size <| \v -> Dict.get v dict
+
+
+-- could be very slow if overused, see comments about stacking above
+add : v -> a -> Plane v a -> Plane v a
+add v a (Plane size f) =
+    Plane size
+        <| \otherV ->
+                if otherV == v then Just a else f otherV
+
+
+addFrom : List (comparable, a) -> Plane comparable a -> Plane comparable a
+addFrom values (Plane size f) =
+    let
+        valuesDict = values |> Dict.fromList
+    in
+        Plane size
+            <| \v ->
+                    valuesDict
+                        |> Dict.get v
+                        |> Maybe.map Just
+                        |> Maybe.withDefault (f v)
