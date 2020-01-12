@@ -418,6 +418,8 @@ viewTracingCell ( matches, chars ) =
         [ span
             [ style "display" "inline-block"
             , style "width" "100px"
+            , style "height" "88px"
+            , style "padding-top" "12px"
             , style "overflow" "hidden"
             , style "text-overflow" "ellipsis"
             ]
@@ -431,6 +433,8 @@ viewTracingCell ( matches, chars ) =
             [ style "display" "inline-block"
             , style "width" "100px"
             , style "max-width" "100px"
+            , style "height" "100px"
+            , style "max-height" "100px"
             , style "overflow" "hidden"
             , style "text-overflow" "ellipsis"
             ]

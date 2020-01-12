@@ -251,26 +251,25 @@ observe seed walker uniquePatterns wave =
                         Random.step walker.random eSeed
         in
             Plane.get coord wave
-                |> Maybe.map (\matches ->
-                    let
-                        maybePatternChoiceGenerator =
-                            -- FIXME: use Matches.run + Maybe.andThen
-                            randomPattern uniquePatterns <| Matches.toList matches
-                    in
-                        case maybePatternChoiceGenerator of
-                            -- if matches list is not empty
-                            Just patternChoiceGenerator
-                                -> Random.step patternChoiceGenerator cSeed
-                                    |> Tuple.mapFirst (Focus coord)
-                            -- if there were no matches
-                            Nothing -> ( Contradiction, cSeed )
+                |> Maybe.andThen
+                    (
+                        Matches.run
+                            (always Nothing)
+                            (\first tail ->
+                                let
+                                    patternChoiceGenerator =
+                                        randomPattern uniquePatterns first tail
+                                in
+                                    Random.step patternChoiceGenerator cSeed
+                                        |> Tuple.mapFirst (Focus coord)
+                                        |> Just
+                            )
                     )
                 |> Maybe.withDefault ( Contradiction, cSeed )
 
 
 loadFrequencies : UniquePatterns v a -> Dict PatternId (Maybe Frequency)
-loadFrequencies uniquePatterns =
-    Dict.map (always <| (.frequency >> Tuple.second)) uniquePatterns
+loadFrequencies = Dict.map <| always <| (.frequency >> Tuple.second)
 
 
 propagate
@@ -328,28 +327,22 @@ propagate seed uniquePatterns walker focus pattern (Plane waveSize waveF as wave
 
 
  -- TODO: produce several IDs?
-randomPattern : UniquePatterns v a -> List PatternId -> Maybe (Random.Generator PatternId)
-randomPattern uniquePatterns from =
+randomPattern : UniquePatterns v a -> PatternId -> List PatternId -> Random.Generator PatternId
+randomPattern uniquePatterns first others =
     let
-        frequencies : List ( Float, PatternId )
-        frequencies =
-            from |>
-                List.map
-                    (\pattern ->
-                        ( uniquePatterns
-                            |> Dict.get pattern
-                            |> Maybe.andThen (.frequency >> Tuple.second)
-                            |> Maybe.map frequencyToFloat
-                            |> Maybe.withDefault 0
-                        , pattern
-                        )
-                    )
+        packWithFrequency : PatternId -> ( Float, PatternId )
+        packWithFrequency pattern =
+            ( uniquePatterns
+                |> Dict.get pattern
+                |> Maybe.andThen (.frequency >> Tuple.second)
+                |> Maybe.map frequencyToFloat
+                |> Maybe.withDefault 0
+            , pattern
+            )
     in
-        case frequencies of
-            firstPattern::otherPatterns ->
-                Random.weighted firstPattern otherPatterns
-                    |> Just
-            [] -> Nothing
+        Random.weighted
+            (packWithFrequency first)
+            (others |> List.map packWithFrequency)
 
 
  -- FIXME: Maybe Bool
