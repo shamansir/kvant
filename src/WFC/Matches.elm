@@ -4,6 +4,7 @@ module WFC.Matches exposing
     , none, single, some, safeSome
     , count, isNone, extract
     , toList, fromList
+    , toString
     , fromMaybe
     , run
     )
@@ -87,3 +88,10 @@ run fNone fSome matches =
     case matches |> toList of
         head::tail -> fSome head tail
         [] -> fNone ()
+
+
+toString : (a -> String) -> Matches a -> String
+toString itemToString =
+    toList
+        >> List.map itemToString
+        >> String.join ","

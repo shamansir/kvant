@@ -180,4 +180,25 @@ collectFlat : Vec2 -> (Vec2 -> Maybe a) -> Neighbours (Maybe a)
 collectFlat focus = collect focus move
 
 
+dirToString : Direction -> String
+dirToString direction =
+    case direction of
+        NW -> "NW"
+        N  -> "N"
+        NE -> "NE"
+        W  -> "W"
+        X  -> "X"
+        E  -> "E"
+        SW -> "SW"
+        S  -> "S"
+        SE -> "SE"
 
+
+toString : (a -> String) -> Neighbours a -> String
+toString itemToString =
+    foldl
+        (\dir item strings ->
+            (dirToString dir ++ " : " ++ itemToString item) :: strings
+        )
+        []
+        >> String.join " "

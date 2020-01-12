@@ -349,7 +349,7 @@ viewMatches plane =
 viewMatchesWithPatterns : WFC.UniquePatterns Vec2 Char -> OffsetPlane Vec2 (List Int) -> Html msg
 viewMatchesWithPatterns patterns plane =
     let
-        patternWrapper patternData =
+        patternWrapper patternId patternData =
             div
                 [ style "display" "inline-block"
                 , style "padding" "1px"
@@ -359,6 +359,12 @@ viewMatchesWithPatterns patterns plane =
                 , style "margin-right" "-20px"
                 ]
                 [ viewTextPlane patternData.pattern
+                , span
+                    [ style "position" "absolute"
+                    , style "padding-top" "5px"
+                    , style "font-size" "1.3em"
+                    ]
+                    [ text <| String.fromInt patternId ]
                 ]
     in
         plane
@@ -380,7 +386,7 @@ viewMatchesWithPatterns patterns plane =
                                 (\match ->
                                     patterns
                                         |> Dict.get match
-                                        |> Maybe.map patternWrapper
+                                        |> Maybe.map (patternWrapper match)
                                         |> Maybe.withDefault (div [] [ text "<NO>" ])
                                 )
                                 matchesList
@@ -481,7 +487,12 @@ viewStepStatus (WFC.Step num _ status) =
         , text " "
         , text <| case status of
            WFC.Initial -> "(initial)"
-           WFC.InProgress _ -> "(in progress)"
+           WFC.InProgress focus _ ->
+            "(in progress"
+                ++ case focus of
+                    WFC.FocusedAt (x, y) ->
+                        ": (" ++ String.fromInt x ++ "," ++ String.fromInt y ++ "))"
+                    WFC.NotFocused -> ")"
            WFC.Solved _ -> "(solved)"
            WFC.Terminated -> "(terminated)"
            WFC.Exceeded attempts -> "(exceeded " ++ String.fromInt attempts ++ ")"
