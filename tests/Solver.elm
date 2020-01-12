@@ -7,7 +7,7 @@ import Fuzz exposing (Fuzzer, int, list, string)
 import Test exposing (..)
 -- import Test.Internal as Internal
 
-import WFC.Plane.Text as TextPlane
+import WFC.Plane.Impl.Text as TextPlane
 import WFC.Solver as Solver
 -- import WFC.Frequency
 
