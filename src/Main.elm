@@ -146,6 +146,7 @@ update msg model =
                     | status =
                         Solving
                             ( result, tracingResult )
+                            <| Debug.log "history"
                             <| H.init (lastStep, TracingStep lastTracingStep)
                     }
             , Cmd.none
@@ -179,6 +180,10 @@ update msg model =
             ( case model.status of
                     Solving ( prevResult, prevTracingResult) history ->
                         let
+                            -- we need to remove two last steps from the history
+                            -- to re-run it again from the start and then repeat
+                            -- the step which was before the latest, to know
+                            -- which result was there at this point
                             historyAStepBack = history |> H.back |> H.back
                             (lastStep, result) =
                                 model.wfc

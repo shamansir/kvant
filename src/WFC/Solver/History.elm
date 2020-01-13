@@ -16,7 +16,7 @@ init = Zipper.singleton
 push : a -> History a -> History a
 push elem history =
     Zipper.from
-        (Zipper.toList history)
+        (history |> Zipper.toList)
         elem
         []
 
@@ -37,9 +37,16 @@ pop history =
 
 back : History a -> History a
 back history =
-    history
-        |> Zipper.previous
-        |> Maybe.withDefault history
+    let
+        moved =
+            history
+                |> Zipper.previous
+                |> Maybe.withDefault history
+    in
+        Zipper.from
+            ( moved |> Zipper.before )
+            ( moved |> Zipper.current )
+            []
 
 
 forward : History a -> History a
