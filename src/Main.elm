@@ -93,8 +93,10 @@ init =
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
+
         NoOp ->
             ( model, Cmd.none )
+
         TriggerRunning ->
             (
                 { model
@@ -106,6 +108,7 @@ update msg model =
                 )
                 Time.now
             )
+
         TriggerTracing ->
             (
                 { model
@@ -117,6 +120,7 @@ update msg model =
                 )
                 Time.now
             )
+
         Run seed ->
             (
                 { model
@@ -129,6 +133,7 @@ update msg model =
                 }
             , Cmd.none
             )
+
         Trace seed ->
             (
                 let
@@ -145,6 +150,7 @@ update msg model =
                     }
             , Cmd.none
             )
+
         NextStep ->
             (
                 case model.status of
@@ -168,10 +174,48 @@ update msg model =
                     _ -> model
             , Cmd.none
             )
+
         PreviousStep ->
-            ( model
+            ( case model.status of
+                    Solving ( prevResult, prevTracingResult) history ->
+                        let
+                            historyAStepBack = history |> H.back
+                            (lastStep, result) =
+                                model.wfc
+                                    |> Tuple.first
+                                    |> WFC.stepAtOnce
+                                        (H.toList historyAStepBack
+                                            |> List.map Tuple.first)
+                                    |> Maybe.withDefault
+                                        (H.last history
+                                            |> Tuple.first
+                                            |> \s -> ( s, prevResult ))
+                            (lastTracingStep, tracingResult) =
+                                model.wfc
+                                    |> Tuple.second
+                                    |> WFC.stepAtOnce
+                                        (H.toList historyAStepBack
+                                            |> List.map Tuple.second
+                                            |> List.map (\(TracingStep s) -> s))
+                                    |> Maybe.withDefault
+                                        (H.last history
+                                            |> Tuple.second
+                                            |> (\(TracingStep s) -> s)
+                                            |> \s -> ( s, prevTracingResult ))
+                            nextHistory =
+                                historyAStepBack |>
+                                    H.push ( lastStep, TracingStep lastTracingStep )
+                        in
+                            { model
+                            | status =
+                                Solving
+                                    ( result, tracingResult )
+                                    nextHistory
+                            }
+                    _ -> model
             , Cmd.none
             )
+
         Stop ->
             (
                 { model
@@ -248,6 +292,11 @@ view model =
             , disabled <| doingSomething model.status
             ]
             [ text "Start tracing" ]
+        , button
+            [ onClick PreviousStep
+            , disabled <| model.status == None
+            ]
+            [ text "Previous Step" ]
         , button
             [ onClick NextStep
             , disabled <| model.status == None

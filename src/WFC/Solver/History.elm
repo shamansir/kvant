@@ -55,3 +55,7 @@ maybeBack = Zipper.previous
 
 maybeForward : History a -> Maybe (History a)
 maybeForward = Zipper.next
+
+
+toList : History a -> List a
+toList = Zipper.toList

@@ -3,7 +3,8 @@ module WFC.Core exposing
     , TracingWFC
     , text, TextWFC
     , textTracing, TextTracingWFC, TextTracingPlane
-    , run, step, firstStep
+    , firstStep
+    , run, step, stepAtOnce
     )
 
 
@@ -84,6 +85,16 @@ run seed = firstStep seed >> Tuple.second
 
 step : Step v -> WFC v fmt a -> ( Step v, fmt )
 step stepToPerform (WFC _ wfc) = wfc stepToPerform
+
+
+stepAtOnce : List (Step v) -> WFC v fmt a -> Maybe ( Step v, fmt )
+stepAtOnce steps wfc =
+    steps
+        |> List.foldl
+            (\nextStep _ ->
+                wfc |> step nextStep |> Just
+            )
+            Nothing
 
 
 firstStep : Random.Seed -> WFC v fmt a -> ( Step v, fmt )
