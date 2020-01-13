@@ -27,20 +27,21 @@ import WFC.Plane.Impl.Text exposing (TextPlane)
 import WFC.Plane.Impl.Text as TextPlane exposing (make)
 import WFC.Solver exposing (Approach(..))
 import WFC.Solver as WFC exposing (Step, Options)
-
+import WFC.Solver.History as H exposing (..)
 
 type TracingStep v = TracingStep (WFC.Step v)
+type alias History v = H.History (WFC.Step v, TracingStep v)
 
 
 type Status
     = None
-    | Busy
-    | Tracing (WFC.Step Vec2, TracingStep Vec2)
+    | Preparation
+    | Solving ( String, TextTracingPlane ) (History Vec2)
+    | Solved ( String, TextTracingPlane )
 
 
 type alias Model =
     { source: String
-    , current: Maybe ( String, TextTracingPlane )
     , wfc : ( TextWFC, TextTracingWFC )
     , status : Status
     }
@@ -53,6 +54,7 @@ type Msg
     | Run Random.Seed
     | Trace Random.Seed
     | NextStep
+    | PreviousStep
     | Stop
 
 
@@ -82,7 +84,6 @@ init =
     in
         Model
             srcText
-            Nothing
             ( WFC.text options srcText
             , WFC.textTracing options srcText
             )
@@ -97,8 +98,7 @@ update msg model =
         TriggerRunning ->
             (
                 { model
-                | current = Nothing
-                , status = Busy
+                | status = Preparation
                 }
             , Task.perform
                 (\time ->
@@ -109,8 +109,7 @@ update msg model =
         TriggerTracing ->
             (
                 { model
-                | current = Nothing
-                , status = Busy
+                | status = Preparation
                 }
             , Task.perform
                 (\time ->
@@ -121,13 +120,12 @@ update msg model =
         Run seed ->
             (
                 { model
-                | current = Just
+                | status = Solved
                     ( model.wfc
                         |> Tuple.mapBoth
                                 (WFC.run seed)
                                 (WFC.run seed)
                     )
-                , status = None
                 }
             , Cmd.none
             )
@@ -140,32 +138,43 @@ update msg model =
                         model.wfc |> Tuple.second |> WFC.Core.firstStep seed
                 in
                     { model
-                    | current = Just ( result, tracingResult )
-                    , status = Tracing ( lastStep, TracingStep lastTracingStep )
+                    | status =
+                        Solving
+                            ( result, tracingResult )
+                            <| H.init (lastStep, TracingStep lastTracingStep)
                     }
             , Cmd.none
             )
         NextStep ->
             (
                 case model.status of
-                    Tracing ( step, TracingStep tracingStep ) ->
+                    Solving _ history ->
                         let
+                            (step, TracingStep tracingStep) = H.last history
                             (lastStep, result) =
                                 model.wfc |> Tuple.first |> WFC.step step
                             (lastTracingStep, tracingResult) =
                                 model.wfc |> Tuple.second |> WFC.step tracingStep
+                            nextHistory =
+                                history |>
+                                    H.push ( lastStep, TracingStep lastTracingStep )
                         in
                             { model
-                            | current = Just ( result, tracingResult )
-                            , status = Tracing ( lastStep, TracingStep lastTracingStep )
+                            | status =
+                                Solving
+                                    ( result, tracingResult )
+                                    nextHistory
                             }
                     _ -> model
+            , Cmd.none
+            )
+        PreviousStep ->
+            ( model
             , Cmd.none
             )
         Stop ->
             (
                 { model
-                -- | current = Nothing
                 | status = None
                 }
             , Cmd.none )
@@ -197,16 +206,22 @@ doingSomething : Status -> Bool
 doingSomething status =
     case status of
         None -> False
-        Busy -> True
-        Tracing _ -> True
+        _ -> True
 
 
-maybeStep : Status -> Maybe (WFC.Step Vec2)
-maybeStep status =
+getCurrentPlane : Status -> Maybe ( String, TextTracingPlane )
+getCurrentPlane status =
     case status of
-        None -> Nothing
-        Busy -> Nothing
-        Tracing ( step, _ ) -> Just step
+        Solving plane _ -> Just plane
+        Solved plane -> Just plane
+        _ -> Nothing
+
+
+getHistory : Status -> Maybe (History Vec2)
+getHistory status =
+    case status of
+        Solving plane history -> Just history
+        _ -> Nothing
 
 
 view : Model -> Html Msg
@@ -222,7 +237,8 @@ view model =
             , disabled <| doingSomething model.status
             ]
             [ text "Run once" ]
-        , model.current
+        , model.status
+            |> getCurrentPlane
             |> Maybe.map Tuple.first
             |> Maybe.map (viewTextInBounds options.outputSize)
             |> Maybe.withDefault (div [] [])
@@ -238,7 +254,9 @@ view model =
             ]
             [ text "Next Step" ]
         , model.status
-            |> maybeStep
+            |> getHistory
+            |> Maybe.map H.last
+            |> Maybe.map Tuple.first -- Tuple.second?
             |> Maybe.map viewStepStatus
             |> Maybe.withDefault (span [] [])
         , button
@@ -246,7 +264,8 @@ view model =
             , disabled <| model.status == None
             ]
             [ text "Stop" ]
-        , model.current
+        , model.status
+            |> getCurrentPlane
             |> Maybe.map Tuple.second
             |> Maybe.map viewTracingPlane
             |> Maybe.withDefault (div [] [])
