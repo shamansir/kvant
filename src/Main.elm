@@ -179,7 +179,7 @@ update msg model =
             ( case model.status of
                     Solving ( prevResult, prevTracingResult) history ->
                         let
-                            historyAStepBack = history |> H.back
+                            historyAStepBack = history |> H.back |> H.back
                             (lastStep, result) =
                                 model.wfc
                                     |> Tuple.first
@@ -268,6 +268,10 @@ getHistory status =
         _ -> Nothing
 
 
+unpackTracingStep : TracingStep Vec2 -> Step Vec2
+unpackTracingStep (TracingStep step) = step
+
+
 view : Model -> Html Msg
 view model =
     div
@@ -317,6 +321,11 @@ view model =
             |> getCurrentPlane
             |> Maybe.map Tuple.second
             |> Maybe.map viewTracingPlane
+            |> Maybe.withDefault (div [] [])
+        , model.status
+            |> getHistory
+            |> Maybe.map (H.map Tuple.second >> H.map unpackTracingStep)
+            |> Maybe.map viewHistory
             |> Maybe.withDefault (div [] [])
         -- --------------------------
         , hr [] []

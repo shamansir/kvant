@@ -19,6 +19,8 @@ import WFC.Plane.Offset exposing (Offset, OffsetPlane)
 import WFC.Plane.Offset as Offsets exposing (foldMap)
 import WFC.Solver as WFC
 import WFC.Solver.Flat as WFC
+import WFC.Solver.History exposing (History)
+import WFC.Solver.History as History
 
 
 splitBy : Int -> String -> List String
@@ -482,8 +484,11 @@ symbolBg symbol =
 viewStepStatus : WFC.Step Vec2 -> Html msg
 viewStepStatus (WFC.Step num _ status) =
     span
-        []
+        [ style "padding" "0 2px"
+        ]
         [ text <| String.fromInt num
+        -- , text " "
+        -- , text seed
         , text " "
         , text <| case status of
            WFC.Initial -> "(initial)"
@@ -497,3 +502,16 @@ viewStepStatus (WFC.Step num _ status) =
            WFC.Terminated -> "(terminated)"
            WFC.Exceeded attempts -> "(exceeded " ++ String.fromInt attempts ++ ")"
         ]
+
+
+viewHistory : History (WFC.Step Vec2) -> Html msg
+viewHistory history =
+    div
+        [ style "position" "absolute"
+        , style "right" "0"
+        , style "margin-top" "-400px"
+        , style "display" "flex"
+        , style "flex-direction" "column"
+        ]
+        <| (History.toList history
+            |> List.map viewStepStatus)

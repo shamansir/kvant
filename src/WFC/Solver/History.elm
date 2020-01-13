@@ -59,3 +59,7 @@ maybeForward = Zipper.next
 
 toList : History a -> List a
 toList = Zipper.toList
+
+
+map : (a -> b) -> History a -> History b
+map = Zipper.map
