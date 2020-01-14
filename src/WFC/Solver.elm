@@ -153,7 +153,7 @@ solve (Solver { options, source, patterns, walker } as solver) step  =
         case getStatus step of
             Initial ->
                 -- advance <| initWave patterns source
-                initWave patterns source
+                initWave patterns options.outputSize
                     |> InProgress NotFocused
                     |> nextStep seed step
             InProgress _ wave ->
@@ -386,8 +386,9 @@ loadFrequencies : UniquePatterns v a -> Dict PatternId (Maybe Frequency)
 loadFrequencies = Dict.map <| always <| (.frequency >> Tuple.second)
 
 
-initWave : UniquePatterns v a -> Plane v a -> Wave v
-initWave uniquePatterns (Plane size _) =
+initWave : UniquePatterns v a -> v -> Wave v
+initWave uniquePatterns size =
+    -- Dict.keys uniquePatterns >> Matches.fromList >> Plane.filled
     Plane.filled size <| Matches.fromList <| Dict.keys uniquePatterns
 
 
@@ -400,9 +401,8 @@ renderTracing
     -> Solver v a
     -> Step v
     -> Plane v (Matches PatternId, List a)
-renderTracing fallback (Solver { patterns, walker, source }) (Step _ _ status) =
+renderTracing fallback (Solver { patterns, walker, source, options }) (Step _ _ status) =
     let
-        (Plane size _) = source
         loadValues : Matches PatternId -> List a
         loadValues matches =
             matches
@@ -417,11 +417,11 @@ renderTracing fallback (Solver { patterns, walker, source }) (Step _ _ status) =
         fromWave wave = wave |> Plane.map (\matches -> (matches, loadValues matches))
     in
         fromWave <| case status of
-            Initial -> source |> initWave patterns
+            Initial -> options.outputSize |> initWave patterns
             InProgress _ wave -> wave
             Solved wave -> wave
-            Terminated -> Plane.empty size
-            Exceeded _ -> Plane.empty size
+            Terminated -> Plane.empty options.outputSize
+            Exceeded _ -> Plane.empty options.outputSize
 
 
 getSource : Solver v a -> Plane v a

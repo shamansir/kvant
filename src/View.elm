@@ -177,6 +177,8 @@ viewTinyTracingPlane plane =
         [ style "position" "absolute"
         , style "right" "400px"
         , style "margin-top" "-400px"
+        , style "padding" "12px"
+        , style "background" "rgba(255,255,255,0.95)"
         ]
         [
             viewPlaneWith (Matches.none, [])
