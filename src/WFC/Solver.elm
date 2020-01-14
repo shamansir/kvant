@@ -440,6 +440,10 @@ getSeed : Step v -> Random.Seed
 getSeed (Step _ seed _) = seed
 
 
+changeSeedTo : Random.Seed -> Step v -> Step v
+changeSeedTo newSeed (Step n seed step) = Step n newSeed step
+
+
 getStatus : Step v -> StepStatus v
 getStatus (Step _ _ status) = status
 

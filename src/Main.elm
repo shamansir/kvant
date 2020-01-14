@@ -51,10 +51,11 @@ type Msg
     = NoOp
     | TriggerRunning
     | TriggerTracing
+    | TriggerPreviousStep
     | Run Random.Seed
     | Trace Random.Seed
     | NextStep
-    | PreviousStep
+    | PreviousStep Random.Seed
     | Stop
 
 
@@ -102,11 +103,7 @@ update msg model =
                 { model
                 | status = Preparation
                 }
-            , Task.perform
-                (\time ->
-                    Run <| Random.initialSeed <| Time.posixToMillis time
-                )
-                Time.now
+            , makeSeedAnd Run
             )
 
         TriggerTracing ->
@@ -114,11 +111,12 @@ update msg model =
                 { model
                 | status = Preparation
                 }
-            , Task.perform
-                (\time ->
-                    Trace <| Random.initialSeed <| Time.posixToMillis time
-                )
-                Time.now
+            , makeSeedAnd Trace
+            )
+
+        TriggerPreviousStep ->
+            ( model
+            , makeSeedAnd PreviousStep
             )
 
         Run seed ->
@@ -146,7 +144,6 @@ update msg model =
                     | status =
                         Solving
                             ( result, tracingResult )
-                            <| Debug.log "history"
                             <| H.init (lastStep, TracingStep lastTracingStep)
                     }
             , Cmd.none
@@ -176,7 +173,7 @@ update msg model =
             , Cmd.none
             )
 
-        PreviousStep ->
+        PreviousStep newSeed ->
             ( case model.status of
                     Solving ( prevResult, prevTracingResult) history ->
                         let
@@ -209,7 +206,10 @@ update msg model =
                                             |> \s -> ( s, prevTracingResult ))
                             nextHistory =
                                 historyAStepBack |>
-                                    H.push ( lastStep, TracingStep lastTracingStep )
+                                    H.push
+                                        ( lastStep |> WFC.changeSeedTo newSeed
+                                        , TracingStep (lastTracingStep |> WFC.changeSeedTo newSeed)
+                                        )
                         in
                             { model
                             | status =
@@ -277,6 +277,15 @@ unpackTracingStep : TracingStep Vec2 -> Step Vec2
 unpackTracingStep (TracingStep step) = step
 
 
+makeSeedAnd : (Random.Seed -> msg) -> Cmd msg
+makeSeedAnd makeMsg =
+    Task.perform
+        (\time ->
+            makeMsg <| Random.initialSeed <| Time.posixToMillis time
+        )
+        Time.now
+
+
 view : Model -> Html Msg
 view model =
     div
@@ -302,7 +311,7 @@ view model =
             ]
             [ text "Start tracing" ]
         , button
-            [ onClick PreviousStep
+            [ onClick TriggerPreviousStep
             , disabled <| model.status == None
             ]
             [ text "Previous Step" ]
