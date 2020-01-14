@@ -337,6 +337,11 @@ view model =
             |> Maybe.map viewTracingPlane
             |> Maybe.withDefault (div [] [])
         , model.status
+            |> getCurrentPlane
+            |> Maybe.map Tuple.second
+            |> Maybe.map viewTinyTracingPlane
+            |> Maybe.withDefault (div [] [])
+        , model.status
             |> getHistory
             |> Maybe.map (H.map Tuple.second >> H.map unpackTracingStep)
             |> Maybe.map viewHistory

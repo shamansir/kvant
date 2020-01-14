@@ -2,6 +2,7 @@ module View exposing (..)
 
 
 import Dict
+import Array
 
 import Html exposing (..)
 import Html.Attributes exposing (..)
@@ -75,6 +76,35 @@ viewGrid viewElem grid =
         |> div [ style "display" "flex", style "flex-direction" "column" ]
 
 
+viewAsGrid : (Float -> a -> Html msg) -> a -> List a -> Html msg
+viewAsGrid viewElem default src =
+    let
+        findSide : Int -> Int
+        findSide forN =
+            let
+                root = sqrt <| toFloat forN
+            in
+                if root <= 0 then 1
+                else if (root - (toFloat <| ceiling root)) > 0 then
+                    Basics.max 1 <| ceiling root + 1
+                else Basics.max 1 <| ceiling root
+        side = findSide <| List.length src
+        scale = 1 / toFloat (side * side) -- 1 / toFloat side
+        gridArr = src |> Array.fromList
+        gridList =
+            List.range 0 (side - 1)
+                |> List.map (\x ->
+                    List.range 0 (side - 1)
+                    |> List.map (\y ->
+                        gridArr
+                            |> Array.get (x * side + y)
+                            |> Maybe.withDefault default
+                    )
+                )
+    in
+        viewGrid (viewElem scale) gridList
+
+
 viewGridV : (v -> a -> Html msg) -> List (List (v, a)) -> Html msg
 viewGridV viewElem grid =
     viewGrid (\(v, a) -> viewElem v a) grid -- a.k.a. `uncurry`
@@ -139,6 +169,25 @@ viewTracingPlane =
                 [ viewCoord coord
                 , viewTracingCell tracingCell
                 ]
+
+
+viewTinyTracingPlane : TracingPlane Vec2 Char -> Html msg
+viewTinyTracingPlane plane =
+    div
+        [ style "position" "absolute"
+        , style "right" "400px"
+        , style "margin-top" "-400px"
+        ]
+        [
+            viewPlaneWith (Matches.none, [])
+                (\coord tracingCell ->
+                    span
+                        []
+                        [ viewCoord coord
+                        , viewTinyTracingCell tracingCell
+                        ])
+                plane
+        ]
 
 
 viewRotationsAndFlips : TextPlane -> Html msg
@@ -417,6 +466,30 @@ viewCell ( coord, char ) =
         [ viewCoord coord
         , text <| Maybe.withDefault "%" <| Maybe.map String.fromChar <| char
         ]
+
+
+viewTinyTracingCell : TracingCell Char -> Html msg
+viewTinyTracingCell ( _, chars ) =
+        span
+            [ style "display" "inline-block"
+            , style "width" "30px"
+            , style "height" "30px"
+            , style "overflow" "hidden"
+            ]
+            [
+                (
+                    viewAsGrid
+                        (\scale char ->
+                            span
+                                [ style "transform" ("scale(" ++ String.fromFloat scale ++ ")")
+                                , style "width" "10px"
+                                , style "height" "10px" ]
+                                [ viewChar char ]
+                        )
+                        'x'
+                        chars
+                )
+            ]
 
 
 viewTracingCell : TracingCell Char -> Html msg
