@@ -22,7 +22,7 @@ init options (Plane size _ as source)  =
                 options.patternSearch
                 options.patternSize
                 source)
-        (walker size)
+        (walker options.outputSize)
         source
 
 
