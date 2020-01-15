@@ -392,16 +392,12 @@ initWave uniquePatterns size =
     Plane.filled size <| Matches.fromList <| Dict.keys uniquePatterns
 
 
-render : Step v -> Plane v a -> Plane v a
-render step source = source -- FIXME: implement
-
-
-renderTracing
-    :  a
+apply
+    :  (Matches PatternId -> List a -> x)
     -> Solver v a
     -> Step v
-    -> Plane v (Matches PatternId, List a)
-renderTracing fallback (Solver { patterns, walker, source, options }) (Step _ _ status) =
+    -> Plane v x
+apply f (Solver { patterns, walker, source, options }) (Step _ _ status) =
     let
         loadValues : Matches PatternId -> List a
         loadValues matches =
@@ -411,13 +407,14 @@ renderTracing fallback (Solver { patterns, walker, source, options }) (Step _ _ 
                     patterns
                         |> Dict.get patternId
                         |> Maybe.andThen (\p -> Plane.get walker.first p.pattern)
-                        |> Maybe.withDefault fallback
                     )
-        fromWave : Wave v -> Plane v (Matches PatternId, List a)
-        fromWave wave = wave |> Plane.map (\matches -> (matches, loadValues matches))
+                |> List.filterMap identity
+                -- if pattern wasn't found or contains no value at this point, it is skipped
+        fromWave : Wave v -> Plane v x
+        fromWave wave = wave |> Plane.map (\matches -> f matches <| loadValues matches)
     in
         fromWave <| case status of
-            Initial -> options.outputSize |> initWave patterns
+            Initial -> initWave patterns options.outputSize
             InProgress _ wave -> wave
             Solved wave -> wave
             Terminated -> Plane.empty options.outputSize
