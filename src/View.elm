@@ -165,7 +165,9 @@ viewTracingPlane =
     viewPlaneWith (Matches.none, [])
         <| \coord tracingCell ->
             span
-                []
+                [ style "padding" "3px"
+                , style "border" "1px dotted lightgray"
+                ]
                 [ viewCoord coord
                 , viewTracingCell tracingCell
                 ]
@@ -184,7 +186,8 @@ viewTinyTracingPlane plane =
             viewPlaneWith (Matches.none, [])
                 (\coord tracingCell ->
                     span
-                        []
+                        [ style "border" "1px dotted rgba(255,255,255,0.1)"
+                        ]
                         [ viewCoord coord
                         , viewTinyTracingCell tracingCell
                         ])
