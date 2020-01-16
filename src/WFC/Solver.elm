@@ -263,33 +263,29 @@ entropyOf seed uniquePatterns matches =
         0 -> ( Nothing, seed ) -- contradiction
         1 -> ( Just 0, seed )
         count ->
-            if (count == Dict.size uniquePatterns)
-                then ( Just 1, seed )
-            else
-                let
-                    patternFrequency : PatternId -> Maybe Frequency
-                    patternFrequency patternId =
-                        Dict.get patternId uniquePatterns |>
-                            Maybe.map .frequency |>
-                            Maybe.andThen Tuple.second
-                    -- TODO: prepare frequency lists in advance, before calculation
-                    weights =
-                        matches
-                            |> Matches.toList
-                            |> List.map patternFrequency
-                            |> List.filterMap identity
-                            |> List.map frequencyToFloat
-                    sumOfWeights = List.foldl (+) 0 weights
-                    sumOfLoggedWeights =
-                        weights
-                            |> List.map (logBase 2)
-                            |> List.foldl (+) 0
-                    pureEntropy =
-                        (logBase 2 sumOfWeights) - (sumOfLoggedWeights / sumOfWeights)
-                in
-                    ( Just pureEntropy -- FIXME: add randomness
-                    , seed
-                    )
+            let
+                patternFrequency : PatternId -> Maybe Frequency
+                patternFrequency patternId =
+                    Dict.get patternId uniquePatterns |>
+                        Maybe.map .frequency |>
+                        Maybe.andThen Tuple.second
+                -- TODO: prepare frequency lists in advance, before calculation
+                weights =
+                    matches
+                        |> Matches.toList
+                        |> List.map patternFrequency
+                        |> List.filterMap identity
+                        |> List.map frequencyToFloat
+                sumOfWeights = List.foldl (+) 0 weights
+                sumOfLoggedWeights =
+                    weights
+                        |> List.map (logBase 2)
+                        |> List.foldl (+) 0
+                pureEntropy =
+                    (logBase 2 sumOfWeights) - (sumOfLoggedWeights / sumOfWeights)
+            in
+                Random.step (Random.float 0 0.0001) seed
+                    |> Tuple.mapFirst ((+) pureEntropy >> Just)
 
 
 findLowestEntropy
@@ -300,7 +296,6 @@ findLowestEntropy
     -> ( Maybe v, Random.Seed )
 findLowestEntropy seed uniquePatterns { all } (Plane _ waveF) =
     let
-        epsilon = 0.01 -- entropy is considered 1.0 if less than (1.0 - ε)
         withEntropy prevSeed matches f =
             matches
                 |> entropyOf prevSeed uniquePatterns
@@ -313,15 +308,12 @@ findLowestEntropy seed uniquePatterns { all } (Plane _ waveF) =
                     withEntropy prevSeed matches
                         <| \curEntropy ->
                             if curEntropy > 0
-                                && curEntropy < 1 - epsilon
                             then Just ( curCoord, curEntropy )
                             else maybePrevLowest
                 ( Just matches, Just ( _, prevMinEntropy ) ) ->
                     withEntropy prevSeed matches
                         <| \curEntropy ->
-                            if curEntropy > 0
-                                && curEntropy < 1 - epsilon
-                                && curEntropy < prevMinEntropy
+                            if curEntropy > 0 && curEntropy < prevMinEntropy
                             then Just ( curCoord, curEntropy )
                             else maybePrevLowest
     in
