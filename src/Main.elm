@@ -287,69 +287,93 @@ makeSeedAnd makeMsg =
 
 
 type Block
-    = Source
-    | RunOnce
-    | Tracing
-    | RotationsAndFlips
-    | Subplanes
-    | AllViews
-    | Patterns
-    | AllSubplanes
+    = Source String Vec2
+    | RunOnce Status Vec2
+    | Tracing Status
+    | RotationsAndFlips TextPlane
+    | SubPlanes TextPlane
+    | PeriodicSubPlanes TextPlane
+    | AllViews TextPlane
+    | Patterns TextPlane
+    | AllSubPlanes TextPlane SearchMethod (N Vec2)
+    | Empty
 
 
-blocks =
-    [ Source
-    , RunOnce
-    , Tracing
-    , RotationsAndFlips
-    , Subplanes
-    , AllViews
-    , Patterns
-    , AllSubplanes
+blockTitle : Block -> String
+blockTitle block =
+    case block of
+        Source _ _ -> "Source"
+        RunOnce _ _ -> "Run"
+        Tracing _ -> "Trace"
+        RotationsAndFlips _ -> "Rotations and Flips"
+        SubPlanes _ -> "SubPlanes"
+        PeriodicSubPlanes _ -> "Periodic SubPlanes"
+        AllViews _ -> "Views"
+        Patterns _ -> "Patterns"
+        AllSubPlanes _ _ _ -> "All Possible SubPlanes"
+        Empty -> "?"
+
+
+blocks : Model -> List Block
+blocks model =
+    [ Source model.source options.inputSize
+    , RunOnce model.status options.outputSize
+    , Tracing model.status
+    , RotationsAndFlips testPlane
+    , RotationsAndFlips testPlaneHex
+    , SubPlanes testPlane
+    , PeriodicSubPlanes testPlane
+    , SubPlanes testPlaneHex
+    , PeriodicSubPlanes testPlaneHex
+    , AllViews testPlane
+    , AllViews testPlaneHex
+    , Patterns testPlane
+    , Patterns testPlaneHex
+    , AllSubPlanes testPlane options.patternSearch options.patternSize
+    , AllSubPlanes testPlaneHex options.patternSearch options.patternSize
     ]
 
 
 
-viewBlock : Model -> Block -> Html Msg
-viewBlock model block =
+viewBlock : Block -> Html Msg
+viewBlock block =
     case block of
 
-        Source ->
-            model.source
-            |> viewTextInBounds options.inputSize
+        Source source bounds ->
+            source |> viewTextInBounds bounds
 
-        RunOnce ->
+        RunOnce status bounds ->
             div []
                 [ button
                     [ onClick TriggerRunning
-                    , disabled <| doingSomething model.status
+                    , disabled <| doingSomething status
                     ]
                     [ text "Run once" ]
-                , model.status
+                , status
                     |> getCurrentPlane
                     |> Maybe.map Tuple.first
-                    |> Maybe.map (viewTextInBounds options.outputSize)
+                    |> Maybe.map (viewTextInBounds bounds)
                     |> Maybe.withDefault (div [] [])
                 ]
 
-        Tracing ->
+        Tracing status ->
             div []
                 [ button
                     [ onClick TriggerTracing
-                    , disabled <| doingSomething model.status
+                    , disabled <| doingSomething status
                     ]
                     [ text "Start tracing" ]
                 , button
                     [ onClick TriggerPreviousStep
-                    , disabled <| model.status == None
+                    , disabled <| status == None
                     ]
                     [ text "Previous Step" ]
                 , button
                     [ onClick NextStep
-                    , disabled <| model.status == None
+                    , disabled <| status == None
                     ]
                     [ text "Next Step" ]
-                , model.status
+                , status
                     |> getHistory
                     |> Maybe.map H.last
                     |> Maybe.map Tuple.first -- Tuple.second?
@@ -357,84 +381,69 @@ viewBlock model block =
                     |> Maybe.withDefault (span [] [])
                 , button
                     [ onClick Stop
-                    , disabled <| model.status == None
+                    , disabled <| status == None
                     ]
                     [ text "Stop" ]
-                , model.status
+                , status
                     |> getCurrentPlane
                     |> Maybe.map Tuple.second
                     |> Maybe.map viewTracingPlane
                     |> Maybe.withDefault (div [] [])
-                , model.status
+                , status
                     |> getCurrentPlane
                     |> Maybe.map Tuple.second
                     |> Maybe.map viewTinyTracingPlane
                     |> Maybe.withDefault (div [] [])
-                , model.status
+                , status
                     |> getHistory
                     |> Maybe.map (H.map Tuple.second >> H.map unpackTracingStep)
                     |> Maybe.map viewHistory
                     |> Maybe.withDefault (div [] [])
                 ]
 
-        RotationsAndFlips ->
+        RotationsAndFlips plane ->
             div []
-                [ testPlaneHex |> viewMaterialized
+                [ plane |> viewMaterialized
                 , hr [] []
-                , testPlaneHex |> rotate |> viewMaterialized
+                , plane |> rotate |> viewMaterialized
                 , hr [] []
-                , testPlaneHex |> rotate |> flip |> viewMaterialized
+                , plane |> rotate |> flip |> viewMaterialized
                 , hr [] []
-                , testPlane |> viewRotationsAndFlips
-                , hr [] []
-                , testPlaneHex |> viewRotationsAndFlips
+                , plane |> viewRotationsAndFlips
                 ]
 
-        Subplanes ->
-            div []
-                [ testPlane |> viewSubPlanes
-                , hr [] []
-                , testPlaneHex |> viewSubPlanes
-                , hr [] []
-                , testPlane |> viewPeriodicSubPlanes
-                , hr [] []
-                , testPlaneHex |> viewPeriodicSubPlanes
-                ]
+        SubPlanes plane ->
+            plane |> viewSubPlanes
 
-        AllViews ->
-            div []
-                [ testPlane |> viewAllViews
-                , hr [] []
-                , testPlaneHex |> viewAllViews
-                ]
+        PeriodicSubPlanes plane ->
+            plane |> viewPeriodicSubPlanes
 
-        Patterns ->
-            div []
-                [ testPlane
-                    |> viewPatterns options.patternSearch options.patternSize
-                , hr [] []
-                , testPlaneHex
-                    |> viewPatterns options.patternSearch options.patternSize
-                ]
+        AllViews plane ->
+            plane |> viewAllViews
 
-        AllSubplanes ->
-            div []
-                [ hr [] []
-                , testPlane
-                    |> viewAllSubPlanes options.patternSearch options.patternSize
-                , hr [] []
-                , testPlaneHex
-                    |> viewAllSubPlanes options.patternSearch options.patternSize
-                ]
+        Patterns plane ->
+            plane |> viewPatterns options.patternSearch options.patternSize
+
+        AllSubPlanes plane patternSearch patternSize ->
+            plane |> viewAllSubPlanes patternSearch patternSize
+
+        Empty -> div [] []
 
 
 view : Model -> Html Msg
 view model =
     div
         [ ]
-        (blocks
-            |> List.map (viewBlock model)
+        (blocks model
+            |> List.map
+                (\block ->
+                    div []
+                        [ text <| blockTitle block
+                        , viewBlock block
+                        ]
+                )
             |> List.intersperse (hr [] []))
+
 
 
 main : Program {} Model Msg
