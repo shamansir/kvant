@@ -9,6 +9,7 @@ import Time
 -- import Dict
 import Dict exposing (Dict)
 import Dict as D exposing (map)
+import Array exposing (Array)
 import Array as A exposing (map)
 
 import Html exposing (..)
@@ -44,6 +45,7 @@ type alias Model =
     { source: String
     , wfc : ( TextWFC, TextTracingWFC )
     , status : Status
+    , expands : Array BlockState
     }
 
 
@@ -57,6 +59,7 @@ type Msg
     | NextStep
     | PreviousStep Random.Seed
     | Stop
+    | SwitchBlock Int
 
 
 
@@ -89,6 +92,8 @@ init =
             , WFC.textTracing options srcText
             )
             None
+            Array.empty
+        |> initExpands
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -176,6 +181,7 @@ update msg model =
         PreviousStep newSeed ->
             ( case model.status of
                     Solving ( prevResult, prevTracingResult) history ->
+                        -- TODO: Will be integrated into the Solver
                         let
                             -- we need to remove two last steps from the history
                             -- to re-run it again from the start and then repeat
@@ -225,6 +231,14 @@ update msg model =
             (
                 { model
                 | status = None
+                }
+            , Cmd.none )
+
+        SwitchBlock index ->
+            (
+                { model
+                | expands =
+                    model.expands |> switchBlock index
                 }
             , Cmd.none )
 
@@ -299,19 +313,9 @@ type Block
     | Empty
 
 
-blockTitle : Block -> String
-blockTitle block =
-    case block of
-        Source _ _ -> "Source"
-        RunOnce _ _ -> "Run"
-        Tracing _ -> "Trace"
-        RotationsAndFlips _ -> "Rotations and Flips"
-        SubPlanes _ -> "SubPlanes"
-        PeriodicSubPlanes _ -> "Periodic SubPlanes"
-        AllViews _ -> "Views"
-        Patterns _ -> "Patterns"
-        AllSubPlanes _ _ _ -> "All Possible SubPlanes"
-        Empty -> "?"
+type BlockState
+    = Expanded
+    | Collapsed
 
 
 blocks : Model -> List Block
@@ -333,6 +337,44 @@ blocks model =
     , AllSubPlanes testPlaneHex options.patternSearch options.patternSize
     ]
 
+
+initExpands : Model -> Model
+initExpands model =
+    { model
+    | expands =
+        Array.initialize
+            (List.length <| blocks model)
+            (always Expanded)
+    }
+
+
+switchBlock : Int -> Array BlockState -> Array BlockState
+switchBlock index blocksArr =
+    case blocksArr
+        |> Array.get index of
+        Just state ->
+            blocksArr
+                |> Array.set index
+                    (case state of
+                        Collapsed -> Expanded
+                        Expanded -> Collapsed
+                        )
+        Nothing -> blocksArr
+
+
+blockTitle : Block -> String
+blockTitle block =
+    case block of
+        Source _ _ -> "Source"
+        RunOnce _ _ -> "Run"
+        Tracing _ -> "Trace"
+        RotationsAndFlips _ -> "Rotations and Flips"
+        SubPlanes _ -> "SubPlanes"
+        PeriodicSubPlanes _ -> "Periodic SubPlanes"
+        AllViews _ -> "Views"
+        Patterns _ -> "Patterns"
+        AllSubPlanes _ _ _ -> "All Possible SubPlanes"
+        Empty -> "?"
 
 
 viewBlock : Block -> Html Msg
@@ -435,15 +477,24 @@ view model =
     div
         [ ]
         (blocks model
-            |> List.map
-                (\block ->
+            |> List.indexedMap
+                (\index block ->
                     div []
-                        [ text <| blockTitle block
-                        , viewBlock block
+                        [
+                            span
+                                [ style "cursor" "pointer"
+                                , onClick <| SwitchBlock index
+                                ]
+                                [ text <| blockTitle block
+                                ]
+                        , case
+                            Array.get index model.expands
+                                |> Maybe.withDefault Expanded of
+                            Expanded -> viewBlock block
+                            Collapsed -> text "..."
                         ]
                 )
             |> List.intersperse (hr [] []))
-
 
 
 main : Program {} Model Msg
