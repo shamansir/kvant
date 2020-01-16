@@ -91,13 +91,12 @@ makeFn (Convert convert as cnv) initSolver input =
         |> make cnv
 
 
-
 text : Solver.Options Vec2 -> (String -> TextWFC)
 text options =
     makeFn
         (Convert
             { fromInput = TextPlane.make options.inputSize
-            , toElement = always (List.head >> Maybe.withDefault 'x')
+            , toElement = always matchesToChar
             , toOutput = TextPlane.toString
             }
         )
@@ -120,13 +119,16 @@ textTracing options =
                     |> FlatSolver.init options
             )
             (Plane.empty options.outputSize)
-    -- input
-    --     |> TextPlane.make options.inputSize
-    --     |> FlatSolver.init options
-    --     |> make
-    --         (Convert
-    --             { fromInput = identity
-    --             , toElement = Tuple.pair
-    --             , toOutput = identity
-    --             }
-    --         )
+
+
+matchesToChar : List Char -> Char
+matchesToChar chars =
+    let
+        matchesCount = List.length chars
+        maybeFirst = List.head chars
+    in
+        if matchesCount <= 1 then
+            maybeFirst |> Maybe.withDefault 'x'
+        else if matchesCount <= 20 then
+            Char.fromCode <| 9312 + (matchesCount - 1)
+        else Char.fromCode <| 9398 + matchesCount

@@ -543,7 +543,7 @@ symbolBg symbol =
         '3' -> "aqua"
         '4' -> "blue"
         '5' -> "green"
-        '6' -> "salmon"
+        '6' -> "teal"
         '7' -> "maroon"
         '8' -> "#85C1E9"
         '9' -> "#5D6D7E"
@@ -553,6 +553,7 @@ symbolBg symbol =
         'D' -> "#E74C3C"
         'E' -> "#BFC9CA"
         'F' -> "#2E86C1"
+        'x' -> "salmon"
         _ -> "lightgray"
 
 
