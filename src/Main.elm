@@ -20,8 +20,9 @@ import View exposing (..)
 
 import WFC.Core exposing (WFC, TextWFC, TextTracingWFC, TextTracingPlane)
 import WFC.Core as WFC
+import WFC.Plane.Impl.Tracing exposing (TracingPlane)
 import WFC.Vec2 exposing (..)
-import WFC.Plane exposing (N(..))
+import WFC.Plane exposing (Plane, N(..))
 import WFC.Plane.Flat as Plane exposing (SearchMethod(..))
 import WFC.Plane.Flat exposing (flip, rotate)
 import WFC.Plane.Impl.Text exposing (TextPlane)
@@ -34,17 +35,17 @@ type TracingStep v = TracingStep (WFC.Step v)
 type alias History v = H.History (WFC.Step v, TracingStep v)
 
 
-type Status
+type Status fmt v a
     = None
     | Preparation
-    | Solving ( String, TextTracingPlane ) (History Vec2)
-    | Solved ( String, TextTracingPlane )
+    | Solving ( fmt, TracingPlane v a ) (History v)
+    | Solved ( fmt, TracingPlane v a )
 
 
 type alias Model =
     { source: String
     , wfc : ( TextWFC, TextTracingWFC )
-    , status : Status
+    , status : Status String Vec2 Char
     , expands : Array BlockState
     }
 
@@ -265,14 +266,14 @@ testPlaneHex =
         )
 
 
-doingSomething : Status -> Bool
+doingSomething : Status fmt v a -> Bool
 doingSomething status =
     case status of
         None -> False
         _ -> True
 
 
-getCurrentPlane : Status -> Maybe ( String, TextTracingPlane )
+getCurrentPlane : Status fmt v a -> Maybe ( fmt, TracingPlane v a )
 getCurrentPlane status =
     case status of
         Solving plane _ -> Just plane
@@ -280,7 +281,7 @@ getCurrentPlane status =
         _ -> Nothing
 
 
-getHistory : Status -> Maybe (History Vec2)
+getHistory : Status fmt v a -> Maybe (History v)
 getHistory status =
     case status of
         Solving plane history -> Just history
@@ -300,16 +301,16 @@ makeSeedAnd makeMsg =
         Time.now
 
 
-type Block
-    = Source String Vec2
-    | RunOnce Status Vec2
-    | Tracing Status
-    | RotationsAndFlips TextPlane
-    | SubPlanes TextPlane
-    | PeriodicSubPlanes TextPlane
-    | AllViews TextPlane
-    | Patterns TextPlane
-    | AllSubPlanes TextPlane SearchMethod (N Vec2)
+type Block fmt v a
+    = Source fmt v
+    | RunOnce (Status fmt v a) v
+    | Tracing (Status fmt v a)
+    | RotationsAndFlips (Plane v a)
+    | SubPlanes (Plane v a)
+    | PeriodicSubPlanes (Plane v a)
+    | AllViews (Plane v a)
+    | Patterns (Plane v a)
+    | AllSubPlanes (Plane v a) SearchMethod (N v)
     | Empty
 
 
@@ -318,7 +319,23 @@ type BlockState
     | Collapsed
 
 
-blocks : Model -> List Block
+type alias TextBlock = Block String Vec2 Char
+
+
+type alias ExampleModel fmt v a =
+    { source : fmt
+    , options : WFC.Options v
+    , blocks : List (Block fmt v a)
+    , wfc : ( WFC fmt v a, WFC.TracingWFC v a )
+    , status : Status fmt v a
+    }
+
+
+type Example
+    = TextExample (ExampleModel String Vec2 Char)
+
+
+blocks : Model -> List TextBlock
 blocks model =
     [ Source model.source options.inputSize
     , RunOnce model.status options.outputSize
@@ -362,7 +379,7 @@ switchBlock index blocksArr =
         Nothing -> blocksArr
 
 
-blockTitle : Block -> String
+blockTitle : Block fmt v a -> String
 blockTitle block =
     case block of
         Source _ _ -> "Source"
@@ -377,7 +394,7 @@ blockTitle block =
         Empty -> "?"
 
 
-viewBlock : Block -> Html Msg
+viewBlock : TextBlock -> Html Msg
 viewBlock block =
     case block of
 

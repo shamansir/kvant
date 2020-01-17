@@ -27,9 +27,14 @@ type WFC v fmt a =
     WFC (Solver v a) ( Solver.Step v -> ( Solver.Step v, fmt ) )
 
 
+-- type Instance
+--     = Text (String -> TextWFC) (Step Vec2)
+--     | TextTracing (String -> TextTracingWFC) (Step Vec2)
+
+
 type Instance
-    = Text (String -> TextWFC) (Step Vec2)
-    | TextTracing (String -> TextTracingWFC) (Step Vec2)
+    = Text TextWFC
+    | TextTracing TextTracingWFC
 
 
 type alias TextWFC = WFC Vec2 String Char
