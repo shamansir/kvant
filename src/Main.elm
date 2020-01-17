@@ -87,14 +87,14 @@ init =
                     { source = src
                     , sourcePlane = TextPlane.make size src
                     , options = textOptions
-                    , blocks = []
+                    , expands = []
                     , wfc =
                         ( WFC.text textOptions src
                         , WFC.textTracing textOptions src
                         )
                     , status = None
                     }
-                |> initBlocks)
+                |> initExpands)
     in
         { examples =
             [ quickTextExample
@@ -126,28 +126,34 @@ update msg model =
         NoOp ->
             ( model, Cmd.none )
 
-        WithExample id exampleMsg ->
+        WithExample requestedId exampleMsg ->
             let
-                ( nextModels, nextCmds )
+                examplesUpdates
                     = model.examples
-                        |> List.indexedMap Tuple.pair
-                        |> List.foldl
-                                (\(index, example) (models, cmds) ->
-                                    if index == id then
+                        |> List.indexedMap
+                                (\index example ->
+                                    if index == requestedId then
                                         case example of
                                             TextExample textModel ->
-                                                let (m, c) = updateExample id exampleMsg textModel
+                                                let
+                                                    (m, c) =
+                                                        updateExample requestedId exampleMsg textModel
                                                 in
-                                                    ( TextExample m :: models
-                                                    , (c |> Cmd.map (WithExample index)) :: cmds
+                                                    ( TextExample m
+                                                    , c |> Cmd.map (WithExample index)
                                                     )
                                     else
-                                        ( example :: models, cmds )
+                                        ( example, Cmd.none )
                                 )
-                                ( [], [] )
-            in ( model, Cmd.batch nextCmds )
-
-
+            in
+                (
+                    { model
+                    | examples = examplesUpdates |> List.map Tuple.first
+                    }
+                , examplesUpdates
+                    |> List.map Tuple.second
+                    |> Cmd.batch
+                )
 
 
 updateExample
@@ -290,34 +296,12 @@ updateExample id msg model =
             , Cmd.none )
 
         SwitchBlock index ->
-            ( model -- FIXME: implement
-                -- { model
-                -- | expands =
-                --     model.expands |> switchBlock index
-                -- }
+            (
+                { model
+                | expands =
+                    model.expands |> switchBlock index
+                }
             , Cmd.none )
-
-
-testPlane : TextPlane
-testPlane =
-    TextPlane.make (4, 4)
-        (
-            "0000" ++
-            "0111" ++
-            "0121" ++
-            "0111"
-        )
-
-
-testPlaneHex : TextPlane
-testPlaneHex =
-    TextPlane.make (4, 4)
-        (
-            "0123" ++
-            "4567" ++
-            "89AB" ++
-            "CDEF"
-        )
 
 
 doingSomething : Status v fmt a -> Bool
@@ -386,7 +370,7 @@ type alias ExampleModel v fmt a =
     { source : fmt
     , sourcePlane : Plane v a
     , options : WFC.Options v
-    , blocks : List (BlockState, Block v fmt a)
+    , expands : List BlockState
     , wfc : ( WFC v fmt a, WFC.TracingWFC v a )
     , status : Status v fmt a
     }
@@ -396,18 +380,18 @@ type Example
     = TextExample (ExampleModel Vec2 String Char)
 
 
-initBlocks : ExampleModel v fmt a -> ExampleModel v fmt a
-initBlocks exampleModel =
+initExpands : ExampleModel v fmt a -> ExampleModel v fmt a
+initExpands exampleModel =
     { exampleModel
-    | blocks =
+    | expands =
         blocks exampleModel
             |> List.map
                 (\block ->
                     case block of
-                        Source _ _ -> ( Expanded, block )
-                        RunOnce _ _-> ( Expanded, block )
-                        Tracing _ -> ( Expanded, block )
-                        _ -> ( Collapsed, block )
+                        Source _ _ -> Expanded
+                        RunOnce _ _-> Expanded
+                        Tracing _ -> Expanded
+                        _ -> Collapsed
                 )
     }
 
@@ -432,28 +416,17 @@ blocks e =
     ]
 
 
--- initExpands : ExampleModel v fmt a -> ExampleModel v fmt a
--- initExpands model =
---     { model
---     | expands =
---         Array.initialize
---             (List.length <| blocks model)
---             (always Expanded)
---     }
-
-
-switchBlock : Int -> Array BlockState -> Array BlockState
-switchBlock index blocksArr =
-    case blocksArr
-        |> Array.get index of
-        Just state ->
-            blocksArr
-                |> Array.set index
-                    (case state of
+switchBlock : Int -> List BlockState -> List BlockState
+switchBlock index states =
+    states
+        |> List.indexedMap
+            (\blockIndex expandState ->
+                if index == blockIndex then
+                    case expandState of
                         Collapsed -> Expanded
                         Expanded -> Collapsed
-                        )
-        Nothing -> blocksArr
+                else expandState
+            )
 
 
 blockTitle : Block v fmt a -> String
@@ -567,10 +540,16 @@ viewBlock block =
 
 
 
-getBlocks : Example -> List (BlockState, Block Vec2 String Char)
-getBlocks example =
+-- getBlocks : Example -> List (BlockState, Block Vec2 String Char)
+-- getBlocks example =
+--     case example of
+--         TextExample exampleModel -> exampleModel.blocks
+
+
+getModel : Example -> ExampleModel Vec2 String Char
+getModel example =
     case example of
-        TextExample exampleModel -> exampleModel.blocks
+        TextExample exampleModel -> exampleModel
 
 
 view : Model -> Html Msg
@@ -578,18 +557,19 @@ view model =
     div
         [ ]
         (model.examples
-            |> List.map getBlocks
-            |> List.map (\exampleBlocks ->
+            |> List.map getModel
+            |> List.indexedMap (\exampleId example ->
                 div []
-                    (exampleBlocks
+                    (blocks example
+                        |> List.map2 Tuple.pair example.expands
                         |> List.indexedMap
-                            (\index (isExpanded, block) ->
+                            (\index ( isExpanded, block ) ->
                                 div []
                                     [
                                         span
                                             [ style "cursor" "pointer"
                                             , onClick
-                                                <| WithExample index
+                                                <| WithExample exampleId
                                                 <| SwitchBlock index
                                             ]
                                             [ text <| blockTitle block
@@ -597,7 +577,7 @@ view model =
                                     , case isExpanded of
                                         Expanded ->
                                             viewBlock block
-                                                |> Html.map (WithExample index)
+                                                |> Html.map (WithExample exampleId)
                                         Collapsed -> text "..."
                                     ]
                             )

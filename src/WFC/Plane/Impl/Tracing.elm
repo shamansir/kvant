@@ -10,6 +10,8 @@ import WFC.Plane.Flat exposing (..)
 import WFC.Solver exposing (PatternId)
 
 
+-- not Impl, should be on the same level as Flat
+
 type alias TracingCell a = (Matches PatternId, List a)
 
 type alias TracingPlane v a = Plane v (TracingCell a)
