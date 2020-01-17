@@ -99,6 +99,14 @@ init =
         { examples =
             [ quickTextExample
                 (
+                    "AAAA" ++
+                    "ABBA" ++
+                    "ABBA" ++
+                    "AAAA"
+                )
+                (4, 4)
+            , quickTextExample
+                (
                     "0000" ++
                     "0111" ++
                     "0121" ++
