@@ -35,7 +35,7 @@ type TracingStep v = TracingStep (WFC.Step v)
 type alias History v = H.History (WFC.Step v, TracingStep v)
 
 
-type Status fmt v a
+type Status v fmt a
     = None
     | Preparation
     | Solving ( fmt, TracingPlane v a ) (History v)
@@ -43,16 +43,12 @@ type Status fmt v a
 
 
 type alias Model =
-    { source: String
-    , wfc : ( TextWFC, TextTracingWFC )
-    , status : Status String Vec2 Char
-    , expands : Array BlockState
+    { examples: List Example
     }
 
 
-type Msg
-    = NoOp
-    | TriggerRunning
+type ExampleMsg
+    = TriggerRunning
     | TriggerTracing
     | TriggerPreviousStep
     | Run Random.Seed
@@ -63,9 +59,15 @@ type Msg
     | SwitchBlock Int
 
 
+type alias ExampleId = Int
 
-options : WFC.Options Vec2
-options =
+type Msg
+    = NoOp
+    | WithExample ExampleId ExampleMsg
+
+
+textOptions : WFC.Options Vec2
+textOptions =
     { approach = Overlapping
     , patternSearch = Bounded -- Periodic
     , patternSize = N ( 2, 2 )
@@ -79,30 +81,82 @@ options =
 init : Model
 init =
     let
-        srcText =
-            (
-                "0000" ++
-                "0111" ++
-                "0121" ++
-                "0111"
-            )
+        quickTextExample src size =
+            TextExample
+                (
+                    { source = src
+                    , sourcePlane = TextPlane.make size src
+                    , options = textOptions
+                    , blocks = []
+                    , wfc =
+                        ( WFC.text textOptions src
+                        , WFC.textTracing textOptions src
+                        )
+                    , status = None
+                    }
+                |> initBlocks)
     in
-        Model
-            srcText
-            ( WFC.text options srcText
-            , WFC.textTracing options srcText
-            )
-            None
-            Array.empty
-        |> initExpands
+        { examples =
+            [ quickTextExample
+                (
+                    "0000" ++
+                    "0111" ++
+                    "0121" ++
+                    "0111"
+                )
+                (4, 4)
+            , quickTextExample
+                (
+                    "0123" ++
+                    "4567" ++
+                    "89AB" ++
+                    "CDEF"
+                )
+                (4, 4)
+            ]
+        }
 
 
-update : Msg -> Model -> ( Model, Cmd Msg )
+update
+    :  Msg
+    -> Model
+    -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-
         NoOp ->
             ( model, Cmd.none )
+
+        WithExample id exampleMsg ->
+            let
+                ( nextModels, nextCmds )
+                    = model.examples
+                        |> List.indexedMap Tuple.pair
+                        |> List.foldl
+                                (\(index, example) (models, cmds) ->
+                                    if index == id then
+                                        case example of
+                                            TextExample textModel ->
+                                                let (m, c) = updateExample id exampleMsg textModel
+                                                in
+                                                    ( TextExample m :: models
+                                                    , (c |> Cmd.map (WithExample index)) :: cmds
+                                                    )
+                                    else
+                                        ( example :: models, cmds )
+                                )
+                                ( [], [] )
+            in ( model, Cmd.batch nextCmds )
+
+
+
+
+updateExample
+    :  ExampleId
+    -> ExampleMsg
+    -> ExampleModel v fmt a
+    -> ( ExampleModel v fmt a, Cmd ExampleMsg )
+updateExample id msg model =
+    case msg of
 
         TriggerRunning ->
             (
@@ -236,11 +290,11 @@ update msg model =
             , Cmd.none )
 
         SwitchBlock index ->
-            (
-                { model
-                | expands =
-                    model.expands |> switchBlock index
-                }
+            ( model -- FIXME: implement
+                -- { model
+                -- | expands =
+                --     model.expands |> switchBlock index
+                -- }
             , Cmd.none )
 
 
@@ -266,14 +320,20 @@ testPlaneHex =
         )
 
 
-doingSomething : Status fmt v a -> Bool
+doingSomething : Status v fmt a -> Bool
 doingSomething status =
     case status of
         None -> False
         _ -> True
 
 
-getCurrentPlane : Status fmt v a -> Maybe ( fmt, TracingPlane v a )
+-- getExampleModel : Example -> ExampleModel v fmt a
+-- getExampleModel example =
+--     case example of
+--        TextExample model -> model
+
+
+getCurrentPlane : Status v fmt a -> Maybe ( fmt, TracingPlane v a )
 getCurrentPlane status =
     case status of
         Solving plane _ -> Just plane
@@ -281,7 +341,7 @@ getCurrentPlane status =
         _ -> Nothing
 
 
-getHistory : Status fmt v a -> Maybe (History v)
+getHistory : Status v fmt a -> Maybe (History v)
 getHistory status =
     case status of
         Solving plane history -> Just history
@@ -301,15 +361,15 @@ makeSeedAnd makeMsg =
         Time.now
 
 
-type Block fmt v a
-    = Source fmt v
-    | RunOnce (Status fmt v a) v
-    | Tracing (Status fmt v a)
+type Block v fmt a
+    = Source v fmt
+    | RunOnce v (Status v fmt a)
+    | Tracing (Status v fmt a)
     | RotationsAndFlips (Plane v a)
     | SubPlanes (Plane v a)
     | PeriodicSubPlanes (Plane v a)
     | AllViews (Plane v a)
-    | Patterns (Plane v a)
+    | Patterns (Plane v a) SearchMethod (N v)
     | AllSubPlanes (Plane v a) SearchMethod (N v)
     | Empty
 
@@ -319,50 +379,67 @@ type BlockState
     | Collapsed
 
 
-type alias TextBlock = Block String Vec2 Char
+type alias TextBlock = Block Vec2 String Char
 
 
-type alias ExampleModel fmt v a =
+type alias ExampleModel v fmt a =
     { source : fmt
+    , sourcePlane : Plane v a
     , options : WFC.Options v
-    , blocks : List (Block fmt v a)
-    , wfc : ( WFC fmt v a, WFC.TracingWFC v a )
-    , status : Status fmt v a
+    , blocks : List (BlockState, Block v fmt a)
+    , wfc : ( WFC v fmt a, WFC.TracingWFC v a )
+    , status : Status v fmt a
     }
 
 
 type Example
-    = TextExample (ExampleModel String Vec2 Char)
+    = TextExample (ExampleModel Vec2 String Char)
 
 
-blocks : Model -> List TextBlock
-blocks model =
-    [ Source model.source options.inputSize
-    , RunOnce model.status options.outputSize
-    , Tracing model.status
-    , RotationsAndFlips testPlane
-    , RotationsAndFlips testPlaneHex
-    , SubPlanes testPlane
-    , PeriodicSubPlanes testPlane
-    , SubPlanes testPlaneHex
-    , PeriodicSubPlanes testPlaneHex
-    , AllViews testPlane
-    , AllViews testPlaneHex
-    , Patterns testPlane
-    , Patterns testPlaneHex
-    , AllSubPlanes testPlane options.patternSearch options.patternSize
-    , AllSubPlanes testPlaneHex options.patternSearch options.patternSize
+initBlocks : ExampleModel v fmt a -> ExampleModel v fmt a
+initBlocks exampleModel =
+    { exampleModel
+    | blocks =
+        blocks exampleModel
+            |> List.map
+                (\block ->
+                    case block of
+                        Source _ _ -> ( Expanded, block )
+                        RunOnce _ _-> ( Expanded, block )
+                        Tracing _ -> ( Expanded, block )
+                        _ -> ( Collapsed, block )
+                )
+    }
+
+
+blocks : ExampleModel v fmt a -> List (Block v fmt a)
+blocks e =
+    [ Source e.options.inputSize e.source
+    , RunOnce e.options.outputSize e.status
+    , Tracing e.status
+    , RotationsAndFlips e.sourcePlane
+    , SubPlanes e.sourcePlane
+    , PeriodicSubPlanes e.sourcePlane
+    , AllViews e.sourcePlane
+    , Patterns
+            e.sourcePlane
+            e.options.patternSearch
+            e.options.patternSize
+    , AllSubPlanes
+            e.sourcePlane
+            e.options.patternSearch
+            e.options.patternSize
     ]
 
 
-initExpands : Model -> Model
-initExpands model =
-    { model
-    | expands =
-        Array.initialize
-            (List.length <| blocks model)
-            (always Expanded)
-    }
+-- initExpands : ExampleModel v fmt a -> ExampleModel v fmt a
+-- initExpands model =
+--     { model
+--     | expands =
+--         Array.initialize
+--             (List.length <| blocks model)
+--             (always Expanded)
+--     }
 
 
 switchBlock : Int -> Array BlockState -> Array BlockState
@@ -379,7 +456,7 @@ switchBlock index blocksArr =
         Nothing -> blocksArr
 
 
-blockTitle : Block fmt v a -> String
+blockTitle : Block v fmt a -> String
 blockTitle block =
     case block of
         Source _ _ -> "Source"
@@ -389,19 +466,19 @@ blockTitle block =
         SubPlanes _ -> "SubPlanes"
         PeriodicSubPlanes _ -> "Periodic SubPlanes"
         AllViews _ -> "Views"
-        Patterns _ -> "Patterns"
+        Patterns _ _ _ -> "Patterns"
         AllSubPlanes _ _ _ -> "All Possible SubPlanes"
         Empty -> "?"
 
 
-viewBlock : TextBlock -> Html Msg
+viewBlock : TextBlock -> Html ExampleMsg
 viewBlock block =
     case block of
 
-        Source source bounds ->
+        Source bounds source ->
             source |> viewTextInBounds bounds
 
-        RunOnce status bounds ->
+        RunOnce bounds status ->
             div []
                 [ button
                     [ onClick TriggerRunning
@@ -480,8 +557,8 @@ viewBlock block =
         AllViews plane ->
             plane |> viewAllViews
 
-        Patterns plane ->
-            plane |> viewPatterns options.patternSearch options.patternSize
+        Patterns plane patternSearch patternSize ->
+            plane |> viewPatterns patternSearch patternSize
 
         AllSubPlanes plane patternSearch patternSize ->
             plane |> viewAllSubPlanes patternSearch patternSize
@@ -489,29 +566,45 @@ viewBlock block =
         Empty -> div [] []
 
 
+
+getBlocks : Example -> List (BlockState, Block Vec2 String Char)
+getBlocks example =
+    case example of
+        TextExample exampleModel -> exampleModel.blocks
+
+
 view : Model -> Html Msg
 view model =
     div
         [ ]
-        (blocks model
-            |> List.indexedMap
-                (\index block ->
-                    div []
-                        [
-                            span
-                                [ style "cursor" "pointer"
-                                , onClick <| SwitchBlock index
-                                ]
-                                [ text <| blockTitle block
-                                ]
-                        , case
-                            Array.get index model.expands
-                                |> Maybe.withDefault Expanded of
-                            Expanded -> viewBlock block
-                            Collapsed -> text "..."
-                        ]
+        (model.examples
+            |> List.map getBlocks
+            |> List.map (\exampleBlocks ->
+                div []
+                    (exampleBlocks
+                        |> List.indexedMap
+                            (\index (isExpanded, block) ->
+                                div []
+                                    [
+                                        span
+                                            [ style "cursor" "pointer"
+                                            , onClick
+                                                <| WithExample index
+                                                <| SwitchBlock index
+                                            ]
+                                            [ text <| blockTitle block
+                                            ]
+                                    , case isExpanded of
+                                        Expanded ->
+                                            viewBlock block
+                                                |> Html.map (WithExample index)
+                                        Collapsed -> text "..."
+                                    ]
+                            )
+                        |> List.intersperse (hr [] [])
+                    )
                 )
-            |> List.intersperse (hr [] []))
+        )
 
 
 main : Program {} Model Msg
