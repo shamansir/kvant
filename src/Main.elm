@@ -16,17 +16,20 @@ import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (..)
 
-import View exposing (..)
+import Render.View exposing (..)
+
+import Color exposing (Color)
+import Image exposing (Image)
 
 import WFC.Core exposing (WFC, TextWFC, TextTracingWFC, TextTracingPlane)
 import WFC.Core as WFC
-import WFC.Plane.Impl.Tracing exposing (TracingPlane)
 import WFC.Vec2 exposing (..)
 import WFC.Plane exposing (Plane, N(..))
 import WFC.Plane.Flat as Plane exposing (SearchMethod(..))
 import WFC.Plane.Flat exposing (flip, rotate)
 import WFC.Plane.Impl.Text exposing (TextPlane)
 import WFC.Plane.Impl.Text as TextPlane exposing (make)
+import WFC.Plane.Impl.Tracing exposing (TracingPlane)
 import WFC.Solver exposing (Approach(..))
 import WFC.Solver as WFC exposing (Step, Options)
 import WFC.Solver.History as H exposing (..)
@@ -150,6 +153,7 @@ update msg model =
                                                     ( TextExample m
                                                     , c |> Cmd.map (WithExample index)
                                                     )
+                                            _ -> ( example, Cmd.none ) -- FIXME
                                     else
                                         ( example, Cmd.none )
                                 )
@@ -340,7 +344,7 @@ getHistory status =
         _ -> Nothing
 
 
-unpackTracingStep : TracingStep Vec2 -> Step Vec2
+unpackTracingStep : TracingStep v -> Step v
 unpackTracingStep (TracingStep step) = step
 
 
@@ -386,6 +390,7 @@ type alias ExampleModel v fmt a =
 
 type Example
     = TextExample (ExampleModel Vec2 String Char)
+    | ImageExample (ExampleModel Vec2 Image Color)
 
 
 initExpands : ExampleModel v fmt a -> ExampleModel v fmt a
@@ -452,12 +457,29 @@ blockTitle block =
         Empty -> "?"
 
 
-viewBlock : TextBlock -> Html ExampleMsg
-viewBlock block =
+type alias RenderSpec v fmt a =
+    { source : v -> fmt -> Html Never
+    , tracing : TracingPlane v a -> Html Never
+    , tracingTiny : TracingPlane v a -> Html Never
+    , subPlanes : Plane v a -> Html Never
+    , periodicSubPlanes : Plane v a -> Html Never
+    , allViews : Plane v a -> Html Never
+    , patterns : Plane.SearchMethod -> N v -> Plane v a -> Html Never
+    , allSubPlanes : Plane.SearchMethod -> N v -> Plane v a -> Html Never
+    , rotationsAndFlips : Plane v a -> Html Never
+    , materialized : Plane v a -> Html Never
+    , step : WFC.Step v -> Html Never
+    , history : History (Step v) -> Html Never
+    }
+
+
+viewBlock : RenderSpec v fmt a -> Block v fmt a -> Html ExampleMsg
+viewBlock render block =
     case block of
 
         Source bounds source ->
-            source |> viewTextInBounds bounds
+            source |> render.source bounds -- |> Html.map (always NoOp)
+                -- viewTextInBounds bounds
 
         RunOnce bounds status ->
             div []
@@ -469,7 +491,7 @@ viewBlock block =
                 , status
                     |> getCurrentPlane
                     |> Maybe.map Tuple.first
-                    |> Maybe.map (viewTextInBounds bounds)
+                    |> Maybe.map (render.source bounds)
                     |> Maybe.withDefault (div [] [])
                 ]
 
@@ -494,7 +516,7 @@ viewBlock block =
                     |> getHistory
                     |> Maybe.map H.last
                     |> Maybe.map Tuple.first -- Tuple.second?
-                    |> Maybe.map viewStepStatus
+                    |> Maybe.map render.step
                     |> Maybe.withDefault (span [] [])
                 , button
                     [ onClick Stop
@@ -504,95 +526,92 @@ viewBlock block =
                 , status
                     |> getCurrentPlane
                     |> Maybe.map Tuple.second
-                    |> Maybe.map viewTracingPlane
+                    |> Maybe.map render.tracing
                     |> Maybe.withDefault (div [] [])
                 , status
                     |> getCurrentPlane
                     |> Maybe.map Tuple.second
-                    |> Maybe.map viewTinyTracingPlane
+                    |> Maybe.map render.tracingTiny
                     |> Maybe.withDefault (div [] [])
                 , status
                     |> getHistory
                     |> Maybe.map (H.map Tuple.second >> H.map unpackTracingStep)
-                    |> Maybe.map viewHistory
+                    |> Maybe.map render.history
                     |> Maybe.withDefault (div [] [])
                 ]
 
         RotationsAndFlips plane ->
             div []
+                {-
                 [ plane |> viewMaterialized
                 , hr [] []
                 , plane |> rotate |> viewMaterialized
                 , hr [] []
                 , plane |> rotate |> flip |> viewMaterialized
                 , hr [] []
-                , plane |> viewRotationsAndFlips
+                -}
+                [ plane |> render.rotationsAndFlips
                 ]
 
         SubPlanes plane ->
-            plane |> viewSubPlanes
+            plane |> render.subPlanes
 
         PeriodicSubPlanes plane ->
-            plane |> viewPeriodicSubPlanes
+            plane |> render.periodicSubPlanes
 
         AllViews plane ->
-            plane |> viewAllViews
+            plane |> render.allViews
 
         Patterns plane patternSearch patternSize ->
-            plane |> viewPatterns patternSearch patternSize
+            plane |> render.patterns patternSearch patternSize
 
         AllSubPlanes plane patternSearch patternSize ->
-            plane |> viewAllSubPlanes patternSearch patternSize
+            plane |> render.allSubPlanes patternSearch patternSize
 
         Empty -> div [] []
 
 
+viewBlocksOf : ExampleId -> ExampleModel v fmt a -> Html Msg
+viewBlocksOf exampleId exampleModel =
+    let
+        viewBlockItem blockIndex ( isExpanded, block ) =
+            div []
+                [
+                    span
+                        [ style "cursor" "pointer"
+                        , onClick
+                            <| WithExample exampleId
+                            <| SwitchBlock blockIndex
+                        ]
+                        [ text <| blockTitle block
+                        ]
+                , case isExpanded of
+                    Expanded ->
+                        viewBlock block
+                            |> Html.map (WithExample exampleId)
+                    Collapsed -> text "..."
+                ]
+    in
+        div []
+            (blocks exampleModel
+                |> List.map2 Tuple.pair exampleModel.expands
+                |> List.indexedMap viewBlockItem
+                |> List.intersperse (hr [] [])
+            )
 
--- getBlocks : Example -> List (BlockState, Block Vec2 String Char)
--- getBlocks example =
---     case example of
---         TextExample exampleModel -> exampleModel.blocks
 
-
-getModel : Example -> ExampleModel Vec2 String Char
-getModel example =
+viewExample : ExampleId -> Example -> Html Msg
+viewExample exampleId example =
     case example of
-        TextExample exampleModel -> exampleModel
+        TextExample exampleModel -> viewBlocksOf exampleId exampleModel
+        ImageExample exampleModel -> viewBlocksOf exampleId exampleModel
 
 
 view : Model -> Html Msg
 view model =
     div
         [ ]
-        (model.examples
-            |> List.map getModel
-            |> List.indexedMap (\exampleId example ->
-                div []
-                    (blocks example
-                        |> List.map2 Tuple.pair example.expands
-                        |> List.indexedMap
-                            (\index ( isExpanded, block ) ->
-                                div []
-                                    [
-                                        span
-                                            [ style "cursor" "pointer"
-                                            , onClick
-                                                <| WithExample exampleId
-                                                <| SwitchBlock index
-                                            ]
-                                            [ text <| blockTitle block
-                                            ]
-                                    , case isExpanded of
-                                        Expanded ->
-                                            viewBlock block
-                                                |> Html.map (WithExample exampleId)
-                                        Collapsed -> text "..."
-                                    ]
-                            )
-                        |> List.intersperse (hr [] [])
-                    )
-                )
-        )
+        (model.examples |> List.indexedMap viewExample)
 
 
 main : Program {} Model Msg
