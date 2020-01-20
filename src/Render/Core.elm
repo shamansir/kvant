@@ -6,7 +6,9 @@ import Array
 import Html exposing (..)
 import Html.Attributes exposing (..)
 
-
+import WFC.Occurrence as WFC exposing (..)
+import WFC.Solver.History exposing (History)
+import WFC.Solver.History as History
 
 viewWithIndex : Int -> Html msg -> Html msg
 viewWithIndex index subView =
@@ -16,15 +18,24 @@ viewWithIndex index subView =
         ]
 
 
-occursText : Occurrence -> String
+occursText : WFC.Occurrence -> String
 occursText occured =
     case occured of
         Unknown -> "occurs unknown amount of times"
         Times howMuch -> "occurs " ++ String.fromInt howMuch ++ " times"
 
 
-viewHistory : History (WFC.Step Vec2) -> Html msg
-viewHistory history =
+listBy : (a -> Html msg) -> List a -> Html msg
+listBy viewItem items =
+    div [ style "display" "flex"
+        , style "flex-direction" "row"
+        , style "justify-content" "space-evenly"
+        ]
+        <| List.map viewItem items
+
+
+history : (a -> Html msg) -> History a -> Html msg
+history viewItem theHistory =
     div
         [ style "position" "absolute"
         , style "right" "0"
@@ -32,5 +43,5 @@ viewHistory history =
         , style "display" "flex"
         , style "flex-direction" "column"
         ]
-        <| (History.toList history
-            |> List.map viewStepStatus)
+        <| (History.toList theHistory
+            |> List.map viewItem)
