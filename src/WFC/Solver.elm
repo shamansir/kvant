@@ -65,7 +65,7 @@ type StepStatus v
 type alias PatternId = Int
 
 
-type alias UniquePattern v a =
+type alias PatternWithStats v a =
     { pattern : Pattern v a
     , frequency : ( Occurrence, Maybe Frequency )
      -- TODO: change `macthes` to Neighbours, but each neigbour may contain more Neigbours
@@ -74,7 +74,7 @@ type alias UniquePattern v a =
 
 
 type alias UniquePatterns v a =
-    Dict PatternId (UniquePattern v a)
+    Dict PatternId (PatternWithStats v a)
 
 
 type UniquePatternsCount = UniquePatternsCount Int

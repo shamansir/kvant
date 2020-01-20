@@ -81,8 +81,8 @@ withCoords default viewElem =
 
 
 -- TODO: join with the above
-viewCell : a -> (a -> Html msg) -> Cell Vec2 a -> Html msg
-viewCell default viewElem ( theCoord, v ) =
+cell : a -> (a -> Html msg) -> Cell Vec2 a -> Html msg
+cell default viewElem ( theCoord, v ) =
     span
         []
         [ coord theCoord
@@ -117,7 +117,7 @@ list default viewElem  =
 
 indexedList : a -> (a -> Html msg) -> List (Plane Vec2 a) -> Html msg
 indexedList default viewElem planes =
-    list default viewElem (planes |> List.indexedMap (String.fromInt << Tuple.pair))
+    list default viewElem (planes |> List.indexedMap (String.fromInt >> Tuple.pair))
 
 
 rotationsAndFlips : a -> (a -> Html msg) -> Plane Vec2 a -> Html msg
@@ -184,29 +184,36 @@ viewAllSubPlanes default viewElem method size =
         << findAllSubsAlt method size
 
 
-viewPattern : WFC.UniquePatterns Vec2 a -> Int -> WFC.UniquePattern Vec2 a -> Html msg
-viewPattern patterns index uniquePattern =
+pattern
+    :  a
+    -> (a -> Html msg)
+    -> WFC.UniquePatterns Vec2 a
+    -> Int
+    -> WFC.PatternWithStats Vec2 a
+    -> Html msg
+pattern default viewElem uniquePatterns index patternWithStats =
      div
         [ class <| "pattern-" ++ String.fromInt index
         , style "margin" "10px 0"
         ]
         [ span [] [ text <| String.fromInt index ++ ". " ]
-        , span [] [ text <| (Render.occursText <| Tuple.first uniquePattern.frequency) ++ ". " ]
+        , span [] [ text <| (Render.occursText <| Tuple.first patternWithStats.frequency) ++ ". " ]
         , span [] [ text <| "frequency: " ++
-            (case Tuple.second uniquePattern.frequency of
+            (case Tuple.second patternWithStats.frequency of
                 Just freq -> freq |> frequencyToFloat |> String.fromFloat
                 Nothing -> "unknown") ]
-        , withCoords pattern
+        , withCoords default viewElem patternWithStats.pattern
         , span [] [ text <| "Matches: " ]
         -- , viewMatches matches
-        , matches |> matchesWithPatterns patterns
+        , patternWithStats.matches
+            |> matchesWithPatterns default viewElem uniquePatterns
         ]
 
 
-viewPatterns : a -> (a -> Html msg) -> Plane.SearchMethod -> N Vec2 -> Plane Vec2 a -> Html msg
-viewPatterns default viewElem method n p =
+patterns : a -> (a -> Html msg) -> Plane.SearchMethod -> N Vec2 -> Plane Vec2 a -> Html msg
+patterns default viewElem method n p =
     let
-        patterns = WFC.findUniquePatterns method n p
+        uniquePatterns = WFC.findUniquePatterns method n p
     in
         div [ style "display" "flex"
             , style "flex-direction" "column"
@@ -214,12 +221,12 @@ viewPatterns default viewElem method n p =
             ]
             <| Dict.values
             <| Dict.map
-                (viewPattern patterns)
-                patterns
+                (pattern default viewElem uniquePatterns)
+                uniquePatterns
 
 
-matches : a -> (a -> Html msg) -> OffsetPlane Vec2 (List Int) -> Html msg
-matches default viewElem thePlane =
+matches : OffsetPlane Vec2 (List Int) -> Html msg
+matches thePlane =
     let
         itemSpan =
             span
@@ -227,7 +234,7 @@ matches default viewElem thePlane =
                 ]
     in
         thePlane
-            |> offsetPlane default viewElem []
+            |> offsetPlane []
                 (\matchesList ->
                     div
                         [ style "height" "50px"
@@ -249,10 +256,10 @@ matches default viewElem thePlane =
 matchesWithPatterns
     :  a
     -> (a -> Html msg)
-    -> WFC.UniquePatterns Vec2 Char
+    -> WFC.UniquePatterns Vec2 a
     -> OffsetPlane Vec2 (List Int)
     -> Html msg
-matchesWithPatterns default viewElem patterns thePlane =
+matchesWithPatterns default viewElem uniquePatterns thePlane =
     let
         patternWrapper patternId patternData =
             div
@@ -263,7 +270,7 @@ matchesWithPatterns default viewElem patterns thePlane =
                 , style "max-width" "50px"
                 , style "margin-right" "-20px"
                 ]
-                [ withCoords patternData.pattern
+                [ withCoords default viewElem patternData.pattern
                 , span
                     [ style "position" "absolute"
                     , style "padding-top" "5px"
@@ -273,7 +280,7 @@ matchesWithPatterns default viewElem patterns thePlane =
                 ]
     in
         thePlane
-            |> offsetPlaneV default viewElem []
+            |> offsetPlaneV []
                 (\theCoord matchesList ->
                     div [ style "height" "130px"
                         , style "width" "130px"
@@ -289,7 +296,7 @@ matchesWithPatterns default viewElem patterns thePlane =
                             ]
                             <| List.map
                                 (\match ->
-                                    patterns
+                                    uniquePatterns
                                         |> Dict.get match
                                         |> Maybe.map (patternWrapper match)
                                         |> Maybe.withDefault (div [] [ text "<NO>" ])
@@ -301,7 +308,7 @@ matchesWithPatterns default viewElem patterns thePlane =
 
 viewMaterialized : a -> (a -> Html msg) -> Plane Vec2 a -> Html msg
 viewMaterialized default viewElem =
-    listBy (viewCell default viewElem)
+    listBy (cell default viewElem)
         << materializeFlatten
 
 

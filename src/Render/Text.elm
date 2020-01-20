@@ -4,6 +4,16 @@ module Render.Text exposing (..)
 import Html exposing (..)
 import Html.Attributes exposing (..)
 
+import Render.Core as Render exposing (..)
+import Render.Grid as Render exposing (..)
+import Render.Flat as Render exposing (..)
+
+import WFC.Vec2 exposing (..)
+import WFC.Matches as Matches exposing (..)
+import WFC.Plane exposing (Cell)
+import WFC.Plane.Impl.Text exposing (..)
+import WFC.Plane.Impl.Tracing exposing (..)
+
 
 splitBy : Int -> String -> List String
 splitBy width src =
@@ -17,8 +27,8 @@ splitBy width src =
             [ next ]
 
 
-viewChar : Char -> Html msg
-viewChar c =
+char : Char -> Html msg
+char c =
     span
         [ style "display" "inline-block"
         , style "width" "9px"
@@ -61,29 +71,23 @@ viewTextInBounds (width, height) string =
     string
         |> splitBy width
         |> List.map (String.toList)
-        |> viewGrid viewChar
+        |> Render.grid char
 
 
 viewTextPlane : TextPlane -> Html msg
 viewTextPlane =
-    viewPlaneWith '?'
-        <| \coord char ->
-            span
-                []
-                [ viewCoord coord
-                , viewChar char
-                ]
+    Render.withCoords '?' char
 
 
 viewTracingPlane : TracingPlane Vec2 Char -> Html msg
 viewTracingPlane =
-    viewPlaneWith (Matches.none, [])
+    Render.planeV (Matches.none, [])
         <| \coord tracingCell ->
             span
                 [ style "padding" "3px"
                 , style "border" "1px dotted lightgray"
                 ]
-                [ viewCoord coord
+                [ Render.coord coord
                 , viewTracingCell tracingCell
                 ]
 
@@ -98,12 +102,12 @@ viewTinyTracingPlane plane =
         , style "background" "rgba(255,255,255,0.95)"
         ]
         [
-            viewPlaneWith (Matches.none, [])
+            Render.planeV (Matches.none, [])
                 (\coord tracingCell ->
                     span
                         [ style "border" "1px dotted rgba(255,255,255,0.1)"
                         ]
-                        [ viewCoord coord
+                        [ Render.coord coord
                         , viewTinyTracingCell tracingCell
                         ])
                 plane
@@ -111,12 +115,8 @@ viewTinyTracingPlane plane =
 
 
 viewCell : Cell Vec2 Char -> Html msg
-viewCell ( coord, char ) =
-    div
-        []
-        [ viewCoord coord
-        , text <| Maybe.withDefault "%" <| Maybe.map String.fromChar <| char
-        ]
+viewCell =
+    Render.cell '%' (text << String.fromChar)
 
 
 viewTinyTracingCell : TracingCell Char -> Html msg
@@ -129,15 +129,15 @@ viewTinyTracingCell ( _, chars ) =
             ]
             [
                 (
-                    viewAsGrid
-                        (\scale char ->
+                    Render.asGrid
+                        'x'
+                        (\scale theChar ->
                             span
                                 [ style "transform" ("scale(" ++ String.fromFloat scale ++ ")")
                                 , style "width" "10px"
                                 , style "height" "10px" ]
-                                [ viewChar char ]
+                                [ char theChar ]
                         )
-                        'x'
                         chars
                 )
             ]
@@ -172,16 +172,5 @@ viewTracingCell ( matches, chars ) =
             ]
             <| case List.length chars of
                     0 -> [ text "∅" ]
-                    _ -> chars |> List.map viewChar
+                    _ -> chars |> List.map char
         ]
-
-
-withCoords : Plane Vec2 a -> Html msg
-withCoords =
-    planeV '?'
-        <| \v c ->
-            span
-                []
-                [ coord v
-                , viewChar c
-                ]
