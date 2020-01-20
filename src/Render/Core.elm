@@ -10,8 +10,28 @@ import WFC.Occurrence as WFC exposing (..)
 import WFC.Solver.History exposing (History)
 import WFC.Solver.History as History
 
-viewWithIndex : Int -> Html msg -> Html msg
-viewWithIndex index subView =
+
+
+{-
+type alias Spec v fmt a =
+    { source : v -> fmt -> Html Never
+    , tracing : TracingPlane v a -> Html Never
+    , tracingTiny : TracingPlane v a -> Html Never
+    , subPlanes : Plane v a -> Html Never
+    , periodicSubPlanes : Plane v a -> Html Never
+    , allViews : Plane v a -> Html Never
+    , patterns : Plane.SearchMethod -> N v -> Plane v a -> Html Never
+    , allSubPlanes : Plane.SearchMethod -> N v -> Plane v a -> Html Never
+    , rotationsAndFlips : Plane v a -> Html Never
+    , materialized : Plane v a -> Html Never
+    , step : WFC.Step v -> Html Never
+    , history : History (Step v) -> Html Never
+    }
+-}
+
+
+withIndex : Int -> Html msg -> Html msg
+withIndex index subView =
     div []
         [ text <| String.fromInt index ++ "."
         , subView

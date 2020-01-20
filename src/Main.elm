@@ -16,7 +16,10 @@ import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (..)
 
-import Render.View exposing (..)
+import Render.Core as Render exposing (..)
+import Render.Flat as Render exposing (..)
+import Render.Text as Render exposing (..)
+import Render.Grid as Render exposing (..)
 
 import Color exposing (Color)
 import Image exposing (Image)
@@ -455,22 +458,6 @@ blockTitle block =
         Patterns _ _ _ -> "Patterns"
         AllSubPlanes _ _ _ -> "All Possible SubPlanes"
         Empty -> "?"
-
-
-type alias RenderSpec v fmt a =
-    { source : v -> fmt -> Html Never
-    , tracing : TracingPlane v a -> Html Never
-    , tracingTiny : TracingPlane v a -> Html Never
-    , subPlanes : Plane v a -> Html Never
-    , periodicSubPlanes : Plane v a -> Html Never
-    , allViews : Plane v a -> Html Never
-    , patterns : Plane.SearchMethod -> N v -> Plane v a -> Html Never
-    , allSubPlanes : Plane.SearchMethod -> N v -> Plane v a -> Html Never
-    , rotationsAndFlips : Plane v a -> Html Never
-    , materialized : Plane v a -> Html Never
-    , step : WFC.Step v -> Html Never
-    , history : History (Step v) -> Html Never
-    }
 
 
 viewBlock : RenderSpec v fmt a -> Block v fmt a -> Html ExampleMsg

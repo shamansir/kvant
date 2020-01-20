@@ -66,34 +66,34 @@ symbolBg symbol =
         _ -> "lightgray"
 
 
-viewTextInBounds : Vec2 -> String -> Html msg
-viewTextInBounds (width, height) string =
+inBounds : Vec2 -> String -> Html msg
+inBounds (width, height) string =
     string
         |> splitBy width
         |> List.map (String.toList)
         |> Render.grid char
 
 
-viewTextPlane : TextPlane -> Html msg
-viewTextPlane =
+plane : TextPlane -> Html msg
+plane =
     Render.withCoords '?' char
 
 
-viewTracingPlane : TracingPlane Vec2 Char -> Html msg
-viewTracingPlane =
+tracingPlane : TracingPlane Vec2 Char -> Html msg
+tracingPlane =
     Render.planeV (Matches.none, [])
-        <| \coord tracingCell ->
+        <| \coord theTracingCell ->
             span
                 [ style "padding" "3px"
                 , style "border" "1px dotted lightgray"
                 ]
                 [ Render.coord coord
-                , viewTracingCell tracingCell
+                , tracingCell theTracingCell
                 ]
 
 
 viewTinyTracingPlane : TracingPlane Vec2 Char -> Html msg
-viewTinyTracingPlane plane =
+viewTinyTracingPlane thePlane =
     div
         [ style "position" "absolute"
         , style "right" "400px"
@@ -103,24 +103,24 @@ viewTinyTracingPlane plane =
         ]
         [
             Render.planeV (Matches.none, [])
-                (\coord tracingCell ->
+                (\coord theTracingCell ->
                     span
                         [ style "border" "1px dotted rgba(255,255,255,0.1)"
                         ]
                         [ Render.coord coord
-                        , viewTinyTracingCell tracingCell
+                        , tinyTracingCell theTracingCell
                         ])
-                plane
+                thePlane
         ]
 
 
-viewCell : Cell Vec2 Char -> Html msg
-viewCell =
+cell : Cell Vec2 Char -> Html msg
+cell =
     Render.cell '%' (text << String.fromChar)
 
 
-viewTinyTracingCell : TracingCell Char -> Html msg
-viewTinyTracingCell ( _, chars ) =
+tinyTracingCell : TracingCell Char -> Html msg
+tinyTracingCell ( _, chars ) =
         span
             [ style "display" "inline-block"
             , style "width" "30px"
@@ -143,8 +143,8 @@ viewTinyTracingCell ( _, chars ) =
             ]
 
 
-viewTracingCell : TracingCell Char -> Html msg
-viewTracingCell ( matches, chars ) =
+tracingCell : TracingCell Char -> Html msg
+tracingCell ( matches, chars ) =
     span
         [ ]
         [ span
