@@ -220,27 +220,20 @@ tracingTiny default viewScaled viewCoord tracingPlane =
     let
         tinyTracingCell : TracingCell a -> Html msg
         tinyTracingCell ( _, items ) =
-                span
-                    [ style "display" "inline-block"
-                    , style "width" "30px"
-                    , style "height" "30px"
-                    , style "overflow" "hidden"
-                    ]
-                    [
-                        (
-                            Render.asGrid
-                                default
-                                viewScaled
-                                -- (\scale theItem -> -- FIXME: spec.scaled
-                                --     span
-                                --         [ style "transform" ("scale(" ++ String.fromFloat scale ++ ")")
-                                --         , style "width" "10px"
-                                --         , style "height" "10px" ]
-                                --         [ viewElem theItem ]
-                                -- )
-                                items
-                        )
-                    ]
+            span
+                [ style "display" "inline-block"
+                , style "width" "30px"
+                , style "height" "30px"
+                , style "overflow" "hidden"
+                ]
+                [
+                    (
+                        Render.asGrid
+                            default
+                            viewScaled
+                            items
+                    )
+                ]
     in
         div
             [ style "position" "absolute"

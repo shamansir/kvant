@@ -19,6 +19,7 @@ type alias Spec v a msg =
     , contradiction : a
     , v : v -> Html msg
     , a : a -> Html msg
+    , merge : List a -> a
     , scaled : Float -> a -> Html msg
     , vToString : v -> String
     }

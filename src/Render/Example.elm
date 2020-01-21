@@ -446,11 +446,11 @@ viewBlock render block =
                     |> Maybe.map Tuple.second
                     |> Maybe.map render.tracingTiny
                     |> Maybe.withDefault (div [] [])
-                -- , status
-                --     |> getHistory
-                --     |> Maybe.map (H.map Tuple.second >> H.map unpackTracingStep)
-                    -- |> Maybe.map render.history
-                    -- |> Maybe.withDefault (div [] [])
+                , status
+                    |> getHistory
+                    |> Maybe.map (H.map Tuple.second >> H.map unpackTracingStep)
+                    |> Maybe.map render.history
+                    |> Maybe.withDefault (div [] [])
                 ]
 
         RotationsAndFlips plane ->

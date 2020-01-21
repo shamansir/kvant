@@ -69,6 +69,7 @@ spec =
     , contradiction = '∅'
     , a = char
     , v = Render.coord
+    , merge = merge
     , scaled = scaled
     , vToString = Render.coordText
     }

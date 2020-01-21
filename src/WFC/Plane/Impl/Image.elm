@@ -3,6 +3,7 @@ module WFC.Plane.Impl.Image exposing (..)
 
 import Array exposing (Array)
 import Color exposing (Color)
+import Color as Color exposing (..)
 
 import WFC.Vec2 exposing (..)
 import WFC.Plane exposing (..)
@@ -23,3 +24,7 @@ make ( width, height ) pixels =
                     |> Maybe.andThen (Array.get x)
             else Nothing
         )
+
+
+merge : List Color -> Color
+merge _ = Color.red

@@ -12,7 +12,7 @@ import Random
 
 
 import WFC.Vec2 exposing (..)
-import WFC.Plane.Impl.Text as TextPlane exposing (make, toString)
+import WFC.Plane.Impl.Text as TextPlane exposing (make, toString, merge)
 import WFC.Plane.Impl.Tracing exposing (TracingPlane, TracingCell)
 import WFC.Plane.Impl.Tracing as TracingPlane exposing (..)
 import WFC.Plane exposing (Plane)
@@ -101,7 +101,7 @@ text options =
     makeFn
         (Convert
             { fromInput = TextPlane.make options.inputSize
-            , toElement = always matchesToChar
+            , toElement = always TextPlane.merge
             , toOutput = TextPlane.toString
             }
         )
@@ -124,16 +124,3 @@ textTracing options =
                     |> FlatSolver.init options
             )
             (Plane.empty options.outputSize)
-
-
-matchesToChar : List Char -> Char
-matchesToChar chars =
-    let
-        matchesCount = List.length chars
-        maybeFirst = List.head chars
-    in
-        if matchesCount <= 1 then
-            maybeFirst |> Maybe.withDefault 'x'
-        else if matchesCount <= 20 then
-            Char.fromCode <| 9312 + (matchesCount - 1)
-        else Char.fromCode <| 9398 + matchesCount

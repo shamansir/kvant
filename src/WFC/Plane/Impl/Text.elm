@@ -51,3 +51,16 @@ toGrid (width, height) string =
         string
             |> splitBy width
             |> List.map (String.toList)
+
+
+merge : List Char -> Char
+merge chars =
+    let
+        optionsCount = List.length chars
+        maybeFirst = List.head chars
+    in
+        if optionsCount <= 1 then
+            maybeFirst |> Maybe.withDefault 'x'
+        else if optionsCount <= 20 then
+            Char.fromCode <| 9312 + (optionsCount - 1)
+        else Char.fromCode <| 9398 + optionsCount
