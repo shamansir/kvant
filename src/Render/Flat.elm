@@ -21,8 +21,12 @@ import Render.Core as Render exposing (..)
 import Render.Grid as Render exposing (..)
 
 
-coord : ( Int, Int ) -> Html msg
-coord ( x, y ) =
+coordText : Vec2 -> String
+coordText ( x, y ) = String.fromInt x ++ "," ++ String.fromInt y
+
+
+coord : Vec2 -> Html msg
+coord c =
     span
         [ style "position" "absolute"
         , style "font-size" "7px"
@@ -31,7 +35,7 @@ coord ( x, y ) =
         , style "border-radius" "7px"
         , style "opacity" "0.5"
         ]
-        [ text <| "(" ++ String.fromInt x ++ "," ++ String.fromInt y ++ ")" ]
+        [ text <| "(" ++ coordText c ++ ")" ]
 
 
 plane : a -> (a -> Html msg) -> Plane Vec2 a -> Html msg

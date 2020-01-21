@@ -61,7 +61,7 @@ type alias Renderer v fmt a msg =
     , patterns : SearchMethod -> N v -> Plane v a -> Html msg
     , allSubPlanes : SearchMethod -> N v -> Plane v a -> Html msg
     , step : Step v -> Html msg
-    , history : History (Step v) -> Html msg
+    , history : H.History (Step v) -> Html msg
     }
 
 
@@ -96,25 +96,8 @@ type alias ExampleModel v fmt a =
     }
 
 
-type Example
-    = TextExample (ExampleModel Vec2 String Char)
-    | ImageExample (ExampleModel Vec2 Image Color)
-
-
-initExpands : ExampleModel v fmt a -> ExampleModel v fmt a
-initExpands exampleModel =
-    { exampleModel
-    | expands =
-        blocks exampleModel
-            |> List.map
-                (\block ->
-                    case block of
-                        Source _ _ -> Expanded
-                        RunOnce _ _-> Expanded
-                        Tracing _ -> Expanded
-                        _ -> Collapsed
-                )
-    }
+type alias TextExample = ExampleModel Vec2 String Char
+type alias ImageExample = ExampleModel Vec2 Image Color
 
 
 blocks : ExampleModel v fmt a -> List (Block v fmt a)
@@ -137,138 +120,12 @@ blocks e =
     ]
 
 
-switchBlock : Int -> List BlockState -> List BlockState
-switchBlock index states =
-    states
-        |> List.indexedMap
-            (\blockIndex expandState ->
-                if index == blockIndex then
-                    case expandState of
-                        Collapsed -> Expanded
-                        Expanded -> Collapsed
-                else expandState
-            )
-
-
-blockTitle : Block v fmt a -> String
-blockTitle block =
-    case block of
-        Source _ _ -> "Source"
-        RunOnce _ _ -> "Run"
-        Tracing _ -> "Trace"
-        RotationsAndFlips _ -> "Rotations and Flips"
-        SubPlanes _ -> "SubPlanes"
-        PeriodicSubPlanes _ -> "Periodic SubPlanes"
-        AllViews _ -> "Views"
-        Patterns _ _ _ -> "Patterns"
-        AllSubPlanes _ _ _ -> "All Possible SubPlanes"
-        Empty -> "?"
-
-
-viewBlock : Renderer v fmt a ExampleMsg -> Block v fmt a -> Html ExampleMsg
-viewBlock render block =
-    case block of
-
-        Source bounds source ->
-            source |> render.source bounds -- |> Html.map (always NoOp)
-                -- viewTextInBounds bounds
-
-        RunOnce bounds status ->
-            div []
-                [ button
-                    [ onClick TriggerRunning
-                    , disabled <| doingSomething status
-                    ]
-                    [ Html.text "Run once" ]
-                , status
-                    |> getCurrentPlane
-                    |> Maybe.map Tuple.first
-                    |> Maybe.map (render.source bounds)
-                    |> Maybe.withDefault (div [] [])
-                ]
-
-        Tracing status ->
-            div []
-                [ button
-                    [ onClick TriggerTracing
-                    , disabled <| doingSomething status
-                    ]
-                    [ Html.text "Start tracing" ]
-                , button
-                    [ onClick TriggerPreviousStep
-                    , disabled <| status == None
-                    ]
-                    [ Html.text "Previous Step" ]
-                , button
-                    [ onClick NextStep
-                    , disabled <| status == None
-                    ]
-                    [ Html.text "Next Step" ]
-                , status
-                    |> getHistory
-                    |> Maybe.map H.last
-                    |> Maybe.map Tuple.first -- Tuple.second?
-                    |> Maybe.map render.step
-                    |> Maybe.withDefault (span [] [])
-                , button
-                    [ onClick Stop
-                    , disabled <| status == None
-                    ]
-                    [ Html.text "Stop" ]
-                , status
-                    |> getCurrentPlane
-                    |> Maybe.map Tuple.second
-                    |> Maybe.map render.tracing
-                    |> Maybe.withDefault (div [] [])
-                , status
-                    |> getCurrentPlane
-                    |> Maybe.map Tuple.second
-                    |> Maybe.map render.tracingTiny
-                    |> Maybe.withDefault (div [] [])
-                , status
-                    |> getHistory
-                    |> Maybe.map (H.map Tuple.second >> H.map unpackTracingStep)
-                    |> Maybe.map render.history
-                    |> Maybe.withDefault (div [] [])
-                ]
-
-        RotationsAndFlips plane ->
-            div []
-                {-
-                [ plane |> viewMaterialized
-                , hr [] []
-                , plane |> rotate |> viewMaterialized
-                , hr [] []
-                , plane |> rotate |> flip |> viewMaterialized
-                , hr [] []
-                -}
-                [ plane |> render.rotationsAndFlips
-                ]
-
-        SubPlanes plane ->
-            plane |> render.subPlanes
-
-        PeriodicSubPlanes plane ->
-            plane |> render.periodicSubPlanes
-
-        AllViews plane ->
-            plane |> render.allViews
-
-        Patterns plane patternSearch patternSize ->
-            plane |> render.patterns patternSearch patternSize
-
-        AllSubPlanes plane patternSearch patternSize ->
-            plane |> render.allSubPlanes patternSearch patternSize
-
-        Empty -> div [] []
-
-
-viewBlocksOf
+view
     :  (ExampleMsg -> msg)
     -> Renderer v fmt a ExampleMsg
     -> ExampleModel v fmt a
     -> Html msg
-viewBlocksOf toOtherMsg renderer exampleModel =
+view toOtherMsg renderer exampleModel =
     let
         viewBlockItem blockIndex ( isExpanded, block ) =
             div []
@@ -294,17 +151,6 @@ viewBlocksOf toOtherMsg renderer exampleModel =
                 |> List.indexedMap viewBlockItem
                 |> List.intersperse (hr [] [])
             )
-
-
-viewExample
-    :  (ExampleMsg -> msg)
-    -> Renderer v fmt a ExampleMsg
-    -> Example
-    -> Html msg
-viewExample toOtherMsg renderer example =
-    case example of
-        TextExample exampleModel  -> viewBlocksOf toOtherMsg renderer exampleModel
-        ImageExample exampleModel -> viewBlocksOf toOtherMsg renderer exampleModel
 
 
 update
@@ -455,6 +301,37 @@ update id msg model =
             , Cmd.none )
 
 
+initExpands : ExampleModel v fmt a -> ExampleModel v fmt a
+initExpands exampleModel =
+    { exampleModel
+    | expands =
+        blocks exampleModel
+            |> List.map
+                (\block ->
+                    case block of
+                        Source _ _ -> Expanded
+                        RunOnce _ _-> Expanded
+                        Tracing _ -> Expanded
+                        _ -> Collapsed
+                )
+    }
+
+
+blockTitle : Block v fmt a -> String
+blockTitle block =
+    case block of
+        Source _ _ -> "Source"
+        RunOnce _ _ -> "Run"
+        Tracing _ -> "Trace"
+        RotationsAndFlips _ -> "Rotations and Flips"
+        SubPlanes _ -> "SubPlanes"
+        PeriodicSubPlanes _ -> "Periodic SubPlanes"
+        AllViews _ -> "Views"
+        Patterns _ _ _ -> "Patterns"
+        AllSubPlanes _ _ _ -> "All Possible SubPlanes"
+        Empty -> "?"
+
+
 doingSomething : Status v fmt a -> Bool
 doingSomething status =
     case status of
@@ -494,3 +371,114 @@ makeSeedAnd makeMsg =
             makeMsg <| Random.initialSeed <| Time.posixToMillis time
         )
         Time.now
+
+
+switchBlock : Int -> List BlockState -> List BlockState
+switchBlock index states =
+    states
+        |> List.indexedMap
+            (\blockIndex expandState ->
+                if index == blockIndex then
+                    case expandState of
+                        Collapsed -> Expanded
+                        Expanded -> Collapsed
+                else expandState
+            )
+
+
+viewBlock : Renderer v fmt a ExampleMsg -> Block v fmt a -> Html ExampleMsg
+viewBlock render block =
+    case block of
+
+        Source bounds source ->
+            source |> render.source bounds -- |> Html.map (always NoOp)
+                -- viewTextInBounds bounds
+
+        RunOnce bounds status ->
+            div []
+                [ button
+                    [ onClick TriggerRunning
+                    , disabled <| doingSomething status
+                    ]
+                    [ Html.text "Run once" ]
+                , status
+                    |> getCurrentPlane
+                    |> Maybe.map Tuple.first
+                    |> Maybe.map (render.source bounds)
+                    |> Maybe.withDefault (div [] [])
+                ]
+
+        Tracing status ->
+            div []
+                [ button
+                    [ onClick TriggerTracing
+                    , disabled <| doingSomething status
+                    ]
+                    [ Html.text "Start tracing" ]
+                , button
+                    [ onClick TriggerPreviousStep
+                    , disabled <| status == None
+                    ]
+                    [ Html.text "Previous Step" ]
+                , button
+                    [ onClick NextStep
+                    , disabled <| status == None
+                    ]
+                    [ Html.text "Next Step" ]
+                , status
+                    |> getHistory
+                    |> Maybe.map H.last
+                    |> Maybe.map Tuple.first -- Tuple.second?
+                    |> Maybe.map render.step
+                    |> Maybe.withDefault (span [] [])
+                , button
+                    [ onClick Stop
+                    , disabled <| status == None
+                    ]
+                    [ Html.text "Stop" ]
+                , status
+                    |> getCurrentPlane
+                    |> Maybe.map Tuple.second
+                    |> Maybe.map render.tracing
+                    |> Maybe.withDefault (div [] [])
+                , status
+                    |> getCurrentPlane
+                    |> Maybe.map Tuple.second
+                    |> Maybe.map render.tracingTiny
+                    |> Maybe.withDefault (div [] [])
+                -- , status
+                --     |> getHistory
+                --     |> Maybe.map (H.map Tuple.second >> H.map unpackTracingStep)
+                    -- |> Maybe.map render.history
+                    -- |> Maybe.withDefault (div [] [])
+                ]
+
+        RotationsAndFlips plane ->
+            div []
+                {-
+                [ plane |> viewMaterialized
+                , hr [] []
+                , plane |> rotate |> viewMaterialized
+                , hr [] []
+                , plane |> rotate |> flip |> viewMaterialized
+                , hr [] []
+                -}
+                [ plane |> render.rotationsAndFlips
+                ]
+
+        SubPlanes plane ->
+            plane |> render.subPlanes
+
+        PeriodicSubPlanes plane ->
+            plane |> render.periodicSubPlanes
+
+        AllViews plane ->
+            plane |> render.allViews
+
+        Patterns plane patternSearch patternSize ->
+            plane |> render.patterns patternSearch patternSize
+
+        AllSubPlanes plane patternSearch patternSize ->
+            plane |> render.allSubPlanes patternSearch patternSize
+
+        Empty -> div [] []

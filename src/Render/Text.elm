@@ -61,3 +61,14 @@ scaled scale c =
         , style "width" "10px"
         , style "height" "10px" ]
         [ text <| String.fromChar c ]
+
+
+spec : Spec Vec2 Char msg
+spec =
+    { default = '?'
+    , contradiction = '∅'
+    , a = char
+    , v = Render.coord
+    , scaled = scaled
+    , vToString = Render.coordText
+    }

@@ -13,20 +13,13 @@ import WFC.Plane.Flat as Plane exposing (allViews)
 import WFC.Plane.Impl.Tracing exposing (..)
 import WFC.Solver exposing (..)
 import WFC.Solver.Flat as WFC
-import WFC.Solver.History exposing (..)
+import WFC.Solver.History as H exposing (..)
 import WFC.Matches as Matches exposing (..)
 
 import Render.Core as Render exposing (..)
 import Render.Grid as Render exposing (..)
 import Render.Flat as Render exposing (..)
 import Render.Example exposing (Renderer)
-
-
-type alias Options fmt a =
-    { fmtToGrid : Vec2 -> fmt -> List (List a)
-    , subPlanes : List (Vec2, Vec2)
-    , periodicSubPlanes : List (Vec2, Vec2)
-    }
 
 
 subPlanesCoords : List (Vec2, Vec2)
@@ -50,21 +43,21 @@ periodicSubPlanesCoords =
         ]
 
 
-makeFlat
-    :  Options fmt a
+make
+    :  (Vec2 -> fmt -> List (List a))
     -> Spec Vec2 a msg
     -> Renderer Vec2 fmt a msg
-makeFlat opts spec =
+make fmtToGrid spec =
     let
 
         source size fmt =
-            opts.fmtToGrid size fmt
+            fmtToGrid size fmt
                 |> Render.grid spec.a
 
         withCoords = Render.withCoords spec.v spec.a
 
         subPlanes plane =
-            opts.subPlanes
+            subPlanesCoords
                 |> List.map
                     (\(origin, size) ->
                         ( spec.vToString origin ++ " " ++ spec.vToString size
@@ -75,7 +68,7 @@ makeFlat opts spec =
                 |> Render.labeledList spec.default withCoords
 
         periodicSubPlanes plane =
-            opts.periodicSubPlanes
+            periodicSubPlanesCoords
                 |> List.map
                     (\(origin, size) ->
                         ( spec.vToString origin ++ " " ++ spec.vToString size

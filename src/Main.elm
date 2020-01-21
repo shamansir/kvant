@@ -19,7 +19,10 @@ import Html.Events exposing (..)
 import Render.Core as Render exposing (..)
 import Render.Flat as Render exposing (..)
 import Render.Text as Render exposing (..)
+import Render.Text as Text exposing (spec)
 import Render.Grid as Render exposing (..)
+import Render.Example as Example exposing (..)
+import Render.Example.Flat as FlatExample exposing (..)
 
 import Color exposing (Color)
 import Image exposing (Image)
@@ -31,6 +34,7 @@ import WFC.Plane exposing (Plane, N(..))
 import WFC.Plane.Flat as Plane exposing (SearchMethod(..))
 import WFC.Plane.Flat exposing (flip, rotate)
 import WFC.Plane.Impl.Text exposing (TextPlane)
+import WFC.Plane.Impl.Text as Text exposing (toGrid)
 import WFC.Plane.Impl.Text as TextPlane exposing (make)
 import WFC.Plane.Impl.Tracing exposing (TracingPlane)
 import WFC.Solver exposing (Approach(..))
@@ -39,13 +43,19 @@ import WFC.Solver.History as H exposing (..)
 
 
 type alias Model =
-    { examples: List Example
+    { textExamples : List TextExample
+    , imageExamples : List ImageExample
     }
+
+
+type ExampleKind
+    = Text
+    | Image
 
 
 type Msg
     = NoOp
-    | WithExample ExampleId ExampleMsg
+    | WithExample ExampleKind ExampleId ExampleMsg
 
 
 textOptions : WFC.Options Vec2
@@ -64,21 +74,19 @@ init : Model
 init =
     let
         quickTextExample src size =
-            TextExample
-                (
-                    { source = src
-                    , sourcePlane = TextPlane.make size src
-                    , options = textOptions
-                    , expands = []
-                    , wfc =
-                        ( WFC.text textOptions src
-                        , WFC.textTracing textOptions src
-                        )
-                    , status = None
-                    }
-                |> initExpands)
+            { source = src
+            , sourcePlane = TextPlane.make size src
+            , options = textOptions
+            , expands = []
+            , wfc =
+                ( WFC.text textOptions src
+                , WFC.textTracing textOptions src
+                )
+            , status = None
+            }
+            |> initExpands
     in
-        { examples =
+        { textExamples =
             [ quickTextExample
                 (
                     "AAAA" ++
@@ -104,6 +112,7 @@ init =
                 )
                 (4, 4)
             ]
+        , imageExamples = []
         }
 
 
@@ -113,45 +122,63 @@ update
     -> ( Model, Cmd Msg )
 update msg model =
     case msg of
+
         NoOp ->
             ( model, Cmd.none )
 
-        WithExample requestedId exampleMsg ->
+        WithExample kind requestedId exampleMsg ->
+
             let
-                examplesUpdates
-                    = model.examples
-                        |> List.indexedMap
-                                (\index example ->
-                                    if index == requestedId then
-                                        case example of
-                                            TextExample textModel ->
-                                                let
-                                                    (m, c) =
-                                                        updateExample requestedId exampleMsg textModel
-                                                in
-                                                    ( TextExample m
-                                                    , c |> Cmd.map (WithExample index)
-                                                    )
-                                            _ -> ( example, Cmd.none ) -- FIXME
-                                    else
-                                        ( example, Cmd.none )
-                                )
+
+                updateIfEqual index example =
+                    if index == requestedId then
+                        let
+                            ( newExampleModel, commands ) =
+                                Example.update requestedId exampleMsg example
+                        in
+                            ( newExampleModel
+                            , commands |> Cmd.map (WithExample kind index)
+                            )
+                    else
+                        ( example, Cmd.none )
+
+                injectUpdates examples inject =
+                    let
+                        updates
+                            = examples |> List.indexedMap updateIfEqual
+                    in
+                        ( inject (updates |> List.map Tuple.first)
+                        , updates
+                            |> List.map Tuple.second
+                            |> Cmd.batch
+                        )
+
             in
-                (
-                    { model
-                    | examples = examplesUpdates |> List.map Tuple.first
-                    }
-                , examplesUpdates
-                    |> List.map Tuple.second
-                    |> Cmd.batch
-                )
+
+                case kind of
+                    Text ->
+                        injectUpdates
+                            model.textExamples
+                            (\newExamples -> { model | textExamples = newExamples })
+                    Image ->
+                        injectUpdates
+                            model.imageExamples
+                            (\newExamples -> { model | imageExamples = newExamples })
 
 
 view : Model -> Html Msg
 view model =
-    div
-        [ ]
-        (model.examples |> List.indexedMap viewExample)
+    let
+        textRenderer =
+            FlatExample.make Text.toGrid Text.spec
+        viewTextExample index =
+            Example.view (WithExample Text index) textRenderer
+        viewImageExample index _ = div [] [] -- FIXME: implement
+    in
+        div
+            [ ]
+            <| (model.textExamples |> List.indexedMap viewTextExample)
+            ++ (model.imageExamples |> List.indexedMap viewImageExample)
 
 
 main : Program {} Model Msg
