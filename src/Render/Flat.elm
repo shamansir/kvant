@@ -10,6 +10,8 @@ import WFC.Plane.Flat exposing (..)
 import WFC.Plane.Flat as Plane exposing (SearchMethod(..), sub ,subAt, foldMap, unpack)
 import WFC.Plane.Offset exposing (Offset, OffsetPlane)
 import WFC.Plane.Offset as Offsets exposing (foldMap)
+import WFC.Plane.Impl.Tracing exposing (TracingPlane, TracingCell)
+import WFC.Matches as Matches exposing (..)
 import WFC.Solver as WFC
 import WFC.Solver.Flat as WFC
 import WFC.Vec2 exposing (..)
@@ -32,29 +34,6 @@ coord ( x, y ) =
         [ text <| "(" ++ String.fromInt x ++ "," ++ String.fromInt y ++ ")" ]
 
 
-step : WFC.Step Vec2 -> Html msg
-step (WFC.Step num _ status) =
-    span
-        [ style "padding" "0 2px"
-        ]
-        [ text <| String.fromInt num
-        -- , text " "
-        -- , text seed
-        , text " "
-        , text <| case status of
-           WFC.Initial -> "(initial)"
-           WFC.InProgress focus _ ->
-            "(in progress"
-                ++ case focus of
-                    WFC.FocusedAt (x, y) ->
-                        ": (" ++ String.fromInt x ++ "," ++ String.fromInt y ++ "))"
-                    WFC.NotFocused -> ")"
-           WFC.Solved _ -> "(solved)"
-           WFC.Terminated -> "(terminated)"
-           WFC.Exceeded attempts -> "(exceeded " ++ String.fromInt attempts ++ ")"
-        ]
-
-
 plane : a -> (a -> Html msg) -> Plane Vec2 a -> Html msg
 plane default viewElem =
     Plane.unpack
@@ -67,27 +46,6 @@ planeV default viewElem =
     Plane.foldMap
         (\(v, maybeVal) -> maybeVal |> Maybe.withDefault default |> Tuple.pair v)
         >> Render.gridV viewElem
-
-
-withCoords : a -> (a -> Html msg) -> Plane Vec2 a -> Html msg
-withCoords default viewElem =
-    planeV default
-        <| \theCoord elem ->
-            span
-                []
-                [ coord theCoord
-                , viewElem elem
-                ]
-
-
--- TODO: join with the above
-cell : a -> (a -> Html msg) -> Cell Vec2 a -> Html msg
-cell default viewElem ( theCoord, v ) =
-    span
-        []
-        [ coord theCoord
-        , viewElem <| Maybe.withDefault default <| v
-        ]
 
 
 offsetPlane : a -> (a -> Html msg) -> OffsetPlane Vec2 a -> Html msg
@@ -104,89 +62,25 @@ offsetPlaneV default viewElem =
         >> gridV viewElem
 
 
-list : a -> (a -> Html msg) -> List ( String, Plane Vec2 a ) -> Html msg
-list default viewElem  =
+labeledList : a -> (Vec2 -> a -> Html msg) -> List ( String, Plane Vec2 a ) -> Html msg
+labeledList default viewElem  =
     Render.listBy
         (\( label, thePlane ) ->
             div []
                 [ text label
-                , thePlane |> withCoords default viewElem
+                , thePlane |> planeV default viewElem
                 ]
         )
 
 
-indexedList : a -> (a -> Html msg) -> List (Plane Vec2 a) -> Html msg
+indexedList : a -> (Vec2 -> a -> Html msg) -> List (Plane Vec2 a) -> Html msg
 indexedList default viewElem planes =
-    list default viewElem (planes |> List.indexedMap (String.fromInt >> Tuple.pair))
-
-
-rotationsAndFlips : a -> (a -> Html msg) -> Plane Vec2 a -> Html msg
-rotationsAndFlips default viewElem p =
-    list default viewElem
-        [ ( "Original", p )
-        , ( "North", rotateTo North p )
-        , ( "West", rotateTo West p )
-        , ( "South", rotateTo South p )
-        , ( "East", rotateTo East p )
-        , ( "Horz", flipBy Horizontal p )
-        , ( "Vert", flipBy Vertical p )
-        , ( "rotate once", rotate p )
-        , ( "rotate twice", rotate <| rotate p )
-        , ( "rotate triple times", rotate <| rotate <| rotate p )
-        , ( "flip", flip p )
-        , ( "flip rotated", flip <| rotate p )
-        , ( "rotate flipped", rotate <| flip p )
-        ]
-
-
-subPlanes : a -> (a -> Html msg) -> Plane Vec2 a -> Html msg
-subPlanes default viewElem thePlane  =
-    list default viewElem
-        (
-        [ ( "Original", Just thePlane )
-        , ( "(0, 0) (2, 2)", Plane.sub (N (2, 2)) thePlane )
-        , ( "(0, 0) (3, 3)", Plane.sub (N (3, 3)) thePlane )
-        , ( "(1, 1) (2, 2)", Plane.subAt (1, 1) (N (2, 2)) thePlane )
-        , ( "(1, 1) (3, 3)", Plane.subAt (1, 1) (N (3, 3)) thePlane )
-        , ( "(0, 1) (3, 3)", Plane.subAt (0, 1) (N (3, 3)) thePlane )
-        , ( "(0, 1) (2, 3)", Plane.subAt (0, 1) (N (2, 3)) thePlane )
-        , ( "(3, 3) (1, 1)", Plane.subAt (3, 3) (N (1, 1)) thePlane )
-        , ( "(3, 3) (4, 4)", Plane.subAt (3, 3) (N (4, 4)) thePlane )
-        ] |> List.map (Tuple.mapSecond <| Maybe.withDefault thePlane)
-        )
-
--- |> Maybe.map viewTextPlane
---             |> Maybe.withDefault (text "<NONE>")
-
-
-periodicSubPlanes : a -> (a -> Html msg) -> Plane Vec2 a -> Html msg
-periodicSubPlanes default viewElem thePlane  =
-    list default viewElem
-        (
-        [ ( "Original", thePlane )
-        , ( "(0, 0) (2, 2)", Plane.periodicSubAt (0, 0) (N (2, 2)) thePlane )
-        , ( "(0, 0) (3, 3)", Plane.periodicSubAt (0, 0) (N (3, 3)) thePlane )
-        , ( "(1, 1) (2, 2)", Plane.periodicSubAt (1, 1) (N (2, 2)) thePlane )
-        , ( "(1, 1) (3, 3)", Plane.periodicSubAt (1, 1) (N (3, 3)) thePlane )
-        , ( "(0, 1) (3, 3)", Plane.periodicSubAt (0, 1) (N (3, 3)) thePlane )
-        , ( "(0, 1) (2, 3)", Plane.periodicSubAt (0, 1) (N (2, 3)) thePlane )
-        , ( "(3, 3) (1, 1)", Plane.periodicSubAt (3, 3) (N (1, 1)) thePlane )
-        , ( "(3, 3) (4, 4)", Plane.periodicSubAt (3, 3) (N (4, 4)) thePlane )
-        , ( "(2, 3) (4, 4)", Plane.periodicSubAt (2, 3) (N (4, 4)) thePlane )
-        , ( "(-2, -2) (4, 4)", Plane.periodicSubAt (-2, -2) (N (4, 4)) thePlane )
-        ]
-        )
-
-
-viewAllSubPlanes : a -> (a -> Html msg) -> Plane.SearchMethod -> N Vec2 -> Plane Vec2 a -> Html msg
-viewAllSubPlanes default viewElem method size =
-    indexedList default viewElem
-        << findAllSubsAlt method size
+    labeledList default viewElem (planes |> List.indexedMap (String.fromInt >> Tuple.pair))
 
 
 pattern
     :  a
-    -> (a -> Html msg)
+    -> (Vec2 -> a -> Html msg)
     -> WFC.UniquePatterns Vec2 a
     -> Int
     -> WFC.PatternWithStats Vec2 a
@@ -202,27 +96,12 @@ pattern default viewElem uniquePatterns index patternWithStats =
             (case Tuple.second patternWithStats.frequency of
                 Just freq -> freq |> frequencyToFloat |> String.fromFloat
                 Nothing -> "unknown") ]
-        , withCoords default viewElem patternWithStats.pattern
+        , patternWithStats.pattern |> planeV default viewElem
         , span [] [ text <| "Matches: " ]
         -- , viewMatches matches
         , patternWithStats.matches
             |> matchesWithPatterns default viewElem uniquePatterns
         ]
-
-
-patterns : a -> (a -> Html msg) -> Plane.SearchMethod -> N Vec2 -> Plane Vec2 a -> Html msg
-patterns default viewElem method n p =
-    let
-        uniquePatterns = WFC.findUniquePatterns method n p
-    in
-        div [ style "display" "flex"
-            , style "flex-direction" "column"
-            , style "justify-content" "space-evenly"
-            ]
-            <| Dict.values
-            <| Dict.map
-                (pattern default viewElem uniquePatterns)
-                uniquePatterns
 
 
 matches : OffsetPlane Vec2 (List Int) -> Html msg
@@ -255,7 +134,7 @@ matches thePlane =
 
 matchesWithPatterns
     :  a
-    -> (a -> Html msg)
+    -> (Vec2 -> a -> Html msg)
     -> WFC.UniquePatterns Vec2 a
     -> OffsetPlane Vec2 (List Int)
     -> Html msg
@@ -270,7 +149,7 @@ matchesWithPatterns default viewElem uniquePatterns thePlane =
                 , style "max-width" "50px"
                 , style "margin-right" "-20px"
                 ]
-                [ withCoords default viewElem patternData.pattern
+                [ patternData.pattern |> planeV default viewElem
                 , span
                     [ style "position" "absolute"
                     , style "padding-top" "5px"
@@ -306,12 +185,72 @@ matchesWithPatterns default viewElem uniquePatterns thePlane =
                 )
 
 
-viewMaterialized : a -> (a -> Html msg) -> Plane Vec2 a -> Html msg
-viewMaterialized default viewElem =
-    listBy (cell default viewElem)
-        << materializeFlatten
+tracing
+    :  a
+    -> (a -> Html msg)
+    -> (Vec2 -> Html msg)
+    -> TracingPlane Vec2 a
+    -> Html msg
+tracing contradiction viewElem viewCoord tracingPlane =
+    tracingPlane
+        |> planeV (Matches.none, []) (\theCoord theTracingCell ->
+            span
+                [ style "padding" "3px"
+                , style "border" "1px dotted lightgray"
+                ]
+                [ viewCoord theCoord
+                , Render.tracingCell
+                    contradiction
+                    viewElem
+                    theTracingCell
+                ])
 
 
-allViews : a -> (a -> Html msg) -> Plane Vec2 a -> Html msg
-allViews default viewElem p =
-    indexedList default viewElem <| Plane.allViews p
+tracingTiny
+    :  a
+    -> (Float -> a -> Html msg)
+    -> (Vec2 -> Html msg)
+    -> TracingPlane Vec2 a
+    -> Html msg
+tracingTiny default viewScaled viewCoord tracingPlane =
+    let
+        tinyTracingCell : TracingCell a -> Html msg
+        tinyTracingCell ( _, items ) =
+                span
+                    [ style "display" "inline-block"
+                    , style "width" "30px"
+                    , style "height" "30px"
+                    , style "overflow" "hidden"
+                    ]
+                    [
+                        (
+                            Render.asGrid
+                                default
+                                viewScaled
+                                -- (\scale theItem -> -- FIXME: spec.scaled
+                                --     span
+                                --         [ style "transform" ("scale(" ++ String.fromFloat scale ++ ")")
+                                --         , style "width" "10px"
+                                --         , style "height" "10px" ]
+                                --         [ viewElem theItem ]
+                                -- )
+                                items
+                        )
+                    ]
+    in
+        div
+            [ style "position" "absolute"
+            , style "right" "400px"
+            , style "margin-top" "-400px"
+            , style "padding" "12px"
+            , style "background" "rgba(255,255,255,0.95)"
+            ]
+            [ tracingPlane
+                |> planeV (Matches.none, []) (\theCoord theTracingCell ->
+                    span
+                        [ style "border" "1px dotted rgba(255,255,255,0.1)"
+                        ]
+                        [ viewCoord theCoord
+                        , tinyTracingCell theTracingCell
+                        ])
+            ]

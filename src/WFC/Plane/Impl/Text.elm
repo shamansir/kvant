@@ -32,3 +32,22 @@ toString plane =
         |> List.concat
         |> List.filterMap identity
         |> String.fromList
+
+
+toGrid : Vec2 -> String -> List (List Char)
+toGrid (width, height) string =
+    let
+        splitBy : Int -> String -> List String
+        splitBy w src =
+            let
+                next = src |> String.left w
+                left = src |> String.dropLeft w
+            in
+                if String.length left > 0 then
+                    next :: splitBy w left
+                else
+                    [ next ]
+    in
+        string
+            |> splitBy width
+            |> List.map (String.toList)

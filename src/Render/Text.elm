@@ -15,18 +15,6 @@ import WFC.Plane.Impl.Text exposing (..)
 import WFC.Plane.Impl.Tracing exposing (..)
 
 
-splitBy : Int -> String -> List String
-splitBy width src =
-    let
-        next = src |> String.left width
-        left = src |> String.dropLeft width
-    in
-        if String.length left > 0 then
-            next :: splitBy width left
-        else
-            [ next ]
-
-
 char : Char -> Html msg
 char c =
     span
@@ -66,111 +54,10 @@ symbolBg symbol =
         _ -> "lightgray"
 
 
-inBounds : Vec2 -> String -> Html msg
-inBounds (width, height) string =
-    string
-        |> splitBy width
-        |> List.map (String.toList)
-        |> Render.grid char
-
-
-plane : TextPlane -> Html msg
-plane =
-    Render.withCoords '?' char
-
-
-tracingPlane : TracingPlane Vec2 Char -> Html msg
-tracingPlane =
-    Render.planeV (Matches.none, [])
-        <| \coord theTracingCell ->
-            span
-                [ style "padding" "3px"
-                , style "border" "1px dotted lightgray"
-                ]
-                [ Render.coord coord
-                , tracingCell theTracingCell
-                ]
-
-
-viewTinyTracingPlane : TracingPlane Vec2 Char -> Html msg
-viewTinyTracingPlane thePlane =
-    div
-        [ style "position" "absolute"
-        , style "right" "400px"
-        , style "margin-top" "-400px"
-        , style "padding" "12px"
-        , style "background" "rgba(255,255,255,0.95)"
-        ]
-        [
-            Render.planeV (Matches.none, [])
-                (\coord theTracingCell ->
-                    span
-                        [ style "border" "1px dotted rgba(255,255,255,0.1)"
-                        ]
-                        [ Render.coord coord
-                        , tinyTracingCell theTracingCell
-                        ])
-                thePlane
-        ]
-
-
-cell : Cell Vec2 Char -> Html msg
-cell =
-    Render.cell '%' (text << String.fromChar)
-
-
-tinyTracingCell : TracingCell Char -> Html msg
-tinyTracingCell ( _, chars ) =
-        span
-            [ style "display" "inline-block"
-            , style "width" "30px"
-            , style "height" "30px"
-            , style "overflow" "hidden"
-            ]
-            [
-                (
-                    Render.asGrid
-                        'x'
-                        (\scale theChar ->
-                            span
-                                [ style "transform" ("scale(" ++ String.fromFloat scale ++ ")")
-                                , style "width" "10px"
-                                , style "height" "10px" ]
-                                [ char theChar ]
-                        )
-                        chars
-                )
-            ]
-
-
-tracingCell : TracingCell Char -> Html msg
-tracingCell ( matches, chars ) =
+scaled : Float -> Char -> Html msg
+scaled scale c =
     span
-        [ ]
-        [ span
-            [ style "display" "inline-block"
-            , style "width" "100px"
-            , style "height" "88px"
-            , style "padding-top" "12px"
-            , style "overflow" "hidden"
-            , style "text-overflow" "ellipsis"
-            ]
-            [
-                Matches.toList matches
-                    |> List.map String.fromInt
-                    |> String.join "|"
-                    |> text
-            ]
-        , span
-            [ style "display" "inline-block"
-            , style "width" "100px"
-            , style "max-width" "100px"
-            , style "height" "100px"
-            , style "max-height" "100px"
-            , style "overflow" "hidden"
-            , style "text-overflow" "ellipsis"
-            ]
-            <| case List.length chars of
-                    0 -> [ text "∅" ]
-                    _ -> chars |> List.map char
-        ]
+        [ style "transform" ("scale(" ++ String.fromFloat scale ++ ")")
+        , style "width" "10px"
+        , style "height" "10px" ]
+        [ text <| String.fromChar c ]
