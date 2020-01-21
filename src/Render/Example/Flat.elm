@@ -56,10 +56,13 @@ makeFlat
     -> Renderer Vec2 fmt a msg
 makeFlat opts spec =
     let
+
         source size fmt =
             opts.fmtToGrid size fmt
                 |> Render.grid spec.a
+
         withCoords = Render.withCoords spec.v spec.a
+
         subPlanes plane =
             opts.subPlanes
                 |> List.map
@@ -70,6 +73,7 @@ makeFlat opts spec =
                     )
                 |> List.map (Tuple.mapSecond <| Maybe.withDefault plane)
                 |> Render.labeledList spec.default withCoords
+
         periodicSubPlanes plane =
             opts.periodicSubPlanes
                 |> List.map
@@ -79,15 +83,18 @@ makeFlat opts spec =
                         )
                     )
                 |> Render.labeledList spec.default withCoords
-        allViews plane =
-            Plane.allViews plane
-                |> Render.indexedList spec.default withCoords
+
+        allViews =
+            Plane.allViews
+                >> Render.indexedList spec.default withCoords
+
         allSubPlanes method size =
-            Render.indexedList spec.default withCoords
-                << findAllSubsAlt method size
+            findAllSubsAlt method size
+                >> Render.indexedList spec.default withCoords
         materialized =
             listBy (\(v, maybeA) -> withCoords v <| Maybe.withDefault spec.default <| maybeA)
                 << materializeFlatten
+
         patterns method n plane =
                 let
                     uniquePatterns = WFC.findUniquePatterns method n plane
@@ -97,6 +104,7 @@ makeFlat opts spec =
                         <| Dict.map
                             (Render.pattern spec.default withCoords uniquePatterns)
                             uniquePatterns
+
         rotationsAndFlips p =
             [ ( "Original", p )
             , ( "North", rotateTo North p )
@@ -113,6 +121,7 @@ makeFlat opts spec =
             , ( "rotate flipped", rotate <| flip p )
             ]
             |> Render.labeledList spec.default withCoords
+
     in
         { source = source
         , tracing = Render.tracing spec.contradiction spec.a spec.v
@@ -120,7 +129,7 @@ makeFlat opts spec =
         , subPlanes = subPlanes
         , periodicSubPlanes = periodicSubPlanes
         , allViews = allViews
-        , rotationsAndFlips = Render.rotationsAndFlips spec.default withCoords
+        , rotationsAndFlips = rotationsAndFlips
         , allSubPlanes = allSubPlanes
         , materialized = materialized
         , patterns = patterns
