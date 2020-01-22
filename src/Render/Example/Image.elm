@@ -1,6 +1,7 @@
 module Render.Example.Image exposing (..)
 
-import Image exposing (Image)
+import Image exposing (Image, dimensions)
+import Image.Color as ImageC exposing (toArray2d)
 
 import Render.Example exposing (ImageExample, Status(..))
 import Render.Example as Example exposing (make)
@@ -26,11 +27,15 @@ options =
     }
 
 
-quick : Image -> Vec2 -> ImageExample
-quick image size =
-    Example.make
-        (WFC.image options image)
-        (WFC.imageTracing options image)
-        options
-        image
-        (ImagePlane.make size)
+quick : Image -> ImageExample
+quick image =
+    let
+        { width, height } = Image.dimensions image
+    in
+        Example.make
+            (WFC.image options image)
+            (WFC.imageTracing options image)
+            options
+            image
+            (ImageC.toArray2d image
+                |> ImagePlane.makeInBounds ( width, height ))

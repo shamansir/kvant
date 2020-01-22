@@ -16,23 +16,25 @@ import Bytes.Decode as Decode exposing (..)
 import Bytes.Decode as Bytes exposing (Decoder)
 import Bytes exposing (Bytes)
 
+import Color exposing (Color)
+import Image exposing (Image)
+import Image.Color as ImageC exposing (toList2d)
+
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (..)
 
 import Render.Core as Render exposing (..)
 import Render.Flat as Render exposing (..)
+import Render.Grid as Render exposing (..)
 import Render.Text as Render exposing (..)
 import Render.Text as Text exposing (spec)
-import Render.Grid as Render exposing (..)
 import Render.Image as Render exposing (..)
+import Render.Image as Image exposing (spec)
 import Render.Example as Example exposing (..)
 import Render.Example.Flat as FlatExample exposing (..)
 import Render.Example.Text as TextExample exposing (..)
-
-import Color exposing (Color)
-import Image exposing (Image)
-import Image.Color as ImageC exposing (toList2d)
+import Render.Example.Image as ImageExample exposing (..)
 
 import WFC.Core exposing (WFC, TextWFC, TextTracingWFC, TextTracingPlane)
 import WFC.Core as WFC
@@ -158,6 +160,9 @@ update msg model =
                     | images =
                         model.images
                             |> Dict.insert url image
+                    , imageExamples =
+                        ImageExample.quick image
+                            :: model.imageExamples
                     }
                 Err _ -> model
             , Cmd.none
@@ -169,9 +174,12 @@ view model =
     let
         textRenderer =
             FlatExample.make Text.toGrid Text.spec
+        imageRenderer =
+            FlatExample.make (always ImageC.toList2d) Image.spec
         viewTextExample index =
             Example.view (WithExample TextExample index) textRenderer
-        viewImageExample index _ = div [] [] -- FIXME: implement
+        viewImageExample index =
+            Example.view (WithExample ImageExample index) imageRenderer
         viewImage index ( url, image ) =
             div
                 []
@@ -182,8 +190,8 @@ view model =
         div
             [ ]
             <| (model.images |> Dict.toList |> List.indexedMap viewImage)
-            ++ (model.textExamples |> List.indexedMap viewTextExample)
             ++ (model.imageExamples |> List.indexedMap viewImageExample)
+            ++ (model.textExamples |> List.indexedMap viewTextExample)
 
 
 main : Program {} Model Msg

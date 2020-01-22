@@ -3,6 +3,8 @@ module WFC.Core exposing
     , TracingWFC
     , text, TextWFC
     , textTracing, TextTracingWFC, TextTracingPlane
+    , image, ImageWFC
+    , imageTracing, ImageTracingWFC, ImageTracingPlane
     , firstStep
     , run, step, stepAtOnce
     )
