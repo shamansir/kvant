@@ -100,6 +100,24 @@ type alias TextExample = ExampleModel Vec2 String Char
 type alias ImageExample = ExampleModel Vec2 Image Color
 
 
+make
+    :  WFC v fmt a
+    -> TracingWFC v a
+    -> WFC.Options v
+    -> fmt
+    -> Plane v a
+    -> ExampleModel v fmt a
+make wfc tracingWfc options src sourcePlane =
+    { source = src
+    , sourcePlane = sourcePlane
+    , options = options
+    , expands = []
+    , wfc = ( wfc, tracingWfc )
+    , status = None
+    }
+    |> initExpands
+
+
 blocks : ExampleModel v fmt a -> List (Block v fmt a)
 blocks e =
     [ Source e.options.inputSize e.source

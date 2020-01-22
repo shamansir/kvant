@@ -28,6 +28,7 @@ import Render.Grid as Render exposing (..)
 import Render.Image as Render exposing (..)
 import Render.Example as Example exposing (..)
 import Render.Example.Flat as FlatExample exposing (..)
+import Render.Example.Text as TextExample exposing (..)
 
 import Color exposing (Color)
 import Image exposing (Image)
@@ -68,63 +69,37 @@ type Msg
     | GotImage Url (Result Http.Error Image)
 
 
-textOptions : WFC.Options Vec2
-textOptions =
-    { approach = Overlapping
-    , patternSearch = Bounded -- Periodic
-    , patternSize = N ( 2, 2 )
-    , inputSize = ( 4, 4 )
-    , outputSize = ( 10, 10 )
-    -- , advanceRule = WFC.MaximumAttempts 50
-    , advanceRule = WFC.AdvanceManually
-    }
-
-
 init : Model
 init =
-    let
-        quickTextExample src size =
-            { source = src
-            , sourcePlane = TextPlane.make size src
-            , options = textOptions
-            , expands = []
-            , wfc =
-                ( WFC.text textOptions src
-                , WFC.textTracing textOptions src
-                )
-            , status = None
-            }
-            |> initExpands
-    in
-        { textExamples =
-            [ quickTextExample
-                (
-                    "AAAA" ++
-                    "ABBA" ++
-                    "ABBA" ++
-                    "AAAA"
-                )
-                (4, 4)
-            , quickTextExample
-                (
-                    "0000" ++
-                    "0111" ++
-                    "0121" ++
-                    "0111"
-                )
-                (4, 4)
-            , quickTextExample
-                (
-                    "0123" ++
-                    "4567" ++
-                    "89AB" ++
-                    "CDEF"
-                )
-                (4, 4)
-            ]
-        , imageExamples = []
-        , images = Dict.empty
-        }
+    { textExamples =
+        [ TextExample.quick
+            (
+                "AAAA" ++
+                "ABBA" ++
+                "ABBA" ++
+                "AAAA"
+            )
+            (4, 4)
+        , TextExample.quick
+            (
+                "0000" ++
+                "0111" ++
+                "0121" ++
+                "0111"
+            )
+            (4, 4)
+        , TextExample.quick
+            (
+                "0123" ++
+                "4567" ++
+                "89AB" ++
+                "CDEF"
+            )
+            (4, 4)
+        ]
+    , imageExamples = []
+    , images = Dict.empty
+    }
 
 
 update

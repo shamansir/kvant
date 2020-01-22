@@ -1,5 +1,7 @@
 module WFC.Vec2 exposing (..)
 
+import Array exposing (Array)
+import Array as Array exposing (..)
 
 type alias Vec2 = (Int, Int)
 
@@ -23,3 +25,9 @@ rect { from, to } =
             |> List.map (\y ->
                 List.range fromX toX |> List.map (Tuple.pair y >> swap))
 
+
+loadSize : Array (Array a) -> Maybe Vec2
+loadSize grid =
+    Array.get 0 grid
+        |> Maybe.map (Array.length)
+        |> Maybe.map (Tuple.pair <| Array.length grid)

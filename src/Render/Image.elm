@@ -41,7 +41,7 @@ scaled scale c =
 
 spec : Spec Vec2 Color msg
 spec =
-    { default = Color.rgba 0 0 0 0
+    { default = transparent
     , contradiction = Color.purple
     , a = pixel
     , v = Render.coord

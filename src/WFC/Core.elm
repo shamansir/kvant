@@ -9,10 +9,14 @@ module WFC.Core exposing
 
 
 import Random
+import Image exposing (Image)
+import Image as Image exposing (..)
+import Color exposing (Color)
 
 
 import WFC.Vec2 exposing (..)
 import WFC.Plane.Impl.Text as TextPlane exposing (make, toString, merge)
+import WFC.Plane.Impl.Image as ImagePlane exposing (makeInBounds, merge)
 import WFC.Plane.Impl.Tracing exposing (TracingPlane, TracingCell)
 import WFC.Plane.Impl.Tracing as TracingPlane exposing (..)
 import WFC.Plane exposing (Plane)
@@ -26,6 +30,8 @@ import WFC.Matches exposing (..)
 type WFC v fmt a =
     WFC (Solver v a) ( Solver.Step v -> ( Solver.Step v, fmt ) )
 
+type alias TracingWFC v a = WFC v (TracingPlane v a) a
+
 
 -- type Instance
 --     = Text (String -> TextWFC) (Step Vec2)
@@ -35,13 +41,18 @@ type WFC v fmt a =
 type Instance
     = Text TextWFC
     | TextTracing TextTracingWFC
+    | Image ImageWFC
+    | ImageTracing ImageTracingWFC
 
 
 type alias TextWFC = WFC Vec2 String Char
-
-type alias TracingWFC v a = WFC v (TracingPlane v a) a
 type alias TextTracingWFC = TracingWFC Vec2 Char
 type alias TextTracingPlane = TracingPlane Vec2 Char
+
+
+type alias ImageWFC = WFC Vec2 Image Color
+type alias ImageTracingWFC = TracingWFC Vec2 Color
+type alias ImageTracingPlane = TracingPlane Vec2 Color
 
 
 type Converter v a x fmt =
@@ -121,6 +132,37 @@ textTracing options =
             (\_ ->
                 input
                     |> TextPlane.make options.inputSize
+                    |> FlatSolver.init options
+            )
+            (Plane.empty options.outputSize)
+
+
+
+image : Solver.Options Vec2 -> (Image -> ImageWFC)
+image options =
+    makeFn
+        (Convert
+            { fromInput = ImagePlane.fromImageInBounds options.inputSize
+            , toElement = always ImagePlane.merge
+            , toOutput = ImagePlane.toImage
+            }
+        )
+        (FlatSolver.init options)
+
+
+imageTracing : Solver.Options Vec2 -> (Image -> ImageTracingWFC)
+imageTracing options =
+    \input ->
+        makeFn
+            (Convert
+                { fromInput = identity
+                , toElement = Tuple.pair
+                , toOutput = identity
+                }
+            )
+            (\_ ->
+                input
+                    |> ImagePlane.fromImageInBounds options.inputSize
                     |> FlatSolver.init options
             )
             (Plane.empty options.outputSize)

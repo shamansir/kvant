@@ -9,10 +9,19 @@ import Render.Grid as Render exposing (..)
 import Render.Flat as Render exposing (..)
 
 import WFC.Vec2 exposing (..)
-import WFC.Matches as Matches exposing (..)
-import WFC.Plane exposing (Cell)
-import WFC.Plane.Impl.Text exposing (..)
-import WFC.Plane.Impl.Tracing exposing (..)
+import WFC.Plane.Impl.Text exposing (merge)
+
+
+spec : Spec Vec2 Char msg
+spec =
+    { default = '?'
+    , contradiction = '∅'
+    , a = char
+    , v = Render.coord
+    , merge = merge
+    , scaled = scaled
+    , vToString = Render.coordText
+    }
 
 
 char : Char -> Html msg
@@ -61,15 +70,3 @@ scaled scale c =
         , style "width" "10px"
         , style "height" "10px" ]
         [ text <| String.fromChar c ]
-
-
-spec : Spec Vec2 Char msg
-spec =
-    { default = '?'
-    , contradiction = '∅'
-    , a = char
-    , v = Render.coord
-    , merge = merge
-    , scaled = scaled
-    , vToString = Render.coordText
-    }
