@@ -39,8 +39,47 @@ makeInBounds ( width, height ) pixels =
             else Nothing
         )
 
+
+mixHsla : Color -> Color -> Color
+mixHsla colorA colorB =
+    let
+        a = Color.toHsla colorA
+        b = Color.toHsla colorB
+    in
+        Color.fromHsla
+            { hue = (a.hue + b.hue) / 2
+            , saturation = (a.saturation + b.saturation) / 2
+            , lightness = (a.lightness + b.lightness) / 2
+            , alpha = (a.alpha + b.alpha) / 2
+            }
+
+
+mixRgb : Color -> Color -> Color
+mixRgb colorA colorB =
+    let
+        a = Color.toRgba colorA
+        b = Color.toRgba colorB
+    in
+        Color.fromRgba
+            { red = (a.red + b.red) / 2
+            , blue = (a.blue + b.blue) / 2
+            , green = (a.green + b.green) / 2
+            , alpha = (a.alpha + b.alpha) / 2
+            }
+
+
 merge : List Color -> Color
-merge _ = Color.red
+merge colors =
+    let
+        optionsCount = List.length colors
+        maybeFirst = List.head colors
+    in
+        if optionsCount <= 0 then Color.purple
+        else
+            List.foldl
+                mixHsla
+                transparent
+                colors
 
 
 toGrid : ImagePlane -> List (List Color)
