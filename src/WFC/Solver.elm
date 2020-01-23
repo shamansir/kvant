@@ -25,7 +25,6 @@ type alias Options v =
     { approach : Approach
     , patternSearch : SearchMethod
     , patternSize : N v
-    , inputSize : v
     , outputSize : v
     , advanceRule : AdvanceRule
     -- add symmetry etc.

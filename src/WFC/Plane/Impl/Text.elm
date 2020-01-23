@@ -34,6 +34,13 @@ toString plane =
         |> String.fromList
 
 
+toBoundedString : TextPlane -> (Vec2, String)
+toBoundedString (Plane size _ as plane) =
+    ( size
+    , plane |> toString
+    )
+
+
 toGrid : Vec2 -> String -> List (List Char)
 toGrid (width, height) string =
     let

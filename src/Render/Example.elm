@@ -50,7 +50,7 @@ type alias ExampleId = Int
 
 
 type alias Renderer v fmt a msg =
-    { source : v -> fmt -> Html msg
+    { source : fmt -> Html msg
     , tracing : TracingPlane v a -> Html msg
     , tracingTiny : TracingPlane v a -> Html msg
     , subPlanes : Plane v a -> Html msg
@@ -66,7 +66,7 @@ type alias Renderer v fmt a msg =
 
 
 type Block v fmt a
-    = Source v fmt
+    = Source fmt
     | RunOnce v (Status v fmt a)
     | Tracing (Status v fmt a)
     | RotationsAndFlips (Plane v a)
@@ -96,7 +96,7 @@ type alias ExampleModel v fmt a =
     }
 
 
-type alias TextExample = ExampleModel Vec2 String Char
+type alias TextExample = ExampleModel Vec2 BoundedString Char
 type alias ImageExample = ExampleModel Vec2 Image Color
 
 
@@ -120,7 +120,7 @@ make wfc tracingWfc options src sourcePlane =
 
 blocks : ExampleModel v fmt a -> List (Block v fmt a)
 blocks e =
-    [ Source e.options.inputSize e.source
+    [ Source e.source
     , RunOnce e.options.outputSize e.status
     , Tracing e.status
     , RotationsAndFlips e.sourcePlane
@@ -327,7 +327,7 @@ initExpands exampleModel =
             |> List.map
                 (\block ->
                     case block of
-                        Source _ _ -> Expanded
+                        Source _ -> Expanded
                         RunOnce _ _-> Expanded
                         Tracing _ -> Expanded
                         _ -> Collapsed
@@ -338,7 +338,7 @@ initExpands exampleModel =
 blockTitle : Block v fmt a -> String
 blockTitle block =
     case block of
-        Source _ _ -> "Source"
+        Source _ -> "Source"
         RunOnce _ _ -> "Run"
         Tracing _ -> "Trace"
         RotationsAndFlips _ -> "Rotations and Flips"
@@ -408,8 +408,8 @@ viewBlock : Renderer v fmt a ExampleMsg -> Block v fmt a -> Html ExampleMsg
 viewBlock render block =
     case block of
 
-        Source bounds source ->
-            source |> render.source bounds -- |> Html.map (always NoOp)
+        Source source ->
+            source |> render.source -- |> Html.map (always NoOp)
                 -- viewTextInBounds bounds
 
         RunOnce bounds status ->
@@ -422,7 +422,7 @@ viewBlock render block =
                 , status
                     |> getCurrentPlane
                     |> Maybe.map Tuple.first
-                    |> Maybe.map (render.source bounds)
+                    |> Maybe.map render.source
                     |> Maybe.withDefault (div [] [])
                 ]
 

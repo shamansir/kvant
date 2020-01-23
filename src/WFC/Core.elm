@@ -7,6 +7,7 @@ module WFC.Core exposing
     , imageTracing, ImageTracingWFC, ImageTracingPlane
     , firstStep
     , run, step, stepAtOnce
+    , BoundedString
     )
 
 
@@ -47,7 +48,10 @@ type Instance
     | ImageTracing ImageTracingWFC
 
 
-type alias TextWFC = WFC Vec2 String Char
+type alias BoundedString = (Vec2, String)
+
+
+type alias TextWFC = WFC Vec2 BoundedString Char
 type alias TextTracingWFC = TracingWFC Vec2 Char
 type alias TextTracingPlane = TracingPlane Vec2 Char
 
@@ -109,21 +113,21 @@ makeFn (Convert convert as cnv) initSolver input =
         |> make cnv
 
 
-text : Solver.Options Vec2 -> (String -> TextWFC)
+text : Solver.Options Vec2 -> (BoundedString -> TextWFC)
 text options =
     makeFn
         (Convert
-            { fromInput = TextPlane.make options.inputSize
+            { fromInput = \(size, str) -> TextPlane.make size str
             , toElement = always TextPlane.merge
-            , toOutput = TextPlane.toString
+            , toOutput = TextPlane.toBoundedString
             }
         )
         (FlatSolver.init options)
 
 
-textTracing : Solver.Options Vec2 -> (String -> TextTracingWFC)
+textTracing : Solver.Options Vec2 -> (BoundedString -> TextTracingWFC)
 textTracing options =
-    \input ->
+    \(size, input) ->
         makeFn
             (Convert
                 { fromInput = identity
@@ -133,7 +137,7 @@ textTracing options =
             )
             (\_ ->
                 input
-                    |> TextPlane.make options.inputSize
+                    |> TextPlane.make size
                     |> FlatSolver.init options
             )
             (Plane.empty options.outputSize)
@@ -144,7 +148,7 @@ image : Solver.Options Vec2 -> (Image -> ImageWFC)
 image options =
     makeFn
         (Convert
-            { fromInput = ImagePlane.fromImageInBounds options.inputSize
+            { fromInput = ImagePlane.fromImage
             , toElement = always ImagePlane.merge
             , toOutput = ImagePlane.toImage
             }
@@ -164,7 +168,7 @@ imageTracing options =
             )
             (\_ ->
                 input
-                    |> ImagePlane.fromImageInBounds options.inputSize
+                    |> ImagePlane.fromImage
                     |> FlatSolver.init options
             )
             (Plane.empty options.outputSize)

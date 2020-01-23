@@ -173,9 +173,9 @@ view : Model -> Html Msg
 view model =
     let
         textRenderer =
-            FlatExample.make Text.toGrid Text.spec
+            FlatExample.make (\(size, src) -> Text.toGrid size src) Text.spec
         imageRenderer =
-            FlatExample.make (always ImageC.toList2d) Image.spec
+            FlatExample.make ImageC.toList2d Image.spec
         viewTextExample index =
             Example.view (WithExample TextExample index) textRenderer
         viewImageExample index =
@@ -200,13 +200,8 @@ main =
         { init =
             \_ _ _ ->
                 ( init
-                , Http.get
-                    { url = "http://localhost:3000/samples/Cat.png"
-                    , expect =
-                        Http.expectBytesResponse
-                            (GotImage "/Cat.png")
-                            loadImage
-                    }
+                , requestImages
+                    [ "Cat.png" ]
                 )
         , onUrlChange = always NoOp
         , onUrlRequest = always NoOp
@@ -214,6 +209,21 @@ main =
         , update = update
         , view = \model -> { title = "WFC", body = [ view model ] }
         }
+
+
+requestImage : String -> Cmd Msg
+requestImage fileName =
+    Http.get
+        { url = "http://localhost:3000/samples/" ++ fileName
+        , expect =
+            Http.expectBytesResponse
+                (GotImage fileName)
+                loadImage
+        }
+
+
+requestImages : List String -> Cmd Msg
+requestImages = List.map requestImage >> Cmd.batch
 
 
 loadImage : Http.Response Bytes -> Result Http.Error (Image)

@@ -44,14 +44,14 @@ periodicSubPlanesCoords =
 
 
 make
-    :  (Vec2 -> fmt -> List (List a))
+    :  (fmt -> List (List a))
     -> Spec Vec2 a msg
     -> Renderer Vec2 fmt a msg
 make fmtToGrid spec =
     let
 
-        source size fmt =
-            fmtToGrid size fmt
+        source fmt =
+            fmtToGrid fmt
                 |> Render.grid spec.a
 
         withCoords = Render.withCoords spec.v spec.a

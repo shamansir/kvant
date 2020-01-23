@@ -20,7 +20,6 @@ options =
     { approach = Overlapping
     , patternSearch = Bounded -- Periodic
     , patternSize = N ( 2, 2 )
-    , inputSize = ( 4, 4 )
     , outputSize = ( 10, 10 )
     -- , advanceRule = WFC.MaximumAttempts 50
     , advanceRule = WFC.AdvanceManually

@@ -19,7 +19,6 @@ options =
     { approach = Overlapping
     , patternSearch = Bounded -- Periodic
     , patternSize = N ( 2, 2 )
-    , inputSize = ( 4, 4 )
     , outputSize = ( 10, 10 )
     -- , advanceRule = WFC.MaximumAttempts 50
     , advanceRule = WFC.AdvanceManually
@@ -28,9 +27,13 @@ options =
 
 quick : String -> Vec2 -> TextExample
 quick src size =
-    Example.make
-        (WFC.text options src)
-        (WFC.textTracing options src)
-        options
-        src
-        (TextPlane.make size src)
+    let
+        boundedSrc
+            = (size, src)
+    in
+        Example.make
+            (WFC.text options boundedSrc)
+            (WFC.textTracing options boundedSrc)
+            options
+            boundedSrc
+            (TextPlane.make size src)
