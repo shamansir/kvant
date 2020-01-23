@@ -53,7 +53,7 @@ occursText occured =
 listBy : (a -> Html msg) -> List a -> Html msg
 listBy viewItem items =
     div [ style "display" "flex"
-        , style "flex-direction" "row"
+        , style "flex-direction" "column"
         , style "justify-content" "space-evenly"
         ]
         <| List.map viewItem items

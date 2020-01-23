@@ -95,7 +95,8 @@ make fmtToGrid spec =
                     Render.listBy identity
                         <| Dict.values
                         <| Dict.map
-                            (Render.pattern spec.default withCoords uniquePatterns)
+                            -- (Render.pattern spec.default withCoords uniquePatterns)
+                            (Render.pattern spec.default (always spec.a) uniquePatterns)
                             uniquePatterns
 
         rotationsAndFlips p =

@@ -151,6 +151,7 @@ matchesWithPatterns default viewElem uniquePatterns thePlane =
                 , style "transform" "scale(0.4,0.6)"
                 , style "border" "1px solid"
                 , style "max-width" "50px"
+                , style "min-width" "50px"
                 , style "margin-right" "-20px"
                 ]
                 [ patternData.pattern |> planeV default viewElem
