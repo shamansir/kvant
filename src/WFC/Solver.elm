@@ -32,7 +32,7 @@ type alias Options v =
 
 
 type alias Pattern v a = Plane v a
-type alias Wave v = Plane v (Matches PatternId)
+type alias Wave v a = Plane v (Matches a)
 
 
 type AdvanceRule
@@ -45,8 +45,8 @@ type Approach
     | Tiled {- Rules -}
 
 
-type Step v
-    = Step Int Random.Seed (StepStatus v)
+type Step v a
+    = Step Int Random.Seed (StepStatus v a)
 
 
 type FocusState v
@@ -54,10 +54,10 @@ type FocusState v
     | FocusedAt v
 
 
-type StepStatus v
+type StepStatus v a
     = Initial
-    | InProgress (FocusState v) (Wave v)
-    | Solved (Wave v)
+    | InProgress (FocusState v) (Wave v a)
+    | Solved (Wave v a)
     | Terminated -- terminated by contradiction
     | Exceeded Int
 
@@ -103,7 +103,7 @@ type Solver v a =
         }
 
 
-firstStep : Random.Seed -> Step v
+firstStep : Random.Seed -> Step v a
 firstStep seed =
     Step 0 seed Initial
 
@@ -123,7 +123,7 @@ init options patterns walker source =
         }
 
 
-solve : Solver v a -> Step v -> Step v
+solve : Solver v a -> Step v a -> Step v a
 solve (Solver { options, source, patterns, walker } as solver) step  =
     let
         seed = getSeed step
@@ -164,7 +164,7 @@ observe
     :  Random.Seed
     -> Walker v
     -> UniquePatterns v a
-    -> Wave v
+    -> Wave v a
     -> ( Observation v, Random.Seed )
 observe seed walker uniquePatterns wave =
     if wave |> hasAContradiction walker then
@@ -205,18 +205,18 @@ propagate
     -> Walker v
     -> v
     -> PatternId
-    -> Wave v
-    -> ( Wave v, Random.Seed )
+    -> Wave v a
+    -> ( Wave v a, Random.Seed )
 propagate seed uniquePatterns walker focus pattern (Plane waveSize waveF as wave) =
     let
-        neighbours : Neighbours (Matches PatternId)
+        neighbours : Neighbours (Matches a)
         neighbours =
             wave
                 |> Plane.loadNeighbours focus walker.next
                 |> Neighbours.map (Maybe.withDefault Matches.none)
                 -- |> Neighbours.setCenter (Matches.single pattern)
 
-        updateMatches : Direction -> Matches PatternId -> Matches PatternId
+        updateMatches : Direction -> Matches a -> Matches a
         updateMatches dir curMatches =
             curMatches
                 |> Matches.toList
@@ -237,7 +237,7 @@ propagate seed uniquePatterns walker focus pattern (Plane waveSize waveF as wave
                 )
                 |> Matches.fromList
 
-        changes : Neighbours (Matches PatternId)
+        changes : Neighbours (Matches a)
         changes =
             neighbours
                 |> Neighbours.setCenter (Matches.single pattern)
@@ -256,7 +256,7 @@ propagate seed uniquePatterns walker focus pattern (Plane waveSize waveF as wave
         )
 
 
-entropyOf : Random.Seed -> UniquePatterns v a -> Matches PatternId -> ( Maybe Float, Random.Seed )
+entropyOf : Random.Seed -> UniquePatterns v a -> Matches a -> ( Maybe Float, Random.Seed )
 entropyOf seed uniquePatterns matches =
     case Matches.count matches of
         0 -> ( Nothing, seed ) -- contradiction
@@ -291,7 +291,7 @@ findLowestEntropy
     :  Random.Seed
     -> UniquePatterns v a
     -> Walker v
-    -> Wave v
+    -> Wave v a
     -> ( Maybe v, Random.Seed )
 findLowestEntropy seed uniquePatterns { all } (Plane _ waveF) =
     let
@@ -346,7 +346,7 @@ randomPattern uniquePatterns first others =
 
 
  -- FIXME: Maybe Bool
-hasAContradiction : Walker v -> Wave v -> Bool
+hasAContradiction : Walker v -> Wave v a -> Bool
 hasAContradiction { all } (Plane _ waveF) =
     List.foldl
         (\coord wasAContradiction ->
@@ -360,7 +360,7 @@ hasAContradiction { all } (Plane _ waveF) =
 
 
  -- FIXME: Maybe Bool
-isWaveCollapsed : Walker v -> Wave v -> Bool
+isWaveCollapsed : Walker v -> Wave v a -> Bool
 isWaveCollapsed { all } (Plane _ waveF) =
     List.foldl
         (\coord wasCollapsed ->
@@ -377,7 +377,7 @@ loadFrequencies : UniquePatterns v a -> Dict PatternId (Maybe Frequency)
 loadFrequencies = Dict.map <| always <| (.frequency >> Tuple.second)
 
 
-initWave : UniquePatterns v a -> v -> Wave v
+initWave : UniquePatterns v a -> v -> Wave v a
 initWave uniquePatterns size =
     -- Dict.keys uniquePatterns >> Matches.fromList >> Plane.filled
     Plane.filled size <| Matches.fromList <| Dict.keys uniquePatterns
@@ -386,7 +386,7 @@ initWave uniquePatterns size =
 apply
     :  (Matches PatternId -> List a -> x)
     -> Solver v a
-    -> Step v
+    -> Step v a
     -> Plane v x
 apply f (Solver { patterns, walker, source, options }) (Step _ _ status) =
     let
@@ -401,7 +401,7 @@ apply f (Solver { patterns, walker, source, options }) (Step _ _ status) =
                     )
                 |> List.filterMap identity
                 -- if pattern wasn't found or contains no value at this point, it is skipped
-        fromWave : Wave v -> Plane v x
+        fromWave : Wave v a -> Plane v x
         fromWave wave = wave |> Plane.map (\matches -> f matches <| loadValues matches)
     in
         fromWave <| case status of
@@ -424,31 +424,31 @@ getWalker : Solver v a -> Walker v
 getWalker (Solver { walker }) = walker
 
 
-getSeed : Step v -> Random.Seed
+getSeed : Step v a -> Random.Seed
 getSeed (Step _ seed _) = seed
 
 
-changeSeedTo : Random.Seed -> Step v -> Step v
+changeSeedTo : Random.Seed -> Step v a -> Step v a
 changeSeedTo newSeed (Step n seed step) = Step n newSeed step
 
 
-getStatus : Step v -> StepStatus v
+getStatus : Step v a -> StepStatus v a
 getStatus (Step _ _ status) = status
 
 
-getCount : Step v -> Int
+getCount : Step v a -> Int
 getCount (Step n _ _) = n
 
 
-nextStep : Random.Seed -> Step v -> StepStatus v -> Step v
+nextStep : Random.Seed -> Step v a -> StepStatus v a -> Step v a
 nextStep seed (Step n _ _) status = Step (n + 1) seed status
 
 
-updateStatus : StepStatus v -> Step v -> Step v
+updateStatus : StepStatus v a -> Step v a -> Step v a
 updateStatus status (Step n seed _) = Step n seed status
 
 
-exceeds : Int -> Step v -> Bool
+exceeds : Int -> Step v a -> Bool
 exceeds count (Step stepN _ _) = count <= stepN
 
 

@@ -18,6 +18,7 @@ import Bytes exposing (Bytes)
 
 import Color exposing (Color)
 import Image exposing (Image)
+import Image.Advanced as Image exposing (info)
 import Image.Color as ImageC exposing (toList2d)
 
 import Html exposing (..)
@@ -156,14 +157,19 @@ update msg model =
         GotImage url result ->
             ( case result of
                 Ok image ->
-                    { model
-                    | images =
-                        model.images
-                            |> Dict.insert url image
-                    , imageExamples =
-                        ImageExample.quick image
-                            :: model.imageExamples
-                    }
+                    let
+                        _ = Debug.log "image size" <| Image.info image
+                        _ = Debug.log "image to list" <| Image.toList2d image
+                        _ = Debug.log "image to array" <| Image.toArray image
+                    in
+                        { model
+                        | images =
+                            model.images
+                                |> Dict.insert url image
+                        , imageExamples =
+                            ImageExample.quick image
+                                :: model.imageExamples
+                        }
                 Err _ -> model
             , Cmd.none
             )
@@ -201,7 +207,7 @@ main =
             \_ _ _ ->
                 ( init
                 , requestImages
-                    [ "Cat.png" ]
+                    [ "Town.png" ]
                 )
         , onUrlChange = always NoOp
         , onUrlRequest = always NoOp
