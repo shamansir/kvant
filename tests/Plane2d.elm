@@ -8,9 +8,9 @@ import Test exposing (..)
 -- import Test.Internal as Internal
 
 import WFC.Plane.Offset exposing (Offset(..))
-import WFC.Plane.Plane exposing (N(..))
+import WFC.Plane exposing (N(..))
 import WFC.Plane.Flat as Plane2D
-import WFC.Plane.Text as TextPlane
+import WFC.Plane.Impl.Text as TextPlane
 import WFC.Plane.Offset as OffsetPlane
 -- import WFC.Frequency
 

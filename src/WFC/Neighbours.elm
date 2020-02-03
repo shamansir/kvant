@@ -57,7 +57,7 @@ mapBy f neighbours =
 create : (Direction -> a) -> Neighbours a
 create f =
     Neighbours
-        (f NW) (f N) (f NW)
+        (f NW) (f N) (f NE)
         (f  W) (f X) (f E )
         (f SW) (f S) (f SE)
 

@@ -17,7 +17,7 @@ type alias ImagePlane = Plane Vec2 Color
 
 
 transparent : Color
-transparent = Color.rgba 1.0 1.0 1.0 0.0
+transparent = Color.rgba 0.0 0.0 0.0 0.0
 
 
 make : Array (Array Color) -> ImagePlane
@@ -78,8 +78,8 @@ merge colors =
         else
             List.foldl
                 mixHsla
-                transparent
-                colors
+                (List.head colors |> Maybe.withDefault transparent)
+                (List.tail colors |> Maybe.withDefault [])
 
 
 toGrid : ImagePlane -> List (List Color)

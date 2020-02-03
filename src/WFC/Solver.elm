@@ -256,6 +256,10 @@ propagate seed uniquePatterns walker focus pattern (Plane waveSize waveF as wave
         )
 
 
+noiseCoefficient : Float
+noiseCoefficient = 0.2
+
+
 entropyOf : Random.Seed -> UniquePatterns v a -> Matches PatternId -> ( Maybe Float, Random.Seed )
 entropyOf seed uniquePatterns matches =
     case Matches.count matches of
@@ -275,6 +279,8 @@ entropyOf seed uniquePatterns matches =
                         |> List.map patternFrequency
                         |> List.filterMap identity
                         |> List.map frequencyToFloat
+                maxWeight =
+                    List.maximum weights |> Maybe.withDefault 0
                 sumOfWeights = List.foldl (+) 0 weights
                 sumOfLoggedWeights =
                     weights
@@ -283,7 +289,7 @@ entropyOf seed uniquePatterns matches =
                 pureEntropy =
                     (logBase 2 sumOfWeights) - (sumOfLoggedWeights / sumOfWeights)
             in
-                Random.step (Random.float 0 0.0001) seed
+                Random.step (Random.float 0 <| maxWeight * noiseCoefficient) seed
                     |> Tuple.mapFirst ((+) pureEntropy >> Just)
 
 

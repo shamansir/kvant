@@ -237,10 +237,10 @@ tracingTiny default viewScaled viewCoord tracingPlane =
                 ]
     in
         div
-            [ style "position" "absolute"
-            , style "right" "400px"
-            , style "margin-top" "-400px"
-            , style "padding" "12px"
+            -- [ style "position" "absolute"
+            -- , style "right" "400px"
+            -- , style "margin-top" "-400px"
+            [ style "padding" "12px"
             , style "background" "rgba(255,255,255,0.95)"
             ]
             [ tracingPlane
