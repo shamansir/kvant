@@ -228,7 +228,7 @@ mainDecoder chunksLength =
         |> D.andThen (\_ -> chunkLoopR chunksLength decodeChunk)
         |> D.andThen
             (\maybeImage ->
-                case maybeImage of
+                case Debug.log "maybeImage" maybeImage of
                     Just image ->
                         case image.data of
                             ImageData data ->
@@ -331,8 +331,8 @@ decodeIHDR =
             { header =
                 { width = Debug.log "w" width
                 , height = Debug.log "h" height
-                , color = color
-                , adam7 = adam7
+                , color = Debug.log "color" color
+                , adam7 = Debug.log "adam7" adam7
                 , chunks = Dict.empty
                 }
             , data = None
@@ -436,7 +436,8 @@ imageDecoder ({ width, height, color } as header) palette total =
     D.bytes total
         |> D.andThen
             (inflateZlib
-                >> Maybe.andThen (D.decode (dataDecode header palette))
+                >> Debug.log "inflated"
+                >> Maybe.andThen (D.decode (dataDecode header palette) >> Debug.log "data")
                 >> Maybe.map D.succeed
                 >> Maybe.withDefault D.fail
             )
@@ -444,7 +445,7 @@ imageDecoder ({ width, height, color } as header) palette total =
 
 dataDecode : PngHeader -> Palette -> Decoder Image
 dataDecode ({ width, height, color } as header) palette =
-    case color of
+    case Debug.log "color" color of
         IndexedColour BitDepth1_2_4_8__8 ->
             dataWrapDecode (indexPixel8Decode palette) width height
                 |> D.map (Array2d (Metadata.Png header))
@@ -455,6 +456,10 @@ dataDecode ({ width, height, color } as header) palette =
 
         TrueColourAlpha BitDepth8_16__8 ->
             dataWrapDecode pixel32Decode width height
+                |> D.map (Array2d (Metadata.Png header))
+
+        TrueColour BitDepth8_16__8 ->
+            dataWrapDecode pixel24Decode width height
                 |> D.map (Array2d (Metadata.Png header))
 
         _ ->
@@ -525,6 +530,28 @@ pixel16Decode filterType acc =
 
         _ ->
             pixelDecode16None_
+    )
+        |> D.map (\a -> Array2d.push a acc)
+
+
+pixel24Decode : Int -> Array2D Int -> Decoder (Array2D Int)
+pixel24Decode filterType acc =
+    (case filterType of
+        0 ->
+            pixelDecode24None_
+
+        1 ->
+            pixelDecode24Sub_ acc
+
+        2 ->
+            pixelDecode24Up_ acc
+
+        4 ->
+            --pixelDecode24Paeth_ acc
+            D.fail
+
+        _ ->
+            pixelDecode24None_
     )
         |> D.map (\a -> Array2d.push a acc)
 
@@ -696,6 +723,126 @@ pixelDecode16Paeth_ acc =
         )
         D.unsignedInt8
         D.unsignedInt8
+
+
+pixelDecode24None_ =
+    D.unsignedInt24 BE
+
+
+pixelDecode24Sub_ acc =
+    D.map3
+        (\r_ g_ b_ ->
+            let
+                prev =
+                    Array2d.last acc |> Maybe.withDefault 0
+
+                prevB =
+                    prev |> Bitwise.and 0xFF
+
+                prevG =
+                    prev |> Bitwise.shiftRightBy 8 |> Bitwise.and 0xFF
+
+                prevR =
+                    prev |> Bitwise.shiftRightZfBy 16
+
+                b =
+                    b_ + prevB
+
+                g =
+                    g_ + prevG
+
+                r =
+                    r_ + prevR
+            in
+            packIntoInt32 r g b 255
+        )
+        D.unsignedInt8
+        D.unsignedInt8
+        D.unsignedInt8
+
+
+pixelDecode24Up_ acc =
+    D.map3
+        (\r_ g_ b_ ->
+            let
+                prev =
+                    arrayUp acc
+                        |> Maybe.withDefault 0
+
+                prevB =
+                    prev |> Bitwise.and 0xFF
+
+                prevG =
+                    prev |> Bitwise.shiftRightBy 8 |> Bitwise.and 0xFF
+
+                prevR =
+                    prev |> Bitwise.shiftRightZfBy 16
+
+                b =
+                    b_ + prevB
+
+                g =
+                    g_ + prevG
+
+                r =
+                    r_ + prevR
+            in
+            packIntoInt32 r g b 255
+        )
+        D.unsignedInt8
+        D.unsignedInt8
+        D.unsignedInt8
+
+
+-- pixelDecode24Paeth_ acc =
+--     D.map3
+--         (\r_ g_ b_ ->
+--             let
+--                 ( prevA_, prevB_, prevC_ ) =
+--                     arrayPaeth acc
+
+--                 prevA =
+--                     paeth
+--                         (Bitwise.and 0xFF prevA_)
+--                         (Bitwise.and 0xFF prevB_)
+--                         (Bitwise.and 0xFF prevC_)
+
+--                 prevB =
+--                     paeth
+--                         (prevA_ |> Bitwise.shiftRightBy 8 |> Bitwise.and 0xFF)
+--                         (prevB_ |> Bitwise.shiftRightBy 8 |> Bitwise.and 0xFF)
+--                         (prevC_ |> Bitwise.shiftRightBy 8 |> Bitwise.and 0xFF)
+
+--                 prevG =
+--                     paeth
+--                         (prevA_ |> Bitwise.shiftRightBy 16 |> Bitwise.and 0xFF)
+--                         (prevB_ |> Bitwise.shiftRightBy 16 |> Bitwise.and 0xFF)
+--                         (prevC_ |> Bitwise.shiftRightBy 16 |> Bitwise.and 0xFF)
+
+--                 prevR =
+--                     paeth
+--                         (prevA_ |> Bitwise.shiftRightBy 24 |> Bitwise.and 0xFF)
+--                         (prevB_ |> Bitwise.shiftRightBy 24 |> Bitwise.and 0xFF)
+--                         (prevC_ |> Bitwise.shiftRightBy 24 |> Bitwise.and 0xFF)
+
+--                 a =
+--                     a_ + prevA
+
+--                 b =
+--                     b_ + prevB
+
+--                 g =
+--                     g_ + prevG
+
+--                 r =
+--                     r_ + prevR
+--             in
+--             packIntoInt32 r g b a
+--         )
+--         D.unsignedInt8
+--         D.unsignedInt8
+--         D.unsignedInt8
+--         D.unsignedInt8
 
 
 pixelDecode32None_ =

@@ -201,7 +201,7 @@ main =
             \_ _ _ ->
                 ( init
                 , requestImages
-                    [ "Town.png" ]
+                    [ "Hogs.png" ]
                 )
         , onUrlChange = always NoOp
         , onUrlRequest = always NoOp
