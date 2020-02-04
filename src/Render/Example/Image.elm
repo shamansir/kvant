@@ -1,5 +1,8 @@
 module Render.Example.Image exposing (..)
 
+
+import Color exposing (Color)
+
 import Image exposing (Image, dimensions)
 import Image.Color as ImageC exposing (toArray2d)
 
@@ -8,19 +11,23 @@ import Render.Example as Example exposing (make)
 
 import WFC.Vec2 exposing (..)
 import WFC.Plane exposing (Cell, N(..))
-import WFC.Plane.Flat exposing (SearchMethod(..))
+import WFC.Plane.Flat exposing (Boundary(..), Symmetry(..))
 import WFC.Core as WFC exposing (..)
 import WFC.Solver exposing (Approach(..))
 import WFC.Solver as WFC exposing (Step(..), Options)
 import WFC.Plane.Impl.Image as ImagePlane exposing (make)
 
 
-options : WFC.Options Vec2
+options : WFC.Options Vec2 Color
 options =
-    { approach = Overlapping
-    , patternSearch = Bounded -- Periodic
-    , patternSize = N ( 2, 2 )
+    { approach =
+        Overlapping
+            { searchBoundary = Bounded -- Periodic
+            , patternSize = N ( 2, 2 )
+            , symmetry = FlipAndRotate
+            }
     , outputSize = ( 10, 10 )
+    , outputBoundary = Bounded
     -- , advanceRule = WFC.MaximumAttempts 50
     , advanceRule = WFC.AdvanceManually
     }

@@ -14,20 +14,18 @@ import WFC.Occurrence as Occurrence
 import WFC.Plane exposing (Plane(..), N(..))
 import WFC.Plane as Plane exposing (map)
 import WFC.Plane.Flat as Plane
-    exposing ( SearchMethod, foldl, coords, equal, sub, findMatches, findAllSubs, findAllSubsAlt, findOccurrence )
+    exposing ( Boundary, Symmetry, foldl, coords, equal, sub, findMatches, findAllSubs, findAllSubsAlt, findOccurrence )
 import WFC.Plane.Offset exposing (OffsetPlane(..), toOffset)
 import WFC.Plane.Offset as OffsetPlane exposing (get)
 import WFC.Neighbours as Neighbours exposing (..)
 import WFC.Neighbours exposing (Neighbours)
 
 
-type alias Options v =
-    { approach : Approach
-    , patternSearch : SearchMethod
-    , patternSize : N v
+type alias Options v a =
+    { approach : Approach v a
+    , outputBoundary : Boundary
     , outputSize : v
     , advanceRule : AdvanceRule
-    -- add symmetry etc.
     }
 
 
@@ -40,8 +38,13 @@ type AdvanceRule
     | AdvanceManually
 
 
-type Approach
+type Approach v a
     = Overlapping
+        { patternSize : N v
+        , searchBoundary : Boundary
+        , symmetry : Symmetry -- FIXME: use in search
+        -- TODO: ground : Int
+        }
     | Tiled {- Rules -}
 
 
@@ -61,22 +64,22 @@ type StepStatus v
     | Terminated -- terminated by contradiction
     | Exceeded Int
 
+
 type alias PatternId = Int
 
 
 type alias PatternWithStats v a =
     { pattern : Pattern v a
     , frequency : ( Occurrence, Maybe Frequency )
-     -- TODO: change `macthes` to Neighbours, but each neigbour may contain more Neigbours
+    -- TODO: change `matches` to Neighbours, but each neigbour may contain more Neigbours
     , matches : OffsetPlane v (List PatternId)
     }
 
 
 type alias UniquePatterns v a =
-    Dict PatternId (PatternWithStats v a)
-
-
-type UniquePatternsCount = UniquePatternsCount Int
+    Dict
+        PatternId
+        (PatternWithStats v a)
 
 
 type alias Walker v =
@@ -85,6 +88,10 @@ type alias Walker v =
     , random : Random.Generator v
     , all : () -> List v
     }
+
+
+-- type alias FindMatches v a =
+--     Wave v -> v -> Direction -> Matches a
 
 
 type Observation v
@@ -96,10 +103,16 @@ type Observation v
 
 type Solver v a =
     Solver
-        { options : Options v
-        , source : Plane v a
-        , patterns : UniquePatterns v a -- a function which returns the adjastent matching tiles?
+        { source : Plane v a
         , walker : Walker v
+        , outputSize : v
+        , outputBoundary : Boundary -- FIXME: use in solving
+        , advanceRule : AdvanceRule
+        , patterns : UniquePatterns v a
+            -- FIXME: could be either:
+            --        UniquePatterns, pixel by pixel,
+            --        or Tiles which are just IDs themselves;
+            --        also, could be a function like: Wave v -> v -> Direction -> Matches a
         }
 
 
@@ -109,22 +122,26 @@ firstStep seed =
 
 
 init
-    :  Options v -- FIXME: only `advanceRule` used in solving atm
+    :  AdvanceRule
     -> UniquePatterns v a
+    -> v
+    -> Boundary
     -> Walker v
     -> Plane v a
     -> Solver v a
-init options patterns walker source =
+init advanceRule patterns outputSize outputBoundary walker source =
     Solver
-        { options = options
-        , source = source
-        , patterns = patterns
+        { source = source
         , walker = walker
+        , patterns = patterns
+        , advanceRule = advanceRule
+        , outputSize = outputSize
+        , outputBoundary = outputBoundary
         }
 
 
 solve : Solver v a -> Step v -> Step v
-solve (Solver { options, source, patterns, walker } as solver) step  =
+solve (Solver { advanceRule, source, patterns, walker, outputSize } as solver) step  =
     let
         seed = getSeed step
         advance wave =
@@ -142,7 +159,7 @@ solve (Solver { options, source, patterns, walker } as solver) step  =
                                 next =
                                     nextStep pSeed step
                                         <| InProgress (FocusedAt position) newWave
-                            in case options.advanceRule of
+                            in case advanceRule of
                                 AdvanceManually -> next
                                 MaximumAttempts maxAttempts ->
                                     if not (step |> exceeds maxAttempts)
@@ -152,7 +169,7 @@ solve (Solver { options, source, patterns, walker } as solver) step  =
         case getStatus step of
             Initial ->
                 -- advance <| initWave patterns source
-                initWave patterns options.outputSize
+                initWave patterns outputSize
                     |> InProgress NotFocused
                     |> nextStep seed step
             InProgress _ wave ->
@@ -394,7 +411,7 @@ apply
     -> Solver v a
     -> Step v
     -> Plane v x
-apply f (Solver { patterns, walker, source, options }) (Step _ _ status) =
+apply f (Solver { patterns, walker, source, outputSize }) (Step _ _ status) =
     let
         loadValues : Matches PatternId -> List a
         loadValues matches =
@@ -411,19 +428,19 @@ apply f (Solver { patterns, walker, source, options }) (Step _ _ status) =
         fromWave wave = wave |> Plane.map (\matches -> f matches <| loadValues matches)
     in
         fromWave <| case status of
-            Initial -> initWave patterns options.outputSize
+            Initial -> initWave patterns outputSize
             InProgress _ wave -> wave
             Solved wave -> wave
-            Terminated -> Plane.empty options.outputSize
-            Exceeded _ -> Plane.empty options.outputSize
+            Terminated -> Plane.empty outputSize
+            Exceeded _ -> Plane.empty outputSize
 
 
 getSource : Solver v a -> Plane v a
 getSource (Solver { source }) = source
 
 
-getPatterns : Solver v a -> UniquePatterns v a
-getPatterns (Solver { patterns }) = patterns
+getUniquePatterns : Solver v a -> UniquePatterns v a
+getUniquePatterns (Solver { patterns }) = patterns
 
 
 getWalker : Solver v a -> Walker v

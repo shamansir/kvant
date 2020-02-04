@@ -6,7 +6,7 @@ import Dict
 
 
 import WFC.Plane exposing (..)
-import WFC.Plane.Flat exposing (SearchMethod, findAllSubs, findOccurrence, findMatches)
+import WFC.Plane.Flat exposing (Boundary, Symmetry, findAllSubs, findOccurrence, findMatches)
 import WFC.Vec2 exposing (..)
 import WFC.Matches exposing (..)
 import WFC.Solver exposing (..)
@@ -14,14 +14,22 @@ import WFC.Solver as S exposing (init)
 import WFC.Neighbours as Dir exposing (Direction(..), move)
 
 
-init : Options Vec2 -> Plane Vec2 a -> Solver Vec2 a
+init : Options Vec2 a -> Plane Vec2 a -> Solver Vec2 a
 init options (Plane size _ as source)  =
     S.init
-        options
-        (findUniquePatterns
-                options.patternSearch
-                options.patternSize
-                source)
+        options.advanceRule
+        (case options.approach of
+            Overlapping { searchBoundary, patternSize } ->
+                -- FIXME: use symmetry as well
+                (findUniquePatterns
+                        searchBoundary
+                        patternSize
+                        source)
+            Tiled ->
+                Dict.empty -- FIXME: implement
+        )
+        options.outputSize
+        options.outputBoundary
         (walker options.outputSize)
         source
 
@@ -40,13 +48,13 @@ walker ( w, h ) =
 
 
 findUniquePatterns
-    :  SearchMethod
+    :  Boundary
     -> N Vec2
     -> Plane Vec2 a
     -> UniquePatterns Vec2 a
-findUniquePatterns method ofSize inPlane =
+findUniquePatterns boundary ofSize inPlane =
     let
-        allSubplanes = findAllSubs method ofSize inPlane
+        allSubplanes = findAllSubs boundary ofSize inPlane
         uniquePatterns = findOccurrence allSubplanes
         uniquePatternsDict =
             uniquePatterns

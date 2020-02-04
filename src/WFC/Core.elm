@@ -113,7 +113,7 @@ makeFn (Convert convert as cnv) initSolver input =
         |> make cnv
 
 
-text : Solver.Options Vec2 -> (BoundedString -> TextWFC)
+text : Solver.Options Vec2 Char -> (BoundedString -> TextWFC)
 text options =
     makeFn
         (Convert
@@ -125,7 +125,7 @@ text options =
         (FlatSolver.init options)
 
 
-textTracing : Solver.Options Vec2 -> (BoundedString -> TextTracingWFC)
+textTracing : Solver.Options Vec2 Char -> (BoundedString -> TextTracingWFC)
 textTracing options =
     \(size, input) ->
         makeFn
@@ -144,7 +144,7 @@ textTracing options =
 
 
 
-image : Solver.Options Vec2 -> (Image -> ImageWFC)
+image : Solver.Options Vec2 Color -> (Image -> ImageWFC)
 image options =
     makeFn
         (Convert
@@ -156,7 +156,7 @@ image options =
         (FlatSolver.init options)
 
 
-imageTracing : Solver.Options Vec2 -> (Image -> ImageTracingWFC)
+imageTracing : Solver.Options Vec2 Color -> (Image -> ImageTracingWFC)
 imageTracing options =
     \input ->
         makeFn

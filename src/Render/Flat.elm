@@ -7,7 +7,7 @@ import Html.Attributes exposing (..)
 
 import WFC.Plane exposing (..)
 import WFC.Plane.Flat exposing (..)
-import WFC.Plane.Flat as Plane exposing (SearchMethod(..), sub ,subAt, foldMap, unpack)
+import WFC.Plane.Flat as Plane exposing (sub ,subAt, foldMap, unpack)
 import WFC.Plane.Offset exposing (Offset, OffsetPlane)
 import WFC.Plane.Offset as Offsets exposing (foldMap)
 import WFC.Plane.Impl.Tracing exposing (TracingPlane, TracingCell)

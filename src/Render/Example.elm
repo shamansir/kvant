@@ -16,7 +16,7 @@ import WFC.Vec2 exposing (..)
 import WFC.Core as WFC exposing (..)
 import WFC.Core as Core exposing (firstStep)
 import WFC.Plane exposing (Plane, N)
-import WFC.Plane.Flat exposing (SearchMethod)
+import WFC.Plane.Flat exposing (Boundary)
 import WFC.Plane.Impl.Tracing exposing (TracingPlane)
 import WFC.Solver exposing (Step)
 import WFC.Solver as WFC exposing (Options)
@@ -58,8 +58,8 @@ type alias Renderer v fmt a msg =
     , allViews : Plane v a -> Html msg
     , rotationsAndFlips : Plane v a -> Html msg
     , materialized : Plane v a -> Html msg
-    , patterns : SearchMethod -> N v -> Plane v a -> Html msg
-    , allSubPlanes : SearchMethod -> N v -> Plane v a -> Html msg
+    , patterns : Boundary -> N v -> Plane v a -> Html msg
+    , allSubPlanes : Boundary -> N v -> Plane v a -> Html msg
     , step : Step v -> Html msg
     , history : H.History (Step v) -> Html msg
     }
@@ -73,8 +73,8 @@ type Block v fmt a
     | SubPlanes (Plane v a)
     | PeriodicSubPlanes (Plane v a)
     | AllViews (Plane v a)
-    | Patterns (Plane v a) SearchMethod (N v)
-    | AllSubPlanes (Plane v a) SearchMethod (N v)
+    | Patterns (Plane v a) Boundary (N v)
+    | AllSubPlanes (Plane v a) Boundary (N v)
     | Empty
 
 
@@ -89,7 +89,7 @@ type alias TextBlock = Block Vec2 String Char
 type alias ExampleModel v fmt a =
     { source : fmt
     , sourcePlane : Plane v a
-    , options : WFC.Options v
+    , options : WFC.Options v a
     , expands : List BlockState
     , wfc : ( WFC v fmt a, TracingWFC v a )
     , status : Status v fmt a
@@ -103,7 +103,7 @@ type alias ImageExample = ExampleModel Vec2 Image Color
 make
     :  WFC v fmt a
     -> TracingWFC v a
-    -> WFC.Options v
+    -> WFC.Options v a
     -> fmt
     -> Plane v a
     -> ExampleModel v fmt a
@@ -127,15 +127,21 @@ blocks e =
     , SubPlanes e.sourcePlane
     , PeriodicSubPlanes e.sourcePlane
     , AllViews e.sourcePlane
-    , Patterns
-            e.sourcePlane
-            e.options.patternSearch
-            e.options.patternSize
-    , AllSubPlanes
-            e.sourcePlane
-            e.options.patternSearch
-            e.options.patternSize
     ]
+    ++
+    (case e.options.approach of
+        WFC.Overlapping { patternSize, searchBoundary } ->
+            [ Patterns
+                    e.sourcePlane
+                    searchBoundary
+                    patternSize
+            , AllSubPlanes
+                    e.sourcePlane
+                    searchBoundary
+                    patternSize
+            ]
+        WFC.Tiled -> [] -- FIXME: implement
+    )
 
 
 view

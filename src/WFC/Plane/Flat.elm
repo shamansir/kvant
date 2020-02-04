@@ -11,9 +11,16 @@ import WFC.Plane exposing (..)
 import WFC.Plane.Offset exposing (..)
 
 
-type SearchMethod
+type Boundary
     = Bounded
     | Periodic
+
+
+type Symmetry
+    = NoSymmetry
+    | FlipOnly
+    | RotateOnly
+    | FlipAndRotate
 
 
 type Orientation
@@ -209,14 +216,14 @@ memberAt planes subject =
            Nothing
 
 
-findAllSubs : SearchMethod -> N Vec2 -> Plane Vec2 a -> List (Plane Vec2 a)
-findAllSubs method ofSize inPlane =
+findAllSubs : Boundary -> N Vec2 -> Plane Vec2 a -> List (Plane Vec2 a)
+findAllSubs boundary ofSize inPlane =
     inPlane
         |> allViews -- first rotate and then search for subs or search for subs and rotate them?
         |> List.concatMap
             (\view ->
                 coordsFlat view
-                    |> case method of
+                    |> case boundary of
                         Periodic ->
                             List.map (\coord -> periodicSubAt coord ofSize view)
                         Bounded ->
@@ -225,7 +232,7 @@ findAllSubs method ofSize inPlane =
             )
 
 
-findAllSubsAlt : SearchMethod -> N Vec2 -> Plane Vec2 a -> List (Plane Vec2 a)
+findAllSubsAlt : Boundary -> N Vec2 -> Plane Vec2 a -> List (Plane Vec2 a)
 findAllSubsAlt method ofSize inPlane =
     inPlane
         |> coordsFlat

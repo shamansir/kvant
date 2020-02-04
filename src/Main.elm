@@ -40,7 +40,7 @@ import WFC.Core exposing (WFC, TextWFC, TextTracingWFC, TextTracingPlane)
 import WFC.Core as WFC
 import WFC.Vec2 exposing (..)
 import WFC.Plane exposing (Plane, N(..))
-import WFC.Plane.Flat as Plane exposing (SearchMethod(..))
+import WFC.Plane.Flat as Plane exposing (Boundary(..))
 import WFC.Plane.Flat exposing (flip, rotate)
 import WFC.Plane.Impl.Text exposing (TextPlane)
 import WFC.Plane.Impl.Text as Text exposing (toGrid)
