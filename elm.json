@@ -14,7 +14,8 @@
             "elm/http": "2.0.0",
             "elm/random": "1.0.0",
             "elm/time": "1.0.0",
-            "justgook/elm-image": "4.0.0"
+            "justgook/elm-image": "4.0.0",
+            "wernerdegroot/listzipper": "4.0.0"
         },
         "indirect": {
             "danfishgold/base64-bytes": "1.0.3",
@@ -30,8 +31,6 @@
         "direct": {
             "elm-explorations/test": "1.2.2"
         },
-        "indirect": {
-            "wernerdegroot/listzipper": "4.0.0"
-        }
+        "indirect": {}
     }
 }

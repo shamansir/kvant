@@ -54,6 +54,10 @@ mapBy f neighbours =
             (f SW sw) (f S s) (f SE se)
 
 
+at : Direction -> (a -> a) -> Neighbours a -> Neighbours a
+at dir f = mapBy (\otherDir v -> if otherDir == dir then f v else v)
+
+
 create : (Direction -> a) -> Neighbours a
 create f =
     Neighbours
@@ -65,6 +69,11 @@ create f =
 allDirections : List Direction
 allDirections =
     [ NW, N, NE, W, X, E, SW, S, SE ]
+
+
+directionsAround : List Direction
+directionsAround =
+    allDirections |> List.filter ((/=) X)
 
 
 get : Direction -> Neighbours a -> a
@@ -100,6 +109,10 @@ setCenter : a -> Neighbours a -> Neighbours a
 setCenter = set X
 
 
+getCenter : Neighbours a -> a
+getCenter = get X
+
+
 -- TODO: focus should not be needed, just `(Direction -> v)`
 collect : v -> (v -> Direction -> v) -> (v -> Maybe a) -> Neighbours (Maybe a)
 collect focus customMove f =
@@ -110,6 +123,22 @@ toList : Neighbours a -> List (Direction, a)
 toList neighbours =
     allDirections
         |> List.map (\dir -> (dir, get dir neighbours))
+
+
+flatten : Neighbours a -> List a
+flatten = toList >> List.map Tuple.second
+
+
+centerAndOthers : Neighbours a -> (a, List (Direction, a))
+centerAndOthers neighbours =
+    ( get X neighbours
+    , directionsAround
+        |> List.map (\dir -> (dir, get dir neighbours)) )
+
+
+headTail : Neighbours a -> (a, List a)
+headTail =
+    centerAndOthers >> Tuple.mapSecond (List.map Tuple.second)
 
 
 foldl : (Direction -> a -> b -> b) -> b -> Neighbours a -> b
@@ -129,6 +158,14 @@ load default =
             neighbours |> set dir val
         )
         (fill default)
+
+
+tryLoad : a -> List a -> Neighbours a
+tryLoad default =
+    load default
+        << List.map2
+            Tuple.pair
+            allDirections
 
 
 -- FIXME: we also need `equals` here
@@ -202,3 +239,12 @@ toString itemToString =
         )
         []
         >> String.join " "
+
+
+-- ensure : Neighbours (Maybe a) -> Maybe (Neighbours a)
+
+
+-- encode : (a -> E.Value) -> Neighbours a -> E.Value
+
+
+-- decode : D.Decoder a -> D.Decoder (Neighbours a)

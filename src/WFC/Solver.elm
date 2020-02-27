@@ -259,13 +259,6 @@ propagate seed uniquePatterns walker focus pattern (Plane waveSize waveF as wave
             neighbours
                 |> Neighbours.setCenter (Matches.single pattern)
                 |> Neighbours.mapBy updateMatches
-        -- _ = neighbours
-        --         |> Neighbours.setCenter (Matches.single pattern)
-        --         |> Neighbours.toString (Matches.toString String.fromInt)
-        --         |> Debug.log "before"
-        -- _ = changes
-        --         |> Neighbours.toString (Matches.toString String.fromInt)
-        --         |> Debug.log "after"
     in
         ( wave
             |> Plane.apply focus walker.next changes
@@ -274,7 +267,7 @@ propagate seed uniquePatterns walker focus pattern (Plane waveSize waveF as wave
 
 
 noiseCoefficient : Float
-noiseCoefficient = 0.2
+noiseCoefficient = 0.1
 
 
 entropyOf : Random.Seed -> UniquePatterns v a -> Matches PatternId -> ( Maybe Float, Random.Seed )
