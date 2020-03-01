@@ -15,6 +15,7 @@ import WFC.Plane exposing (Plane(..), N(..))
 import WFC.Plane as Plane exposing (map)
 import WFC.Plane.Flat as Plane
     exposing ( Boundary, Symmetry, foldl, coords, equal, sub, findMatches, findAllSubs, findAllSubsAlt, findOccurrence )
+import WFC.Plane as CPlane exposing (fromDict, toDict)
 import WFC.Plane.Offset exposing (OffsetPlane(..), toOffset)
 import WFC.Plane.Offset as OffsetPlane exposing (get)
 import WFC.Neighbours as Neighbours exposing (..)
@@ -87,6 +88,7 @@ type alias Walker v =
     , next : v -> Direction -> v
     , random : Random.Generator v
     , all : () -> List v
+    -- TODO: v -> comparable
     }
 
 
@@ -215,7 +217,6 @@ observe seed walker uniquePatterns wave =
                     )
                 |> Maybe.withDefault ( Contradiction, cSeed )
 
-
 propagate
     :  Random.Seed
     -> UniquePatterns v a
@@ -226,42 +227,27 @@ propagate
     -> ( Wave v, Random.Seed )
 propagate seed uniquePatterns walker focus pattern (Plane waveSize waveF as wave) =
     let
-        neighbours : Neighbours (Matches PatternId)
-        neighbours =
+        matchesLeft =
             wave
-                |> Plane.loadNeighbours focus walker.next
-                |> Neighbours.map (Maybe.withDefault Matches.none)
-                -- |> Neighbours.setCenter (Matches.single pattern)
-
-        updateMatches : Direction -> Matches PatternId -> Matches PatternId
-        updateMatches dir curMatches =
-            curMatches
-                |> Matches.toList
-                |> List.concatMap (\curMatchingPattern ->
-                    Dict.get pattern uniquePatterns
-                        |> Maybe.map .matches
-                        |> Maybe.andThen (\matchesByOffset ->
-                            let
-                                offset =
-                                    walker.next walker.first dir
-                                        |> toOffset
-                            in
-                                matchesByOffset
-                                    |> OffsetPlane.get offset
-                                    |> Maybe.map (List.filter ((==) curMatchingPattern))
-                        )
-                        |> Maybe.withDefault []
-                )
-                |> Matches.fromList
-
-        changes : Neighbours (Matches PatternId)
-        changes =
-            neighbours
-                |> Neighbours.setCenter (Matches.single pattern)
-                |> Neighbours.mapBy updateMatches
+                |> Plane.get focus
+                |> Maybe.map (Matches.exclude pattern >> Matches.toList)
+                |> Maybe.withDefault []
+        ban : v -> PatternId -> Wave v -> Wave v
+        ban pos otherPattern w =
+            w
+                |> Plane.adjustAt (Matches.exclude otherPattern) pos
+        -- rebuild : Wave v -> Wave v
+        -- rebuild w =
+        --     CPlane.toDict (walker.all ()) w |> CPlane.fromDict
+        next : List (v, PatternId) -> Wave v -> Wave v
+        next banlist w =
+            case banlist of
+                [] -> w
+                (banV, banPattern)::tail ->
+                    w |> ban banV banPattern
     in
         ( wave
-            |> Plane.apply focus walker.next changes
+            |> next (matchesLeft |> List.map (Tuple.pair focus))
         , seed
         )
 

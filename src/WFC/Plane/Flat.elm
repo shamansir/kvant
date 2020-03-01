@@ -121,7 +121,7 @@ materializeExists =
 
 
 toList : Plane Vec2 a -> List (Cell Vec2 a)
-toList = materializeFlatten
+toList = materializeFlatten -- TODO: or use Plane.toList
 
 
 rotate : Plane Vec2 a -> Plane Vec2 a

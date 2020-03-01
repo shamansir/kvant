@@ -7,6 +7,7 @@ module WFC.Matches exposing
     , toString
     , fromMaybe
     , run
+    , exclude
     )
 
 
@@ -81,6 +82,15 @@ extract matches =
     let
         asList = toList matches
     in ( List.length asList, asList )
+
+
+exclude : comparable -> Matches comparable -> Matches comparable
+exclude val matches =
+    case matches of
+        None -> matches
+        Single v -> if v == val then none else matches
+        Some (MoreThanOne list) ->
+            list |> List.filter ((==) val) |> fromList
 
 
 run : (() -> x) -> (a -> List a -> x) -> Matches a -> x
