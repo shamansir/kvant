@@ -42,10 +42,26 @@ get : v -> Plane v a -> Maybe a
 get v (Plane _ f) = f v
 
 
--- set : v -> a -> Plane v a -> Plane v a
--- set pos value (Plane size f) =
---     Plane size <| \otherPos ->
---         if otherPos == pos then Just value else f otherPos
+-- FIXME: could overflow the stack if the Plane is not backed by Dict
+-- Temporary solution: Convert to List/Dict and back after a bunch of such operations
+set : v -> a -> Plane v a -> Plane v a
+set pos value (Plane size f) =
+    Plane size <| \otherPos ->
+        -- FIXME: `pos` should be `comparable` for that comparison! use `Walker`
+        if otherPos == pos then Just value else f otherPos
+
+
+adjust : (Cell v a -> Maybe b) -> Plane v a -> Plane v b
+adjust f (Plane size srcF) =
+    Plane size (\coord -> f (coord, srcF coord))
+
+
+adjustAt : (a -> a) -> v -> Plane v a -> Plane v a
+adjustAt f pos plane =
+     -- FIXME: since uses `Plane.set`, same speed problems are applied here
+    case plane |> get pos of
+        Just v -> plane |> set pos (f v)
+        Nothing -> plane
 
 
 getSize : Plane v a -> v
@@ -77,11 +93,6 @@ transformBy vToZ zToV (Plane size srcF) =
     Plane (vToZ size) (srcF << zToV)
 
 
-adjust : (Cell v a -> Maybe b) -> Plane v a -> Plane v b
-adjust f (Plane size srcF) =
-    Plane size (\coord -> f (coord, srcF coord))
-
-
 equalAt : List v -> Plane v a -> Plane v a -> Bool
 equalAt atCoords (Plane _ aF) (Plane _ bF) =
     -- FIXME: use `equal`
@@ -110,14 +121,28 @@ fromDict size dict =
     Plane size <| \v -> Dict.get v dict
 
 
--- could be very slow if overused, see comments about stacking above
+-- TODO: When Walker will be inside the Panel, we may use `Walker.all` for that purpose
+toList : List v -> Plane v a -> List (Cell v a)
+toList all (Plane _ f) =
+    all |> List.map (\v -> (v, f v))
+
+
+toDict : List comparable -> Plane comparable a -> Dict comparable a
+toDict all =
+    toList all
+        >> List.map cellToMaybe
+        >> List.filterMap identity
+        >> Dict.fromList
+
+
+-- FIXME: could overflow the stack if the Plane is not backed by Dict
+-- Temporary solution: Convert to List/Dict and back after a bunch of such operations
 add : v -> a -> Plane v a -> Plane v a
 add v a =
     adjust
         (\(otherV, cur) ->
             if otherV == v then Just a else cur
         )
-
 
 
 addFrom : List (comparable, a) -> Plane comparable a -> Plane comparable a
