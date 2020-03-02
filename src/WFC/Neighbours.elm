@@ -203,6 +203,20 @@ offsetFor direction =
         SE -> (  1,  1 )
 
 
+opposite : Direction -> Direction
+opposite direction =
+    case direction of
+        NW -> SE
+        N  -> S
+        NE -> SW
+        W  -> E
+        X  -> X
+        E  -> W
+        SW -> NE
+        S  -> N
+        SE -> NW
+
+
 move : Vec2 -> Direction -> Vec2
 move (x, y) direction =
     case offsetFor direction of

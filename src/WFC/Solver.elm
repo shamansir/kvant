@@ -20,6 +20,7 @@ import WFC.Plane.Offset exposing (OffsetPlane(..), toOffset)
 import WFC.Plane.Offset as OffsetPlane exposing (get)
 import WFC.Neighbours as Neighbours exposing (..)
 import WFC.Neighbours exposing (Neighbours)
+import WFC.Neighbours as Dir exposing (Direction(..))
 
 
 type alias Options v a =
@@ -85,7 +86,7 @@ type alias UniquePatterns v a =
 
 type alias Walker v =
     { first : v
-    , next : v -> Direction -> v
+    , next : v -> Direction -> v -- FIXME: swap arguments
     , random : Random.Generator v
     , all : () -> List v
     -- TODO: v -> comparable
@@ -236,18 +237,48 @@ propagate seed uniquePatterns walker focus pattern (Plane waveSize waveF as wave
         ban pos otherPattern w =
             w
                 |> Plane.adjustAt (Matches.exclude otherPattern) pos
+        patternsMatchingAtDir : PatternId -> Direction -> Matches PatternId
+        patternsMatchingAtDir otherPattern dir =
+            -- TODO:
+            Matches.none
         -- rebuild : Wave v -> Wave v
         -- rebuild w =
         --     CPlane.toDict (walker.all ()) w |> CPlane.fromDict
-        next : List (v, PatternId) -> Wave v -> Wave v
-        next banlist w =
-            case banlist of
-                [] -> w
-                (banV, banPattern)::tail ->
-                    w |> ban banV banPattern
+        forget : v -> PatternId -> Wave v -> Wave v
+        forget banPos banPattern w =
+            [ Dir.N, Dir.W, Dir.S, Dir.E ]
+                |> List.foldl
+                    (\dir prevWave ->
+                        let
+                            otherPos = dir |> walker.next banPos
+                            curMatchesAtDir =
+                                prevWave
+                                    |> Plane.get otherPos
+                                    |> Maybe.withDefault Matches.none
+                        in
+                            curMatchesAtDir
+                                |> Matches.toList
+                                |> List.foldl
+                                    (\otherPattern innerPrevWave ->
+                                        if Neighbours.opposite dir
+                                            |> patternsMatchingAtDir otherPattern
+                                            |> Matches.isNone
+                                            then
+                                                innerPrevWave |> forget otherPos otherPattern
+                                            else innerPrevWave
+                                    )
+                                    prevWave
+                    )
+                    w
+        foldForget : List (v, PatternId) -> Wave v -> Wave v
+        foldForget banlist w =
+            banlist
+                |> List.foldl
+                    (\(banPos, panPattern) -> forget banPos panPattern) -- uncurry
+                    w
     in
         ( wave
-            |> next (matchesLeft |> List.map (Tuple.pair focus))
+            |> foldForget (matchesLeft |> List.map (Tuple.pair focus))
         , seed
         )
 

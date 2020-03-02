@@ -93,6 +93,32 @@ exclude val matches =
             list |> List.filter ((==) val) |> fromList
 
 
+and : Matches comparable -> Matches comparable -> Matches comparable
+and matchesA matchesB =
+    case ( matchesA, matchesB ) of
+        ( None, _ ) -> none
+        ( _, None ) -> none
+        ( a, b ) ->
+            let
+                aList = a |> toList
+                bList = b |> toList
+            in
+                aList
+                    |> List.concatMap (\aVal -> bList |> List.filter ((==) aVal))
+                    |> fromList
+
+
+-- or : Matches comparable -> Matches comparable -> Matches comparable
+-- or matchesA matchesB =
+--     let
+--         aList = matchesA |> toList
+--         bList = matchesB |> toList
+--     in
+--         aList
+--             |> append bList
+--             |> fromList
+
+
 run : (() -> x) -> (a -> List a -> x) -> Matches a -> x
 run fNone fSome matches =
     case matches |> toList of
