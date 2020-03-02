@@ -73,7 +73,7 @@ type alias PatternId = Int
 type alias PatternWithStats v a =
     { pattern : Pattern v a
     , frequency : ( Occurrence, Maybe Frequency )
-    -- TODO: change `matches` to Neighbours, but each neigbour may contain more Neigbours
+    -- TODO: change `matches` to Neighbours
     , matches : OffsetPlane v (List PatternId)
     }
 
@@ -235,12 +235,11 @@ propagate seed uniquePatterns walker focus pattern (Plane waveSize waveF as wave
                 |> Maybe.withDefault []
         ban : v -> PatternId -> Wave v -> Wave v
         ban pos otherPattern w =
-            w
-                |> Plane.adjustAt (Matches.exclude otherPattern) pos
+            w |> Plane.adjustAt (Matches.exclude otherPattern) pos
         patternsMatchingAtDir : PatternId -> Direction -> Matches PatternId
         patternsMatchingAtDir otherPattern dir =
-            -- TODO:
-            Matches.none
+            getMatchesOf walker uniquePatterns dir otherPattern
+                |> Maybe.withDefault Matches.none
         -- rebuild : Wave v -> Wave v
         -- rebuild w =
         --     CPlane.toDict (walker.all ()) w |> CPlane.fromDict
@@ -376,6 +375,21 @@ randomPattern uniquePatterns first others =
         Random.weighted
             (packWithFrequency first)
             (others |> List.map packWithFrequency)
+
+
+getMatchesOf : Walker v -> UniquePatterns v a -> Direction -> PatternId -> Maybe (Matches PatternId)
+getMatchesOf walker uniquePatterns dir pattern =
+    uniquePatterns
+        |> Dict.get pattern
+        |> Maybe.andThen
+            (\{ matches } ->
+                let
+                    movedPos = walker.next walker.first dir
+                in
+                    matches
+                        |> OffsetPlane.get (movedPos |> toOffset)
+            )
+        |> Maybe.map Matches.fromList
 
 
  -- FIXME: Maybe Bool
