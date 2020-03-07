@@ -8,9 +8,12 @@ module WFC.Matches exposing
     , fromMaybe
     , run
     , exclude
-    , and, intersect
+    , and, or, intersect, union
     , equal
     )
+
+
+import List.Extra as List exposing (unique)
 
 
 type MoreThanOne a = MoreThanOne (List a)
@@ -110,12 +113,27 @@ and matchesA matchesB =
                     |> fromList
 
 
+or : Matches comparable -> Matches comparable -> Matches comparable
+or matchesA matchesB =
+    List.append
+        (matchesA |> toList)
+        (matchesB |> toList)
+        |> List.unique
+        |> fromList
+
 
 intersect : List (Matches comparable) -> Matches comparable
 intersect list =
     case list of
         [] -> none
         x::xs -> List.foldl and x xs
+
+
+union : List (Matches comparable) -> Matches comparable
+union list =
+    case list of
+        [] -> none
+        x::xs -> List.foldl or x xs
 
 
 equal : Matches comparable -> Matches comparable -> Bool
@@ -125,7 +143,7 @@ equal matchesA matchesB =
         ( Single a, Single b ) -> a == b
         ( Some (MoreThanOne xs), Some (MoreThanOne ys) ) ->
             (List.length xs == List.length ys)
-                && (List.map2 (==) xs ys |> List.foldl (&&) True)
+                && (List.map2 (==) (List.sort xs) (List.sort ys) |> List.foldl (&&) True)
         _ -> False
 
 -- or : Matches comparable -> Matches comparable -> Matches comparable
