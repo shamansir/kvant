@@ -228,6 +228,8 @@ propagate
     -> ( Wave v, Random.Seed )
 propagate seed uniquePatterns walker focus pattern (Plane waveSize waveF as wave) =
     let
+        _ = Debug.log "focus" focus
+        _ = Debug.log "pattern" pattern
         matchesLeft =
             wave
                 |> Plane.get focus
@@ -249,24 +251,48 @@ propagate seed uniquePatterns walker focus pattern (Plane waveSize waveF as wave
                 |> List.foldl
                     (\dir prevWave ->
                         let
-                            otherPos = dir |> walker.next banPos
-                            curMatchesAtDir =
-                                prevWave
-                                    |> Plane.get otherPos
+                            movedPos =
+                                dir
+                                    |> Debug.log "dir"
+                                    |> walker.next banPos
+                                    |> Debug.log "movedPos"
+                            curMatches =
+                                Plane.get banPos w
                                     |> Maybe.withDefault Matches.none
+                                    |> Debug.log "curMatches"
+                            nextWave =
+                                prevWave
+                                    |> ban banPos banPattern
+                            matchesAtDir =
+                                dir
+                                    |> patternsMatchingAtDir banPattern
+                                    |> Debug.log "macthesAtDir"
                         in
-                            curMatchesAtDir
+                            matchesAtDir
                                 |> Matches.toList
                                 |> List.foldl
-                                    (\otherPattern innerPrevWave ->
-                                        if Neighbours.opposite dir
-                                            |> patternsMatchingAtDir otherPattern
-                                            |> Matches.isNone
+                                    (\otherPattern ww ->
+                                        let
+                                            oppositeMatches =
+                                                Neighbours.opposite dir
+                                                    |> patternsMatchingAtDir otherPattern
+                                                    |> Debug.log "oppositeMatches"
+                                            otherMatchesLeft =
+                                                Plane.get banPos ww
+                                                    |> Maybe.withDefault Matches.none
+                                                    |> Debug.log "otherMatchesLeft"
+                                        in
+                                            if Matches.and oppositeMatches otherMatchesLeft
+                                                |> Debug.log "and"
+                                                |> Matches.isNone
+                                                |> Debug.log "isNone"
                                             then
-                                                innerPrevWave |> forget otherPos otherPattern
-                                            else innerPrevWave
+                                                ww
+                                                    |> ban movedPos otherPattern
+                                                    -- |> forget otherPos otherPattern
+                                            else ww
                                     )
-                                    prevWave
+                                    nextWave
                     )
                     w
         foldForget : List (v, PatternId) -> Wave v -> Wave v
@@ -277,7 +303,7 @@ propagate seed uniquePatterns walker focus pattern (Plane waveSize waveF as wave
                     w
     in
         ( wave
-            |> foldForget (matchesLeft |> List.map (Tuple.pair focus))
+            |> foldForget ( matchesLeft |> List.map (Tuple.pair focus) |> Debug.log "matchesLeft" )
         , seed
         )
 

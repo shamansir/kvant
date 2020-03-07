@@ -7,7 +7,7 @@ module WFC.Matches exposing
     , toString
     , fromMaybe
     , run
-    , exclude
+    , exclude, and
     )
 
 
@@ -90,7 +90,7 @@ exclude val matches =
         None -> matches
         Single v -> if v == val then none else matches
         Some (MoreThanOne list) ->
-            list |> List.filter ((==) val) |> fromList
+            list |> List.filter ((/=) val) |> fromList
 
 
 and : Matches comparable -> Matches comparable -> Matches comparable
