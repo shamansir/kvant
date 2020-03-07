@@ -71,6 +71,10 @@ allDirections =
     [ NW, N, NE, W, X, E, SW, S, SE ]
 
 
+cross : List Direction
+cross = [ N, E, S, W ]
+
+
 directionsAround : List Direction
 directionsAround =
     allDirections |> List.filter ((/=) X)
