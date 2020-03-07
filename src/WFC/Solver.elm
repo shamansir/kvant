@@ -234,13 +234,13 @@ propagate seed uniquePatterns walker focus pattern (Plane waveSize waveF as wave
             let
                 curMatches =
                     prevWave
-                        |> Plane.get (atPos |> Debug.log "atPos")
+                        |> Plane.get atPos
                         |> Maybe.withDefault Matches.none
                 probeNeighbours withWave =
                     Neighbours.cross
                         |> List.foldl
                             (\dir w ->
-                                case walker.next atPos (Debug.log "dir" dir) |> Debug.log "moved" of
+                                case walker.next atPos dir of
                                     moved ->
                                         -- FIXME: support unbounded planes
                                         if not <| walker.fits moved then w
@@ -260,13 +260,14 @@ propagate seed uniquePatterns walker focus pattern (Plane waveSize waveF as wave
                             )
                             withWave
             in
-                case compare (Matches.count (curMatches |> Debug.log "curMatches")) (Matches.count  (newMatches |>  Debug.log "newMatches")) |> Debug.log "compareLen" of
+                case compare (Matches.count curMatches) (Matches.count newMatches) of
                     EQ ->
-                        if Matches.equal curMatches newMatches |> Debug.log "equal contents" then prevWave
-                        else
-                            prevWave
-                                |> Plane.set atPos newMatches
-                                |> probeNeighbours
+                        if Matches.equal curMatches newMatches
+                            then prevWave
+                            else
+                                prevWave
+                                    |> Plane.set atPos newMatches
+                                    |> probeNeighbours
                     GT ->
                         prevWave
                             |> Plane.set atPos newMatches
