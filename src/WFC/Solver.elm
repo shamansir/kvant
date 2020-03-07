@@ -236,9 +236,7 @@ propagate seed uniquePatterns walker focus pattern (Plane waveSize waveF as wave
                     prevWave
                         |> Plane.get (atPos |> Debug.log "atPos")
                         |> Maybe.withDefault Matches.none
-            in
-                if Matches.equal (curMatches |> Debug.log "curMatches") (newMatches |> Debug.log "newMatches") |> Debug.log "equal" then prevWave
-                else
+                probeNeighbours withWave =
                     Neighbours.cross
                         |> List.foldl
                             (\dir w ->
@@ -248,14 +246,35 @@ propagate seed uniquePatterns walker focus pattern (Plane waveSize waveF as wave
                                         if not <| walker.fits moved then w
                                         else
                                             let
+                                                curMatchesAtDir =
+                                                    w
+                                                        |> Plane.get moved
+                                                        |> Maybe.withDefault Matches.none
                                                 newMatchesAtDir =
                                                     newMatches
                                                         |> matchesAtDir walker uniquePatterns dir
+                                                        |> Matches.and curMatchesAtDir
                                             in
 
                                                 w |> probe moved newMatchesAtDir
                             )
-                            (prevWave |> Plane.set atPos newMatches)
+                            withWave
+            in
+                case compare (Matches.count (curMatches |> Debug.log "curMatches")) (Matches.count  (newMatches |>  Debug.log "newMatches")) |> Debug.log "compareLen" of
+                    EQ ->
+                        if Matches.equal curMatches newMatches |> Debug.log "equal contents" then prevWave
+                        else
+                            prevWave
+                                |> Plane.set atPos newMatches
+                                |> probeNeighbours
+                    GT ->
+                        prevWave
+                            |> Plane.set atPos newMatches
+                            |> probeNeighbours
+                    LT ->
+                        prevWave
+                            |> Plane.set atPos (Matches.and curMatches newMatches)
+                            |> probeNeighbours
     in
         ( wave
             |> probe focus (Matches.single pattern)
@@ -364,7 +383,7 @@ matchesAtDir walker uniquePatterns dir matchesAtFocus =
         |> Matches.toList
         |> List.map (getMatchesOf walker uniquePatterns dir)
         |> List.map (Maybe.withDefault Matches.none)
-        |> Matches.intersect
+        |> Matches.union
 
 
 getMatchesOf : Walker v -> UniquePatterns v a -> Direction -> PatternId -> Maybe (Matches PatternId)

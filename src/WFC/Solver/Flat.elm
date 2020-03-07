@@ -45,7 +45,7 @@ walker ( w, h ) =
             (Random.int 0 (h - 1))
     , all = above (w, h) |> List.concat |> always
     , fits = \(x, y) ->
-        (x >= 0) && (y >= 0) && (x < w) && (x < h)
+        (x >= 0) && (y >= 0) && (x < w) && (y < h)
     }
 
 
