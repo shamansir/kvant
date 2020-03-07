@@ -227,7 +227,7 @@ propagate
     -> PatternId
     -> Wave v
     -> ( Wave v, Random.Seed )
-propagate seed uniquePatterns walker focus pattern (Plane waveSize waveF as wave) =
+propagate seed uniquePatterns walker focus pattern wave =
     let
         probe : v -> Matches PatternId -> Wave v -> Wave v
         probe atPos newMatches prevWave =
@@ -260,19 +260,9 @@ propagate seed uniquePatterns walker focus pattern (Plane waveSize waveF as wave
                             )
                             withWave
             in
-                case compare (Matches.count curMatches) (Matches.count newMatches) of
-                    EQ ->
-                        if Matches.equal curMatches newMatches
-                            then prevWave
-                            else
-                                prevWave
-                                    |> Plane.set atPos newMatches
-                                    |> probeNeighbours
-                    GT ->
-                        prevWave
-                            |> Plane.set atPos newMatches
-                            |> probeNeighbours
-                    LT ->
+                if Matches.equal curMatches newMatches
+                    then prevWave
+                    else
                         prevWave
                             |> Plane.set atPos (Matches.and curMatches newMatches)
                             |> probeNeighbours
