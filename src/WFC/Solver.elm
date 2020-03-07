@@ -157,18 +157,18 @@ solve (Solver { advanceRule, source, patterns, walker, outputSize } as solver) s
                 ( Unknown, oSeed ) ->
                     nextStep oSeed step <| Terminated
                 ( Focus position pattern, oSeed ) ->
-                    case propagate oSeed patterns walker position pattern wave of
-                        ( newWave, pSeed ) ->
-                            let
-                                next =
-                                    nextStep pSeed step
-                                        <| InProgress (FocusedAt position) newWave
-                            in case advanceRule of
-                                AdvanceManually -> next
-                                MaximumAttempts maxAttempts ->
-                                    if not (step |> exceeds maxAttempts)
-                                    then next |> solve solver
-                                    else next |> (updateStatus <| Exceeded maxAttempts)
+                    let
+                        newWave =
+                            propagate patterns walker position pattern wave
+                        next =
+                            nextStep oSeed step
+                                <| InProgress (FocusedAt position) newWave
+                    in case advanceRule of
+                        AdvanceManually -> next
+                        MaximumAttempts maxAttempts ->
+                            if not (step |> exceeds maxAttempts)
+                            then next |> solve solver
+                            else next |> (updateStatus <| Exceeded maxAttempts)
     in
         case getStatus step of
             Initial ->
@@ -220,14 +220,13 @@ observe seed walker uniquePatterns wave =
                 |> Maybe.withDefault ( Contradiction, cSeed )
 
 propagate
-    :  Random.Seed
-    -> UniquePatterns v a
+    :  UniquePatterns v a
     -> Walker v
     -> v
     -> PatternId
     -> Wave v
-    -> ( Wave v, Random.Seed )
-propagate seed uniquePatterns walker focus pattern wave =
+    -> Wave v
+propagate uniquePatterns walker focus pattern wave =
     let
         probe : v -> Matches PatternId -> Wave v -> Wave v
         probe atPos newMatches prevWave =
@@ -267,10 +266,8 @@ propagate seed uniquePatterns walker focus pattern wave =
                             |> Plane.set atPos (Matches.and curMatches newMatches)
                             |> probeNeighbours
     in
-        ( wave
+        wave
             |> probe focus (Matches.single pattern)
-        , seed
-        )
 
 
 noiseCoefficient : Float
