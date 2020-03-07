@@ -7,7 +7,9 @@ module WFC.Matches exposing
     , toString
     , fromMaybe
     , run
-    , exclude, and
+    , exclude
+    , and, intersect
+    , equal
     )
 
 
@@ -107,6 +109,24 @@ and matchesA matchesB =
                     |> List.concatMap (\aVal -> bList |> List.filter ((==) aVal))
                     |> fromList
 
+
+
+intersect : List (Matches comparable) -> Matches comparable
+intersect list =
+    case list of
+        [] -> none
+        x::xs -> List.foldl and x xs
+
+
+equal : Matches comparable -> Matches comparable -> Bool
+equal matchesA matchesB =
+    case ( matchesA, matchesB ) of
+        ( None, None ) -> True
+        ( Single a, Single b ) -> a == b
+        ( Some (MoreThanOne xs), Some (MoreThanOne ys) ) ->
+            (List.length xs == List.length ys)
+                && (List.map2 (==) xs ys |> List.foldl (&&) True)
+        _ -> False
 
 -- or : Matches comparable -> Matches comparable -> Matches comparable
 -- or matchesA matchesB =

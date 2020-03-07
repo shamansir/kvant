@@ -86,9 +86,10 @@ type alias UniquePatterns v a =
 
 type alias Walker v =
     { first : v
-    , next : v -> Direction -> v -- FIXME: swap arguments
+    , next : v -> Direction -> v -- FIXME: swap arguments, return Maybe (?), change Direction to `v`
     , random : Random.Generator v
     , all : () -> List v
+    , fits : v -> Bool
     -- TODO: v -> comparable
     }
 
@@ -228,82 +229,36 @@ propagate
     -> ( Wave v, Random.Seed )
 propagate seed uniquePatterns walker focus pattern (Plane waveSize waveF as wave) =
     let
-        _ = Debug.log "focus" focus
-        _ = Debug.log "pattern" pattern
-        matchesLeft =
-            wave
-                |> Plane.get focus
-                |> Maybe.map (Matches.exclude pattern >> Matches.toList)
-                |> Maybe.withDefault []
-        ban : v -> PatternId -> Wave v -> Wave v
-        ban pos otherPattern w =
-            w |> Plane.adjustAt (Matches.exclude otherPattern) pos
-        patternsMatchingAtDir : PatternId -> Direction -> Matches PatternId
-        patternsMatchingAtDir otherPattern dir =
-            getMatchesOf walker uniquePatterns dir otherPattern
-                |> Maybe.withDefault Matches.none
-        -- rebuild : Wave v -> Wave v
-        -- rebuild w =
-        --     CPlane.toDict (walker.all ()) w |> CPlane.fromDict
-        forget : v -> PatternId -> Wave v -> Wave v
-        forget banPos banPattern w =
-            [ Dir.N, Dir.W, Dir.S, Dir.E ]
-                |> List.foldl
-                    (\dir prevWave ->
-                        let
-                            movedPos =
-                                dir
-                                    |> Debug.log "dir"
-                                    |> walker.next banPos
-                                    |> Debug.log "movedPos"
-                            curMatches =
-                                Plane.get banPos w
-                                    |> Maybe.withDefault Matches.none
-                                    |> Debug.log "curMatches"
-                            nextWave =
-                                prevWave
-                                    |> ban banPos banPattern
-                            matchesAtDir =
-                                dir
-                                    |> patternsMatchingAtDir banPattern
-                                    |> Debug.log "macthesAtDir"
-                        in
-                            matchesAtDir
-                                |> Matches.toList
-                                |> List.foldl
-                                    (\otherPattern ww ->
-                                        let
-                                            oppositeMatches =
-                                                Neighbours.opposite dir
-                                                    |> patternsMatchingAtDir otherPattern
-                                                    |> Debug.log "oppositeMatches"
-                                            otherMatchesLeft =
-                                                Plane.get banPos ww
-                                                    |> Maybe.withDefault Matches.none
-                                                    |> Debug.log "otherMatchesLeft"
-                                        in
-                                            if Matches.and oppositeMatches otherMatchesLeft
-                                                |> Debug.log "and"
-                                                |> Matches.isNone
-                                                |> Debug.log "isNone"
-                                            then
-                                                ww
-                                                    |> ban movedPos otherPattern
-                                                    -- |> forget otherPos otherPattern
-                                            else ww
-                                    )
-                                    nextWave
-                    )
-                    w
-        foldForget : List (v, PatternId) -> Wave v -> Wave v
-        foldForget banlist w =
-            banlist
-                |> List.foldl
-                    (\(banPos, panPattern) -> forget banPos panPattern) -- uncurry
-                    w
+        probe : v -> Matches PatternId -> Wave v -> Wave v
+        probe atPos newMatches prevWave =
+            let
+                curMatches =
+                    prevWave
+                        |> Plane.get (atPos |> Debug.log "atPos")
+                        |> Maybe.withDefault Matches.none
+            in
+                if Matches.equal (curMatches |> Debug.log "curMatches") (newMatches |> Debug.log "newMatches") |> Debug.log "equal" then prevWave
+                else
+                    Neighbours.cross
+                        |> List.foldl
+                            (\dir w ->
+                                case walker.next atPos (Debug.log "dir" dir) |> Debug.log "moved" of
+                                    moved ->
+                                        -- FIXME: support unbounded planes
+                                        if not <| walker.fits moved then w
+                                        else
+                                            let
+                                                newMatchesAtDir =
+                                                    newMatches
+                                                        |> matchesAtDir walker uniquePatterns dir
+                                            in
+
+                                                w |> probe moved newMatchesAtDir
+                            )
+                            (prevWave |> Plane.set atPos newMatches)
     in
         ( wave
-            |> foldForget ( matchesLeft |> List.map (Tuple.pair focus) |> Debug.log "matchesLeft" )
+            |> probe focus (Matches.single pattern)
         , seed
         )
 
@@ -401,6 +356,15 @@ randomPattern uniquePatterns first others =
         Random.weighted
             (packWithFrequency first)
             (others |> List.map packWithFrequency)
+
+
+matchesAtDir : Walker v -> UniquePatterns v a -> Direction -> Matches PatternId -> Matches PatternId
+matchesAtDir walker uniquePatterns dir matchesAtFocus =
+    matchesAtFocus
+        |> Matches.toList
+        |> List.map (getMatchesOf walker uniquePatterns dir)
+        |> List.map (Maybe.withDefault Matches.none)
+        |> Matches.intersect
 
 
 getMatchesOf : Walker v -> UniquePatterns v a -> Direction -> PatternId -> Maybe (Matches PatternId)
