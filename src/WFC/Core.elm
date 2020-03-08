@@ -31,7 +31,7 @@ import WFC.Matches exposing (..)
 
 
 type WFC v fmt a =
-    WFC (Solver v a) ( Solver.Step v -> ( Solver.Step v, fmt ) )
+    WFC ( Solver.Step v -> ( Solver.Step v, fmt ) )
 
 type alias TracingWFC v a = WFC v (TracingPlane v a) a
 
@@ -71,7 +71,7 @@ type Converter v a x fmt =
 
 make : Converter v a x fmt -> Solver v a -> WFC v fmt a
 make (Convert convert) solver =
-    WFC solver <|
+    WFC <|
         \nextStep ->
             let
                 lastStep = Solver.solve solver nextStep
@@ -84,11 +84,15 @@ make (Convert convert) solver =
 
 
 run : Random.Seed -> WFC v fmt a -> fmt
-run seed = firstStep seed >> Tuple.second
+run seed wfc =
+    -- FIXME: we do two steps actually, because with the first step the `Solver` inits the wave
+    --        (see `Initial` status) and proceeds with solving only after that
+    step (firstStep seed wfc |> Tuple.first) wfc
+        |> Tuple.second
 
 
 step : Step v -> WFC v fmt a -> ( Step v, fmt )
-step stepToPerform (WFC _ wfc) = wfc stepToPerform
+step stepToPerform (WFC wfc) = wfc stepToPerform
 
 
 stepAtOnce : List (Step v) -> WFC v fmt a -> Maybe ( Step v, fmt )

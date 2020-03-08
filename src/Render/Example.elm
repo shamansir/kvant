@@ -450,6 +450,11 @@ viewBlock render block =
                     ]
                     [ Html.text "Next Step" ]
                 , status
+                    |> getCurrentPlane
+                    |> Maybe.map Tuple.first
+                    |> Maybe.map render.source
+                    |> Maybe.withDefault (div [] [])
+                , status
                     |> getHistory
                     |> Maybe.map H.last
                     |> Maybe.map Tuple.first -- Tuple.second?

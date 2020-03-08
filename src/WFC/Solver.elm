@@ -27,7 +27,7 @@ type alias Options v a =
     { approach : Approach v a
     , outputBoundary : Boundary
     , outputSize : v
-    , advanceRule : AdvanceRule
+    , advanceRule : AdvanceRule -- FIXME: think on removing `advanceRule` from `Options`
     }
 
 
@@ -111,7 +111,7 @@ type Solver v a =
         , walker : Walker v
         , outputSize : v
         , outputBoundary : Boundary -- FIXME: use in solving
-        , advanceRule : AdvanceRule
+        , advanceRule : AdvanceRule -- FIXME: think on removing `advanceRule` from `Solver`
         , patterns : UniquePatterns v a
             -- FIXME: could be either:
             --        UniquePatterns, pixel by pixel,
@@ -164,6 +164,7 @@ solve (Solver { advanceRule, source, patterns, walker, outputSize } as solver) s
                             nextStep oSeed step
                                 <| InProgress (FocusedAt position) newWave
                     in case advanceRule of
+                        -- TODO: move the advancing control outside,
                         AdvanceManually -> next
                         MaximumAttempts maxAttempts ->
                             if not (step |> exceeds maxAttempts)
@@ -172,6 +173,8 @@ solve (Solver { advanceRule, source, patterns, walker, outputSize } as solver) s
     in
         case getStatus step of
             Initial ->
+                -- TODO: first step just inits the wave, may be it should step
+                --       once further?
                 -- advance <| initWave patterns source
                 initWave patterns outputSize
                     |> InProgress NotFocused
@@ -494,6 +497,14 @@ updateStatus status (Step n seed _) = Step n seed status
 
 exceeds : Int -> Step v -> Bool
 exceeds count (Step stepN _ _) = count <= stepN
+
+
+changeRule : AdvanceRule -> Solver v a -> Solver v a
+changeRule rule (Solver solver) =
+    Solver
+        { solver
+        | advanceRule = rule
+        }
 
 
 {-
