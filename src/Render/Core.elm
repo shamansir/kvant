@@ -98,7 +98,7 @@ step viewV (Step num _ status) =
                 , text ")" ]
            Solved _ -> text "(solved)"
            Terminated -> text "(terminated)"
-           Exceeded attempts -> text <| "(exceeded " ++ String.fromInt attempts ++ ")"
+           ReachedLimit attempts -> text <| "(exceeded " ++ String.fromInt attempts ++ ")"
         ]
 
 

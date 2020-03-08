@@ -18,8 +18,8 @@ import WFC.Solver as WFC exposing (Step(..), Options)
 import WFC.Plane.Impl.Image as ImagePlane exposing (make)
 
 
-options : WFC.AdvanceRule -> WFC.Options Vec2 Color
-options advanceRule =
+options : WFC.Options Vec2 Color
+options =
     { approach =
         Overlapping
             { searchBoundary = Bounded -- Periodic
@@ -28,7 +28,6 @@ options advanceRule =
             }
     , outputSize = ( 10, 10 )
     , outputBoundary = Bounded
-    , advanceRule = advanceRule
     }
 
 
@@ -38,9 +37,9 @@ quick image =
         { width, height } = Image.dimensions image
     in
         Example.make
-            (WFC.image (options <| WFC.MaximumAttempts 200) image)
-            (WFC.imageTracing (options WFC.AdvanceManually) image)
-            (options WFC.AdvanceManually)
+            (WFC.image options image)
+            (WFC.imageTracing options image)
+            options
             image
             (ImageC.toArray2d image
                 |> ImagePlane.makeInBounds ( width, height ))

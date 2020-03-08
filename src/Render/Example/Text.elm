@@ -13,8 +13,8 @@ import WFC.Solver as WFC exposing (Step(..), Options)
 import WFC.Plane.Impl.Text as TextPlane exposing (make)
 
 
-options : WFC.AdvanceRule -> WFC.Options Vec2 Char
-options advanceRule =
+options : WFC.Options Vec2 Char
+options =
     { approach =
         Overlapping
             { searchBoundary = Bounded -- Periodic
@@ -23,8 +23,6 @@ options advanceRule =
             }
     , outputSize = ( 10, 10 )
     , outputBoundary = Bounded
-    -- , advanceRule = WFC.MaximumAttempts 50
-    , advanceRule = advanceRule
     }
 
 
@@ -35,8 +33,8 @@ quick src size =
             = (size, src)
     in
         Example.make
-            (WFC.text (options <| WFC.MaximumAttempts 200) boundedSrc)
-            (WFC.textTracing (options WFC.AdvanceManually) boundedSrc)
-            (options WFC.AdvanceManually)
+            (WFC.text options boundedSrc)
+            (WFC.textTracing options boundedSrc)
+            options
             boundedSrc
             (TextPlane.make size src)

@@ -27,17 +27,11 @@ type alias Options v a =
     { approach : Approach v a
     , outputBoundary : Boundary
     , outputSize : v
-    , advanceRule : AdvanceRule -- FIXME: think on removing `advanceRule` from `Options`
     }
 
 
 type alias Pattern v a = Plane v a
 type alias Wave v = Plane v (Matches PatternId)
-
-
-type AdvanceRule
-    = MaximumAttempts Int
-    | AdvanceManually
 
 
 type Approach v a
@@ -59,12 +53,15 @@ type FocusState v
     | FocusedAt v
 
 
+type MaximumSteps = MaximumSteps Int
+
+
 type StepStatus v
     = Initial
     | InProgress (FocusState v) (Wave v)
     | Solved (Wave v)
     | Terminated -- terminated by contradiction
-    | Exceeded Int
+    | ReachedLimit Int
 
 
 type alias PatternId = Int
@@ -111,7 +108,6 @@ type Solver v a =
         , walker : Walker v
         , outputSize : v
         , outputBoundary : Boundary -- FIXME: use in solving
-        , advanceRule : AdvanceRule -- FIXME: think on removing `advanceRule` from `Solver`
         , patterns : UniquePatterns v a
             -- FIXME: could be either:
             --        UniquePatterns, pixel by pixel,
@@ -126,30 +122,54 @@ firstStep seed =
 
 
 init
-    :  AdvanceRule
-    -> UniquePatterns v a
+    :  UniquePatterns v a
     -> v
     -> Boundary
     -> Walker v
     -> Plane v a
     -> Solver v a
-init advanceRule patterns outputSize outputBoundary walker source =
+init patterns outputSize outputBoundary walker source =
     Solver
         { source = source
         , walker = walker
         , patterns = patterns
-        , advanceRule = advanceRule
         , outputSize = outputSize
         , outputBoundary = outputBoundary
         }
 
 
 solve : Solver v a -> Step v -> Step v
-solve (Solver { advanceRule, source, patterns, walker, outputSize } as solver) step  =
+solve solver fromStep =
     let
-        seed = getSeed step
-        advance wave =
-            case observe seed walker patterns wave of
+        succeedingStep = advance solver fromStep
+    in case getStatus succeedingStep of
+        Solved _ -> succeedingStep
+        Terminated -> succeedingStep
+        _ -> solve solver succeedingStep
+
+
+solveUntil : MaximumSteps -> Solver v a -> Step v -> Step v
+solveUntil (MaximumSteps maxSteps) solver fromStep =
+    let
+        succeedingStep = advance solver fromStep
+    in case getStatus succeedingStep of
+        Solved _ -> succeedingStep
+        Terminated -> succeedingStep
+        _ ->
+            if not (succeedingStep |> exceeds maxSteps)
+                then succeedingStep |> solve solver
+                else succeedingStep |> (updateStatus <| ReachedLimit maxSteps)
+
+
+advance : Solver v a -> Step v -> Step v
+advance (Solver { source, patterns, walker, outputSize } as solver) step =
+    case getStatus step of
+        Initial ->
+            initWave patterns outputSize
+                |> InProgress NotFocused
+                |> nextStep (getSeed step) step
+        InProgress _ wave ->
+            case observe (getSeed step) walker patterns wave of
                 ( Collapsed, oSeed ) ->
                     nextStep oSeed step <| Solved wave
                 ( Contradiction, oSeed ) ->
@@ -157,31 +177,11 @@ solve (Solver { advanceRule, source, patterns, walker, outputSize } as solver) s
                 ( Unknown, oSeed ) ->
                     nextStep oSeed step <| Terminated
                 ( Focus position pattern, oSeed ) ->
-                    let
-                        newWave =
-                            propagate patterns walker position pattern wave
-                        next =
-                            nextStep oSeed step
-                                <| InProgress (FocusedAt position) newWave
-                    in case advanceRule of
-                        -- TODO: move the advancing control outside,
-                        AdvanceManually -> next
-                        MaximumAttempts maxAttempts ->
-                            if not (step |> exceeds maxAttempts)
-                            then next |> solve solver
-                            else next |> (updateStatus <| Exceeded maxAttempts)
-    in
-        case getStatus step of
-            Initial ->
-                -- TODO: first step just inits the wave, may be it should step
-                --       once further?
-                -- advance <| initWave patterns source
-                initWave patterns outputSize
-                    |> InProgress NotFocused
-                    |> nextStep seed step
-            InProgress _ wave ->
-                advance wave
-            _ -> step
+                    case wave
+                            |> propagate patterns walker position pattern of
+                        newWave ->
+                            nextStep oSeed step <| InProgress (FocusedAt position) newWave
+        _ -> step
 
 
 observe
@@ -456,7 +456,7 @@ apply f (Solver { patterns, walker, source, outputSize }) (Step _ _ status) =
             InProgress _ wave -> wave
             Solved wave -> wave
             Terminated -> Plane.empty outputSize
-            Exceeded _ -> Plane.empty outputSize
+            ReachedLimit _ -> Plane.empty outputSize
 
 
 getSource : Solver v a -> Plane v a
@@ -497,14 +497,6 @@ updateStatus status (Step n seed _) = Step n seed status
 
 exceeds : Int -> Step v -> Bool
 exceeds count (Step stepN _ _) = count <= stepN
-
-
-changeRule : AdvanceRule -> Solver v a -> Solver v a
-changeRule rule (Solver solver) =
-    Solver
-        { solver
-        | advanceRule = rule
-        }
 
 
 {-

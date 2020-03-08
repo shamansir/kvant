@@ -17,7 +17,6 @@ import WFC.Neighbours as Dir exposing (Direction(..), move)
 init : Options Vec2 a -> Plane Vec2 a -> Solver Vec2 a
 init options (Plane size _ as source)  =
     S.init
-        options.advanceRule
         (case options.approach of
             Overlapping { searchBoundary, patternSize } ->
                 -- FIXME: use symmetry as well
