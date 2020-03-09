@@ -1,9 +1,9 @@
 module WFC.Core exposing
     ( WFC, Instance(..)
     , TracingWFC
-    , text, TextWFC
+    , text, textAdvancing, TextWFC
     , textTracing, TextTracingWFC, TextTracingPlane
-    , image, ImageWFC
+    , image, imageAdvancing, ImageWFC
     , imageTracing, ImageTracingWFC, ImageTracingPlane
     , firstStep
     , run, step, stepAtOnce
@@ -83,6 +83,20 @@ make (Convert convert) solver =
                 )
 
 
+makeAdvancing : Converter v a x fmt -> Solver v a -> WFC v fmt a
+makeAdvancing (Convert convert) solver =
+    WFC <|
+        \nextStep ->
+            let
+                lastStep = Solver.advance solver nextStep
+            in
+                ( lastStep
+                , lastStep
+                    |> Solver.apply convert.toElement solver
+                    |> convert.toOutput
+                )
+
+
 run : Random.Seed -> WFC v fmt a -> fmt
 run seed wfc =
     -- FIXME: we do two steps actually, because with the first step the `Solver` inits the wave
@@ -109,12 +123,24 @@ firstStep : Random.Seed -> WFC v fmt a -> ( Step v, fmt )
 firstStep = step << Solver.firstStep
 
 
+-- FIXME: Simplify `makeFn` and `makeAdvancingFn`.
+--        Find the way to
+
+
 makeFn : Converter v a x fmt -> (Plane v x -> Solver v a) -> (fmt -> WFC v fmt a)
 makeFn (Convert convert as cnv) initSolver input =
     input
         |> convert.fromInput
         |> initSolver
         |> make cnv
+
+
+makeAdvancingFn : Converter v a x fmt -> (Plane v x -> Solver v a) -> (fmt -> WFC v fmt a)
+makeAdvancingFn (Convert convert as cnv) initSolver input =
+    input
+        |> convert.fromInput
+        |> initSolver
+        |> makeAdvancing cnv
 
 
 text : Solver.Options Vec2 Char -> (BoundedString -> TextWFC)
@@ -129,10 +155,22 @@ text options =
         (FlatSolver.init options)
 
 
+textAdvancing  : Solver.Options Vec2 Char -> (BoundedString -> TextWFC)
+textAdvancing options =
+    makeAdvancingFn
+        (Convert
+            { fromInput = \(size, str) -> TextPlane.make size str
+            , toElement = always TextPlane.merge
+            , toOutput = TextPlane.toBoundedString
+            }
+        )
+        (FlatSolver.init options)
+
+
 textTracing : Solver.Options Vec2 Char -> (BoundedString -> TextTracingWFC)
 textTracing options =
     \(size, input) ->
-        makeFn
+        makeAdvancingFn
             (Convert
                 { fromInput = identity
                 , toElement = Tuple.pair
@@ -160,10 +198,22 @@ image options =
         (FlatSolver.init options)
 
 
+imageAdvancing  : Solver.Options Vec2 Color -> (Image -> ImageWFC)
+imageAdvancing options =
+    makeAdvancingFn
+        (Convert
+            { fromInput = ImagePlane.fromImage
+            , toElement = always ImagePlane.merge
+            , toOutput = ImagePlane.toImage
+            }
+        )
+        (FlatSolver.init options)
+
+
 imageTracing : Solver.Options Vec2 Color -> (Image -> ImageTracingWFC)
 imageTracing options =
     \input ->
-        makeFn
+        makeAdvancingFn
             (Convert
                 { fromInput = identity
                 , toElement = Tuple.pair

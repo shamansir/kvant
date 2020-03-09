@@ -83,6 +83,11 @@ type BlockState
     | Collapsed
 
 
+type AdvanceMode
+    = StepByStep
+    | AtOnce
+
+
 type alias TextBlock = Block Vec2 String Char
 
 
@@ -92,6 +97,7 @@ type alias ExampleModel v fmt a =
     , options : WFC.Options v a
     , expands : List BlockState
     , wfc : ( WFC v fmt a, TracingWFC v a )
+    , makeWfc : AdvanceMode -> ( WFC v fmt a, TracingWFC v a )
     , status : Status v fmt a
     }
 
@@ -101,18 +107,18 @@ type alias ImageExample = ExampleModel Vec2 Image Color
 
 
 make
-    :  WFC v fmt a
-    -> TracingWFC v a
+    :  (AdvanceMode -> ( WFC v fmt a, TracingWFC v a ) )
     -> WFC.Options v a
     -> fmt
     -> Plane v a
     -> ExampleModel v fmt a
-make wfc tracingWfc options src sourcePlane =
+make makeWfc options src sourcePlane =
     { source = src
     , sourcePlane = sourcePlane
     , options = options
     , expands = []
-    , wfc = ( wfc, tracingWfc )
+    , wfc = makeWfc AtOnce
+    , makeWfc = makeWfc
     , status = None
     }
     |> initExpands
@@ -208,27 +214,33 @@ update id msg model =
 
         Run seed ->
             (
-                { model
-                | status = Solved
-                    ( model.wfc
-                        |> Tuple.mapBoth
-                                (WFC.run seed)
-                                (WFC.run seed)
-                    )
-                }
+                let
+                    newWfc = model.makeWfc AtOnce
+                in
+                    { model
+                    | wfc = newWfc
+                    , status = Solved
+                        ( newWfc
+                            |> Tuple.mapBoth
+                                    (WFC.run seed)
+                                    (WFC.run seed)
+                        )
+                    }
             , Cmd.none
             )
 
         Trace seed ->
             (
                 let
+                    newWfc = model.makeWfc StepByStep
                     (lastStep, result) =
-                        model.wfc |> Tuple.first |> Core.firstStep seed
+                        newWfc |> Tuple.first |> Core.firstStep seed
                     (lastTracingStep, tracingResult) =
-                        model.wfc |> Tuple.second |> Core.firstStep seed
+                        newWfc |> Tuple.second |> Core.firstStep seed
                 in
                     { model
-                    | status =
+                    | wfc = newWfc
+                    , status =
                         Solving
                             ( result, tracingResult )
                             <| H.init (lastStep, TracingStep lastTracingStep)
@@ -450,11 +462,6 @@ viewBlock render block =
                     ]
                     [ Html.text "Next Step" ]
                 , status
-                    |> getCurrentPlane
-                    |> Maybe.map Tuple.first
-                    |> Maybe.map render.source
-                    |> Maybe.withDefault (div [] [])
-                , status
                     |> getHistory
                     |> Maybe.map H.last
                     |> Maybe.map Tuple.first -- Tuple.second?
@@ -465,6 +472,11 @@ viewBlock render block =
                     , disabled <| status == None
                     ]
                     [ Html.text "Stop" ]
+                , status
+                    |> getCurrentPlane
+                    |> Maybe.map Tuple.first
+                    |> Maybe.map render.source
+                    |> Maybe.withDefault (div [] [])
                 , status
                     |> getCurrentPlane
                     |> Maybe.map Tuple.second

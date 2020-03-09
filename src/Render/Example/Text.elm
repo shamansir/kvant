@@ -1,6 +1,6 @@
 module Render.Example.Text exposing (..)
 
-import Render.Example exposing (TextExample, Status(..))
+import Render.Example exposing (TextExample, Status(..), AdvanceMode(..))
 import Render.Example as Example exposing (make)
 
 
@@ -33,8 +33,13 @@ quick src size =
             = (size, src)
     in
         Example.make
-            (WFC.text options boundedSrc)
-            (WFC.textTracing options boundedSrc)
+            (\advanceMode ->
+                ( case advanceMode of
+                    AtOnce -> WFC.text options boundedSrc
+                    StepByStep -> WFC.textAdvancing options boundedSrc
+                , WFC.textTracing options boundedSrc
+                )
+            )
             options
             boundedSrc
             (TextPlane.make size src)

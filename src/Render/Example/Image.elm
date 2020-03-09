@@ -6,7 +6,7 @@ import Color exposing (Color)
 import Image exposing (Image, dimensions)
 import Image.Color as ImageC exposing (toArray2d)
 
-import Render.Example exposing (ImageExample, Status(..))
+import Render.Example exposing (ImageExample, Status(..), AdvanceMode(..))
 import Render.Example as Example exposing (make)
 
 import WFC.Vec2 exposing (..)
@@ -37,8 +37,13 @@ quick image =
         { width, height } = Image.dimensions image
     in
         Example.make
-            (WFC.image options image)
-            (WFC.imageTracing options image)
+            (\advanceMode ->
+                ( case advanceMode of
+                    AtOnce -> WFC.image options image
+                    StepByStep -> WFC.imageAdvancing options image
+                , WFC.imageTracing options image
+                )
+            )
             options
             image
             (ImageC.toArray2d image
