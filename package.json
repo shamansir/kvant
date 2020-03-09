@@ -7,6 +7,7 @@
     "test": "./node_modules/elm-test/bin/elm-test",
     "start": "elm-live ./src/Main.elm --open",
     "debug": "elm-live ./src/Main.elm --open -- --debug",
+    "build": "elm make ./src/Main.elm",
     "serve": "node server.js"
   },
   "repository": {
