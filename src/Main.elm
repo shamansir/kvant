@@ -52,54 +52,57 @@ import WFC.Solver.History as H exposing (..)
 
 
 type alias Model =
-    { textExamples : List TextExample
-    , imageExamples : List ImageExample
+    { example : CurrentExample
     , images : Dict String Image
     }
 
 
-type ExampleKind
-    = TextExample
-    | ImageExample
+type CurrentExample
+    = NotSelected
+    | WaitingForImage String
+    | Textual TextExample
+    | FromImage Image ImageExample
 
 
 type alias Url = String
 
 type Msg
     = NoOp
-    | WithExample ExampleKind ExampleId ExampleMsg
+    | ToExample ExampleMsg
     | GotImage Url (Result Http.Error Image)
+
+
+textExamples =
+    [
+        (
+            "AAAA" ++
+            "ABBA" ++
+            "ABBA" ++
+            "AAAA"
+        , (4, 4)
+        )
+    ,
+        (
+            "0000" ++
+            "0111" ++
+            "0121" ++
+            "0111"
+        , (4, 4)
+        )
+    ,
+        (
+            "0123" ++
+            "4567" ++
+            "89AB" ++
+            "CDEF"
+        , (4, 4)
+        )
+    ]
 
 
 init : Model
 init =
-    { textExamples =
-        [ TextExample.quick
-            (
-                "AAAA" ++
-                "ABBA" ++
-                "ABBA" ++
-                "AAAA"
-            )
-            (4, 4)
-        , TextExample.quick
-            (
-                "0000" ++
-                "0111" ++
-                "0121" ++
-                "0111"
-            )
-            (4, 4)
-        , TextExample.quick
-            (
-                "0123" ++
-                "4567" ++
-                "89AB" ++
-                "CDEF"
-            )
-            (4, 4)
-        ]
-    , imageExamples = []
+    { example = NotSelected
     , images = Dict.empty
     }
 
@@ -114,44 +117,31 @@ update msg model =
         NoOp ->
             ( model, Cmd.none )
 
-        WithExample kind requestedId exampleMsg ->
-
-            let
-
-                updateIfEqual index example =
-                    if index == requestedId then
-                        let
-                            ( newExampleModel, commands ) =
-                                Example.update requestedId exampleMsg example
-                        in
-                            ( newExampleModel
-                            , commands |> Cmd.map (WithExample kind index)
-                            )
-                    else
-                        ( example, Cmd.none )
-
-                injectUpdates examples inject =
+        ToExample exampleMsg ->
+            case model.example of
+                Textual example ->
                     let
-                        updates
-                            = examples |> List.indexedMap updateIfEqual
+                        ( newExampleModel, commands ) =
+                            Example.update exampleMsg example
                     in
-                        ( inject (updates |> List.map Tuple.first)
-                        , updates
-                            |> List.map Tuple.second
-                            |> Cmd.batch
+                        (
+                            { model
+                            | example = Textual newExampleModel
+                            }
+                        , commands |> Cmd.map ToExample
                         )
-
-            in
-
-                case kind of
-                    TextExample ->
-                        injectUpdates
-                            model.textExamples
-                            (\newExamples -> { model | textExamples = newExamples })
-                    ImageExample ->
-                        injectUpdates
-                            model.imageExamples
-                            (\newExamples -> { model | imageExamples = newExamples })
+                FromImage image example ->
+                    let
+                        ( newExampleModel, commands ) =
+                            Example.update exampleMsg example
+                    in
+                        (
+                            { model
+                            | example = FromImage image newExampleModel
+                            }
+                        , commands |> Cmd.map ToExample
+                        )
+                _ -> ( model, Cmd.none )
 
         GotImage url result ->
             ( case result of
@@ -160,9 +150,13 @@ update msg model =
                     | images =
                         model.images
                             |> Dict.insert url image
-                    , imageExamples =
-                        ImageExample.quick image
-                            :: model.imageExamples
+                    , example =
+                        case model.example of
+                            WaitingForImage waitingForUrl ->
+                                if waitingForUrl == url then
+                                    FromImage image <| ImageExample.quick image
+                                else model.example
+                            _ -> model.example
                     }
                 Err _ -> model
             , Cmd.none
@@ -176,22 +170,21 @@ view model =
             FlatExample.make (\(size, src) -> Text.toGrid size src) Text.spec
         imageRenderer =
             FlatExample.make ImageC.toList2d Image.spec
-        viewTextExample index =
-            Example.view (WithExample TextExample index) textRenderer
-        viewImageExample index =
-            Example.view (WithExample ImageExample index) imageRenderer
-        viewImage index ( url, image ) =
-            div
-                []
-                [ text <| String.fromInt index ++ ". " ++ url
-                , Render.grid Render.pixel <| ImageC.toList2d image
-                ]
+        viewImageExample =
+            Example.view ToExample imageRenderer
+        viewImage image =
+            Render.grid Render.pixel <| ImageC.toList2d image
     in
-        div
-            [ ]
-            <| (model.images |> Dict.toList |> List.indexedMap viewImage)
-            ++ (model.imageExamples |> List.indexedMap viewImageExample)
-            ++ (model.textExamples |> List.indexedMap viewTextExample)
+        case model.example of
+            Textual exampleModel -> Example.view ToExample textRenderer exampleModel
+            FromImage image exampleModel ->
+                div
+                    []
+                    [ viewImage image
+                    , Example.view ToExample imageRenderer exampleModel
+                    ]
+            NotSelected -> text "Not Selected"
+            WaitingForImage url -> text <| "Waiting image " ++ url ++ " to load"
 
 
 main : Program {} Model Msg

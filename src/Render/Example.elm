@@ -184,11 +184,10 @@ view toOtherMsg renderer exampleModel =
 
 
 update
-    :  ExampleId
-    -> ExampleMsg
+    :  ExampleMsg
     -> ExampleModel v fmt a
     -> ( ExampleModel v fmt a, Cmd ExampleMsg )
-update id msg model =
+update msg model =
     case msg of
 
         TriggerRunning ->
