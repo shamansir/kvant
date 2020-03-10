@@ -53,23 +53,25 @@ import WFC.Solver.History as H exposing (..)
 
 type alias Model =
     { example : CurrentExample
-    , images : Dict String Image
+    , images : Dict ImageUrl Image
     }
 
 
 type CurrentExample
     = NotSelected
-    | WaitingForImage String
+    | WaitingForImage ImageUrl
     | Textual TextExample
     | FromImage Image ImageExample
 
 
-type alias Url = String
+type alias ImageUrl = String
 
 type Msg
     = NoOp
     | ToExample ExampleMsg
-    | GotImage Url (Result Http.Error Image)
+    | LoadTextExample WFC.BoundedString
+    | LoadImageExample ImageUrl
+    | GotImage ImageUrl (Result Http.Error Image)
 
 
 textExamples =
@@ -97,6 +99,11 @@ textExamples =
             "CDEF"
         , (4, 4)
         )
+    ]
+
+
+imagesForOverlap =
+    [ "Hogs"
     ]
 
 
@@ -143,17 +150,33 @@ update msg model =
                         )
                 _ -> ( model, Cmd.none )
 
-        GotImage url result ->
+        LoadTextExample ( source, size ) ->
+            (
+                { model
+                | example = Textual <| TextExample.quick size source
+                }
+            , Cmd.none
+            )
+
+        LoadImageExample imageUrl ->
+            (
+                { model
+                | example = WaitingForImage imageUrl
+                }
+            , requestImages [ imageUrl ]
+            )
+
+        GotImage gotUrl result ->
             ( case result of
                 Ok image ->
                     { model
                     | images =
                         model.images
-                            |> Dict.insert url image
+                            |> Dict.insert gotUrl image
                     , example =
                         case model.example of
                             WaitingForImage waitingForUrl ->
-                                if waitingForUrl == url then
+                                if waitingForUrl == gotUrl then
                                     FromImage image <| ImageExample.quick image
                                 else model.example
                             _ -> model.example
@@ -174,17 +197,47 @@ view model =
             Example.view ToExample imageRenderer
         viewImage image =
             Render.grid Render.pixel <| ImageC.toList2d image
+        viewExample =
+            case model.example of
+                Textual exampleModel -> Example.view ToExample textRenderer exampleModel
+                FromImage image exampleModel ->
+                    div
+                        []
+                        [ viewImage image
+                        , Example.view ToExample imageRenderer exampleModel
+                        ]
+                NotSelected -> text "Not Selected"
+                WaitingForImage url -> text <| "Waiting image " ++ url ++ " to load"
+        makeTextOptions =
+            textExamples
+                |> List.map
+                    (\(source, size) ->
+                        option
+                            [ onClick <| LoadTextExample ( size, source ) ]
+                            [ text source ]
+                    )
+        makeImagesOptions =
+            imagesForOverlap
+                |> List.map
+                    (\imageName ->
+                        option
+                            [ onClick <| LoadImageExample (imageName ++ ".png") ]
+                            [ text imageName ]
+                    )
+        makeOptions -- There's `optgroup` !
+            =  [ option [ {- disabled True -} ] [ text "Select example" ] ]
+            ++ [ option [ disabled True ] [ text "-----" ] ]
+            ++ makeTextOptions
+            ++ [ option [ disabled True ] [ text "-----" ] ]
+            ++ makeImagesOptions
     in
-        case model.example of
-            Textual exampleModel -> Example.view ToExample textRenderer exampleModel
-            FromImage image exampleModel ->
-                div
-                    []
-                    [ viewImage image
-                    , Example.view ToExample imageRenderer exampleModel
-                    ]
-            NotSelected -> text "Not Selected"
-            WaitingForImage url -> text <| "Waiting image " ++ url ++ " to load"
+        div
+            []
+            [ select
+                []
+                makeOptions
+            , viewExample
+            ]
 
 
 main : Program {} Model Msg
