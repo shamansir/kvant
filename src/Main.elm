@@ -94,8 +94,54 @@ textExamples =
 
 
 imagesForOverlap =
-    [ "Hogs"
-    , "Cats" -- fails
+    [ "3Bricks"
+    , "Angular"
+    , "Cat"
+    , "Cats"
+    , "Cave"
+    , "Chess"
+    , "City"
+    , "ColoredCity"
+    , "Dungeon"
+    , "Fabric"
+    , "Flowers"
+    , "Forest"
+    , "Hogs"
+    , "Knot"
+    , "Lake"
+    , "LessRooms"
+    , "Link"
+    , "Link2"
+    , "MagicOffice"
+    , "Maze"
+    , "Mazelike"
+    , "MoreFlowers"
+    , "Mountains"
+    , "Nested"
+    , "Office"
+    , "Office2"
+    , "Paths"
+    , "Platformer"
+    , "Qud"
+    , "RedDot"
+    , "RedMaze"
+    , "Rooms"
+    , "Rule126"
+    , "ScaledMaze"
+    , "Sewers"
+    , "SimpleKnot"
+    , "SimpleMaze"
+    , "SimpleWall"
+    , "Skew1"
+    , "Skew2"
+    , "Skyline"
+    , "Skyline2"
+    , "SmileCity"
+    , "Spirals"
+    , "Town"
+    , "TrickKnot"
+    , "Village"
+    , "Water"
     ]
 
 
@@ -259,7 +305,7 @@ main =
 requestImage : ImageAlias -> Cmd Msg
 requestImage imageAlias =
     Http.get
-        { url = "http://localhost:3000/samples/" ++ imageAlias ++ ".png"
+        { url = "http://localhost:3000/overlapping/" ++ imageAlias ++ ".png"
         , expect =
             Http.expectBytesResponse
                 (GotImage imageAlias)
