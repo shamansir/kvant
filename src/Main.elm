@@ -53,57 +53,49 @@ import WFC.Solver.History as H exposing (..)
 
 type alias Model =
     { example : CurrentExample
-    , images : Dict ImageUrl Image
+    , images : Dict ImageAlias Image
     }
 
 
 type CurrentExample
     = NotSelected
-    | WaitingForImage ImageUrl
+    | WaitingForImage ImageAlias
     | Textual TextExample
     | FromImage Image ImageExample
 
 
-type alias ImageUrl = String
+type alias ImageAlias = String
 
 type Msg
     = NoOp
     | ToExample ExampleMsg
-    | LoadTextExample WFC.BoundedString
-    | LoadImageExample ImageUrl
-    | GotImage ImageUrl (Result Http.Error Image)
+    | LoadTextExample Vec2 String
+    | LoadImageExample ImageAlias
+    | GotImage ImageAlias (Result Http.Error Image)
 
 
 textExamples =
     [
-        (
-            "AAAA" ++
-            "ABBA" ++
-            "ABBA" ++
-            "AAAA"
-        , (4, 4)
-        )
+        "AAAA" ++
+        "ABBA" ++
+        "ABBA" ++
+        "AAAA"
     ,
-        (
-            "0000" ++
-            "0111" ++
-            "0121" ++
-            "0111"
-        , (4, 4)
-        )
+        "0000" ++
+        "0111" ++
+        "0121" ++
+        "0111"
     ,
-        (
-            "0123" ++
-            "4567" ++
-            "89AB" ++
-            "CDEF"
-        , (4, 4)
-        )
+        "0123" ++
+        "4567" ++
+        "89AB" ++
+        "CDEF"
     ]
 
 
 imagesForOverlap =
     [ "Hogs"
+    , "Cats" -- fails
     ]
 
 
@@ -150,33 +142,33 @@ update msg model =
                         )
                 _ -> ( model, Cmd.none )
 
-        LoadTextExample ( source, size ) ->
+        LoadTextExample size source ->
             (
                 { model
-                | example = Textual <| TextExample.quick size source
+                | example = Textual <| TextExample.quick source size
                 }
             , Cmd.none
             )
 
-        LoadImageExample imageUrl ->
+        LoadImageExample imageAlias ->
             (
                 { model
-                | example = WaitingForImage imageUrl
+                | example = WaitingForImage imageAlias
                 }
-            , requestImages [ imageUrl ]
+            , requestImages [ imageAlias ]
             )
 
-        GotImage gotUrl result ->
+        GotImage gotAlias result ->
             ( case result of
                 Ok image ->
                     { model
                     | images =
                         model.images
-                            |> Dict.insert gotUrl image
+                            |> Dict.insert gotAlias image
                     , example =
                         case model.example of
-                            WaitingForImage waitingForUrl ->
-                                if waitingForUrl == gotUrl then
+                            WaitingForImage waitingForAlias ->
+                                if waitingForAlias == gotAlias then
                                     FromImage image <| ImageExample.quick image
                                 else model.example
                             _ -> model.example
@@ -207,13 +199,13 @@ view model =
                         , Example.view ToExample imageRenderer exampleModel
                         ]
                 NotSelected -> text "Not Selected"
-                WaitingForImage url -> text <| "Waiting image " ++ url ++ " to load"
+                WaitingForImage url -> text <| "Waiting for image " ++ url ++ " to load"
         makeTextOptions =
             textExamples
                 |> List.map
-                    (\(source, size) ->
+                    (\source ->
                         option
-                            [ onClick <| LoadTextExample ( size, source ) ]
+                            [ value <| "t" ++ source ]
                             [ text source ]
                     )
         makeImagesOptions =
@@ -221,7 +213,7 @@ view model =
                 |> List.map
                     (\imageName ->
                         option
-                            [ onClick <| LoadImageExample (imageName ++ ".png") ]
+                            [ value <| "i" ++ imageName ]
                             [ text imageName ]
                     )
         makeOptions -- There's `optgroup` !
@@ -230,11 +222,19 @@ view model =
             ++ makeTextOptions
             ++ [ option [ disabled True ] [ text "-----" ] ]
             ++ makeImagesOptions
+        selectionToMsg s =
+            case s |> String.toList of
+                marker::rest ->
+                    case marker of
+                        'i' -> LoadImageExample <| String.fromList rest
+                        't' -> LoadTextExample (4, 4) <| String.fromList rest
+                        _ -> NoOp
+                _ -> NoOp
     in
         div
             []
             [ select
-                []
+                [ onInput selectionToMsg ]
                 makeOptions
             , viewExample
             ]
@@ -246,8 +246,7 @@ main =
         { init =
             \_ _ _ ->
                 ( init
-                , requestImages
-                    [ "Hogs.png" ]
+                , requestImages [ "Hogs" ]
                 )
         , onUrlChange = always NoOp
         , onUrlRequest = always NoOp
@@ -257,18 +256,18 @@ main =
         }
 
 
-requestImage : String -> Cmd Msg
-requestImage fileName =
+requestImage : ImageAlias -> Cmd Msg
+requestImage imageAlias =
     Http.get
-        { url = "http://localhost:3000/samples/" ++ fileName
+        { url = "http://localhost:3000/samples/" ++ imageAlias ++ ".png"
         , expect =
             Http.expectBytesResponse
-                (GotImage fileName)
+                (GotImage imageAlias)
                 loadImage
         }
 
 
-requestImages : List String -> Cmd Msg
+requestImages : List ImageAlias -> Cmd Msg
 requestImages = List.map requestImage >> Cmd.batch
 
 
