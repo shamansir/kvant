@@ -1,14 +1,14 @@
-module WFC.Plane.Flat exposing (..)
+module Kvant.Plane.Flat exposing (..)
 
 
 import Dict
 import Dict exposing (Dict)
 
-import WFC.Vec2 exposing (..)
-import WFC.Occurrence exposing (Occurrence, Frequency, frequencyFromFloat)
-import WFC.Occurrence as Occurrence
-import WFC.Plane exposing (..)
-import WFC.Plane.Offset exposing (..)
+import Kvant.Vec2 exposing (..)
+import Kvant.Occurrence exposing (Occurrence, Frequency, frequencyFromFloat)
+import Kvant.Occurrence as Occurrence
+import Kvant.Plane exposing (..)
+import Kvant.Plane.Offset exposing (..)
 
 
 type Boundary

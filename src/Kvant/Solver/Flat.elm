@@ -1,17 +1,17 @@
-module WFC.Solver.Flat exposing (..)
+module Kvant.Solver.Flat exposing (..)
 
 
 import Random
 import Dict
 
 
-import WFC.Plane exposing (..)
-import WFC.Plane.Flat exposing (Boundary, Symmetry, findAllSubs, findOccurrence, findMatches)
-import WFC.Vec2 exposing (..)
-import WFC.Matches exposing (..)
-import WFC.Solver exposing (..)
-import WFC.Solver as S exposing (init)
-import WFC.Neighbours as Dir exposing (Direction(..), move)
+import Kvant.Plane exposing (..)
+import Kvant.Plane.Flat exposing (Boundary, Symmetry, findAllSubs, findOccurrence, findMatches)
+import Kvant.Vec2 exposing (..)
+import Kvant.Matches exposing (..)
+import Kvant.Solver exposing (..)
+import Kvant.Solver as S exposing (init)
+import Kvant.Neighbours as Dir exposing (Direction(..), move)
 
 
 init : Options Vec2 a -> Plane Vec2 a -> Solver Vec2 a

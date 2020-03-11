@@ -4,24 +4,24 @@ import Render.Example exposing (TextExample, Status(..), AdvanceMode(..))
 import Render.Example as Example exposing (make)
 
 
-import WFC.Vec2 exposing (..)
-import WFC.Plane exposing (Cell, N(..))
-import WFC.Plane.Flat exposing (Boundary(..), Symmetry(..))
-import WFC.Core as WFC exposing (..)
-import WFC.Solver exposing (Approach(..))
-import WFC.Solver as WFC exposing (Step(..), Options)
-import WFC.Plane.Impl.Text as TextPlane exposing (make)
+import Kvant.Vec2 exposing (..)
+import Kvant.Plane exposing (Cell, N(..))
+import Kvant.Plane.Flat exposing (Boundary(..), Symmetry(..))
+import Kvant.Core as Kvant exposing (..)
+import Kvant.Solver exposing (Approach(..))
+import Kvant.Solver as Solver exposing (Step(..), Options)
+import Kvant.Plane.Impl.Text as TextPlane exposing (make)
 
 
 
-quick : WFC.Options Vec2 Char -> BoundedString -> TextExample
+quick : Solver.Options Vec2 Char -> BoundedString -> TextExample
 quick options ((size, src) as boundedSrc) =
     Example.make
         (\advanceMode ->
             ( case advanceMode of
-                AtOnce -> WFC.text options boundedSrc
-                StepByStep -> WFC.textAdvancing options boundedSrc
-            , WFC.textTracing options boundedSrc
+                AtOnce -> Kvant.text options boundedSrc
+                StepByStep -> Kvant.textAdvancing options boundedSrc
+            , Kvant.textTracing options boundedSrc
             )
         )
         options

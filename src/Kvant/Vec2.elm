@@ -1,4 +1,4 @@
-module WFC.Vec2 exposing (..)
+module Kvant.Vec2 exposing (..)
 
 import Array exposing (Array)
 import Array as Array exposing (..)

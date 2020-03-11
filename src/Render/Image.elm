@@ -12,11 +12,11 @@ import Render.Core as Render exposing (..)
 import Render.Grid as Render exposing (..)
 import Render.Flat as Render exposing (..)
 
-import WFC.Vec2 exposing (..)
-import WFC.Matches as Matches exposing (..)
-import WFC.Plane exposing (Cell)
-import WFC.Plane.Impl.Image exposing (..)
-import WFC.Plane.Impl.Tracing exposing (..)
+import Kvant.Vec2 exposing (..)
+import Kvant.Matches as Matches exposing (..)
+import Kvant.Plane exposing (Cell)
+import Kvant.Plane.Impl.Image exposing (..)
+import Kvant.Plane.Impl.Tracing exposing (..)
 
 
 pixel : Color -> Html msg

@@ -1,4 +1,4 @@
-module WFC.Occurrence exposing (..)
+module Kvant.Occurrence exposing (..)
 
 
 import Dict exposing (Dict)

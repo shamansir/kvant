@@ -8,8 +8,8 @@ import Render.Core as Render exposing (..)
 import Render.Grid as Render exposing (..)
 import Render.Flat as Render exposing (..)
 
-import WFC.Vec2 exposing (..)
-import WFC.Plane.Impl.Text exposing (merge)
+import Kvant.Vec2 exposing (..)
+import Kvant.Plane.Impl.Text exposing (merge)
 
 
 spec : Spec Vec2 Char msg

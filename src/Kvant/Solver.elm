@@ -1,4 +1,4 @@
-module WFC.Solver exposing (..)
+module Kvant.Solver exposing (..)
 
 
 -- import Array exposing (Array)
@@ -6,21 +6,21 @@ import Dict
 import Dict exposing (Dict)
 import Random
 
-import WFC.Vec2 exposing (..)
-import WFC.Matches exposing (Matches)
-import WFC.Matches as Matches exposing (..)
-import WFC.Occurrence exposing (Occurrence, Frequency, frequencyToFloat)
-import WFC.Occurrence as Occurrence
-import WFC.Plane exposing (Plane(..), N(..))
-import WFC.Plane as Plane exposing (map)
-import WFC.Plane.Flat as Plane
+import Kvant.Vec2 exposing (..)
+import Kvant.Matches exposing (Matches)
+import Kvant.Matches as Matches exposing (..)
+import Kvant.Occurrence exposing (Occurrence, Frequency, frequencyToFloat)
+import Kvant.Occurrence as Occurrence
+import Kvant.Plane exposing (Plane(..), N(..))
+import Kvant.Plane as Plane exposing (map)
+import Kvant.Plane.Flat as Plane
     exposing ( Boundary, Symmetry, foldl, coords, equal, sub, findMatches, findAllSubs, findAllSubsAlt, findOccurrence )
-import WFC.Plane as CPlane exposing (fromDict, toDict)
-import WFC.Plane.Offset exposing (OffsetPlane(..), toOffset)
-import WFC.Plane.Offset as OffsetPlane exposing (get)
-import WFC.Neighbours as Neighbours exposing (..)
-import WFC.Neighbours exposing (Neighbours)
-import WFC.Neighbours as Dir exposing (Direction(..))
+import Kvant.Plane as CPlane exposing (fromDict, toDict)
+import Kvant.Plane.Offset exposing (OffsetPlane(..), toOffset)
+import Kvant.Plane.Offset as OffsetPlane exposing (get)
+import Kvant.Neighbours as Neighbours exposing (..)
+import Kvant.Neighbours exposing (Neighbours)
+import Kvant.Neighbours as Dir exposing (Direction(..))
 
 
 type alias Options v a =

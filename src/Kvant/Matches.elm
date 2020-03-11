@@ -1,4 +1,4 @@
-module WFC.Matches exposing
+module Kvant.Matches exposing
     ( MoreThanOne
     , Matches
     , none, single, some, safeSome

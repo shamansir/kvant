@@ -37,19 +37,19 @@ import Render.Example.Flat as FlatExample exposing (..)
 import Render.Example.Text as TextExample exposing (..)
 import Render.Example.Image as ImageExample exposing (..)
 
-import WFC.Core exposing (WFC, TextWFC, TextTracingWFC, TextTracingPlane)
-import WFC.Core as WFC
-import WFC.Vec2 exposing (..)
-import WFC.Plane exposing (Plane, N(..))
-import WFC.Plane.Flat as Plane exposing (Boundary(..), Symmetry(..))
-import WFC.Plane.Flat exposing (flip, rotate)
-import WFC.Plane.Impl.Text exposing (TextPlane)
-import WFC.Plane.Impl.Text as Text exposing (toGrid)
-import WFC.Plane.Impl.Text as TextPlane exposing (make)
-import WFC.Plane.Impl.Tracing exposing (TracingPlane)
-import WFC.Solver exposing (Approach(..))
-import WFC.Solver as WFC exposing (Step, Options)
-import WFC.Solver.History as H exposing (..)
+import Kvant.Core exposing (Wfc, TextWfc, TextTracingWfc, TextTracingPlane)
+import Kvant.Core as Wfc
+import Kvant.Vec2 exposing (..)
+import Kvant.Plane exposing (Plane, N(..))
+import Kvant.Plane.Flat as Plane exposing (Boundary(..), Symmetry(..))
+import Kvant.Plane.Flat exposing (flip, rotate)
+import Kvant.Plane.Impl.Text exposing (TextPlane)
+import Kvant.Plane.Impl.Text as Text exposing (toGrid)
+import Kvant.Plane.Impl.Text as TextPlane exposing (make)
+import Kvant.Plane.Impl.Tracing exposing (TracingPlane)
+import Kvant.Solver exposing (Approach(..))
+import Kvant.Solver as Solver exposing (Step, Options)
+import Kvant.Solver.History as H exposing (..)
 
 
 type alias Model =
@@ -61,8 +61,8 @@ type alias Model =
 type CurrentExample
     = NotSelected
     | WaitingForImage ImageAlias
-    | Textual WFC.TextOptions TextExample
-    | FromImage WFC.ImageOptions Image ImageExample
+    | Textual Wfc.TextOptions TextExample
+    | FromImage Wfc.ImageOptions Image ImageExample
 
 
 type alias ImageAlias = String
@@ -374,7 +374,7 @@ main =
         , onUrlRequest = always NoOp
         , subscriptions = always Sub.none
         , update = update
-        , view = \model -> { title = "WFC", body = [ view model ] }
+        , view = \model -> { title = "Kvant", body = [ view model ] }
         }
 
 
@@ -417,7 +417,7 @@ loadImage response =
               Err (Http.BadBody "Image failed to be decoded")
 
 
-changeN : N Vec2 -> WFC.Options Vec2 a -> WFC.Options Vec2 a
+changeN : N Vec2 -> Solver.Options Vec2 a -> Solver.Options Vec2 a
 changeN n options =
     { options
     | approach =

@@ -1,13 +1,13 @@
-module WFC.Plane.Impl.Tracing exposing (..)
+module Kvant.Plane.Impl.Tracing exposing (..)
 
 import Array
 
 
-import WFC.Vec2 exposing (..)
-import WFC.Matches exposing (..)
-import WFC.Plane exposing (..)
-import WFC.Plane.Flat exposing (..)
-import WFC.Solver exposing (PatternId)
+import Kvant.Vec2 exposing (..)
+import Kvant.Matches exposing (..)
+import Kvant.Plane exposing (..)
+import Kvant.Plane.Flat exposing (..)
+import Kvant.Solver exposing (PatternId)
 
 
 -- not Impl, should be on the same level as Flat
