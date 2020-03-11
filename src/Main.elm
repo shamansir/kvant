@@ -22,6 +22,7 @@ import Image.Color as ImageC exposing (toList2d)
 
 import Html exposing (..)
 import Html.Attributes exposing (..)
+import Html.Attributes as H exposing (min, max)
 import Html.Events exposing (..)
 
 import Render.Core as Render exposing (..)
@@ -40,7 +41,7 @@ import WFC.Core exposing (WFC, TextWFC, TextTracingWFC, TextTracingPlane)
 import WFC.Core as WFC
 import WFC.Vec2 exposing (..)
 import WFC.Plane exposing (Plane, N(..))
-import WFC.Plane.Flat as Plane exposing (Boundary(..))
+import WFC.Plane.Flat as Plane exposing (Boundary(..), Symmetry(..))
 import WFC.Plane.Flat exposing (flip, rotate)
 import WFC.Plane.Impl.Text exposing (TextPlane)
 import WFC.Plane.Impl.Text as Text exposing (toGrid)
@@ -60,17 +61,19 @@ type alias Model =
 type CurrentExample
     = NotSelected
     | WaitingForImage ImageAlias
-    | Textual TextExample
-    | FromImage Image ImageExample
+    | Textual WFC.TextOptions TextExample
+    | FromImage WFC.ImageOptions Image ImageExample
 
 
 type alias ImageAlias = String
+
 
 type Msg
     = NoOp
     | ToExample ExampleMsg
     | LoadTextExample Vec2 String
     | LoadImageExample ImageAlias
+    | ChangeN (N Vec2)
     | GotImage ImageAlias (Result Http.Error Image)
 
 
@@ -152,6 +155,30 @@ init =
     }
 
 
+defaultTextOptions =
+    { approach =
+        Overlapping
+            { searchBoundary = Bounded -- Periodic
+            , patternSize = N ( 2, 2 )
+            , symmetry = FlipAndRotate
+            }
+    , outputSize = ( 10, 10 )
+    , outputBoundary = Bounded
+    }
+
+
+defaultImageOptions =
+    { approach =
+        Overlapping
+            { searchBoundary = Bounded -- Periodic
+            , patternSize = N ( 2, 2 )
+            , symmetry = FlipAndRotate
+            }
+    , outputSize = ( 10, 10 )
+    , outputBoundary = Bounded
+    }
+
+
 update
     :  Msg
     -> Model
@@ -164,25 +191,25 @@ update msg model =
 
         ToExample exampleMsg ->
             case model.example of
-                Textual example ->
+                Textual options example ->
                     let
                         ( newExampleModel, commands ) =
                             Example.update exampleMsg example
                     in
                         (
                             { model
-                            | example = Textual newExampleModel
+                            | example = Textual options newExampleModel
                             }
                         , commands |> Cmd.map ToExample
                         )
-                FromImage image example ->
+                FromImage options image example ->
                     let
                         ( newExampleModel, commands ) =
                             Example.update exampleMsg example
                     in
                         (
                             { model
-                            | example = FromImage image newExampleModel
+                            | example = FromImage options image newExampleModel
                             }
                         , commands |> Cmd.map ToExample
                         )
@@ -191,7 +218,9 @@ update msg model =
         LoadTextExample size source ->
             (
                 { model
-                | example = Textual <| TextExample.quick source size
+                | example =
+                    Textual defaultTextOptions
+                        <| TextExample.quick defaultTextOptions ( size, source )
                 }
             , Cmd.none
             )
@@ -204,6 +233,27 @@ update msg model =
             , requestImages [ imageAlias ]
             )
 
+        ChangeN n ->
+            ( case model.example of
+                Textual options example ->
+                    let newOptions = options |> changeN n
+                    in
+                        { model
+                        | example =
+                            Textual newOptions
+                                <| TextExample.quick newOptions example.source
+                        }
+                FromImage options image example ->
+                    let newOptions = options |> changeN n
+                    in
+                        { model
+                        | example =
+                            FromImage newOptions image
+                                    <| ImageExample.quick newOptions image
+                        }
+                _ -> model
+            , Cmd.none )
+
         GotImage gotAlias result ->
             ( case result of
                 Ok image ->
@@ -215,7 +265,8 @@ update msg model =
                         case model.example of
                             WaitingForImage waitingForAlias ->
                                 if waitingForAlias == gotAlias then
-                                    FromImage image <| ImageExample.quick image
+                                    FromImage defaultImageOptions image
+                                        <| ImageExample.quick defaultImageOptions image
                                 else model.example
                             _ -> model.example
                     }
@@ -237,8 +288,8 @@ view model =
             Render.grid Render.pixel <| ImageC.toList2d image
         viewExample =
             case model.example of
-                Textual exampleModel -> Example.view ToExample textRenderer exampleModel
-                FromImage image exampleModel ->
+                Textual _ exampleModel -> Example.view ToExample textRenderer exampleModel
+                FromImage _ image exampleModel ->
                     div
                         []
                         [ viewImage image
@@ -276,12 +327,37 @@ view model =
                         't' -> LoadTextExample (4, 4) <| String.fromList rest
                         _ -> NoOp
                 _ -> NoOp
+        controls options  =
+            case options.approach of
+                Overlapping { patternSize } ->
+
+                    div []
+                        [ input
+                            [ type_ "number"
+                            , H.min "2"
+                            , H.max "4"
+                            , value <| String.fromInt <| case patternSize of N ( n, _ ) -> n
+                            , onInput
+                                (String.toInt
+                                    >> Maybe.withDefault 2
+                                    >> (\n -> (n, n))
+                                    >> N
+                                    >> ChangeN
+                                )
+                            ] []
+                        ]
+
+                _ -> div [] []
     in
         div
             []
             [ select
                 [ onInput selectionToMsg ]
                 makeOptions
+            , case model.example of
+                Textual options _ -> controls options
+                FromImage options _ _ -> controls options
+                _ -> text ""
             , viewExample
             ]
 
@@ -339,3 +415,18 @@ loadImage response =
 
             Nothing ->
               Err (Http.BadBody "Image failed to be decoded")
+
+
+changeN : N Vec2 -> WFC.Options Vec2 a -> WFC.Options Vec2 a
+changeN n options =
+    { options
+    | approach =
+        case options.approach of
+            Overlapping overlappingOpts ->
+                Overlapping
+                    { overlappingOpts
+                    | patternSize = n
+                    }
+            _ -> options.approach
+    }
+

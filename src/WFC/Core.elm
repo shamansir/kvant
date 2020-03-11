@@ -1,9 +1,9 @@
 module WFC.Core exposing
     ( WFC, Instance(..)
     , TracingWFC
-    , text, textAdvancing, TextWFC
+    , text, textAdvancing, TextWFC, TextOptions
     , textTracing, TextTracingWFC, TextTracingPlane
-    , image, imageAdvancing, ImageWFC
+    , image, imageAdvancing, ImageWFC, ImageOptions
     , imageTracing, ImageTracingWFC, ImageTracingPlane
     , firstStep
     , run, step, stepAtOnce
@@ -59,6 +59,10 @@ type alias TextTracingPlane = TracingPlane Vec2 Char
 type alias ImageWFC = WFC Vec2 Image Color
 type alias ImageTracingWFC = TracingWFC Vec2 Color
 type alias ImageTracingPlane = TracingPlane Vec2 Color
+
+
+type alias TextOptions = Solver.Options Vec2 Char
+type alias ImageOptions = Solver.Options Vec2 Color
 
 
 type Converter v a x fmt =
@@ -143,7 +147,7 @@ makeAdvancingFn (Convert convert as cnv) initSolver input =
         |> makeAdvancing cnv
 
 
-text : Solver.Options Vec2 Char -> (BoundedString -> TextWFC)
+text : TextOptions -> (BoundedString -> TextWFC)
 text options =
     makeFn
         (Convert
@@ -155,7 +159,7 @@ text options =
         (FlatSolver.init options)
 
 
-textAdvancing  : Solver.Options Vec2 Char -> (BoundedString -> TextWFC)
+textAdvancing  : TextOptions -> (BoundedString -> TextWFC)
 textAdvancing options =
     makeAdvancingFn
         (Convert
@@ -167,7 +171,7 @@ textAdvancing options =
         (FlatSolver.init options)
 
 
-textTracing : Solver.Options Vec2 Char -> (BoundedString -> TextTracingWFC)
+textTracing : TextOptions -> (BoundedString -> TextTracingWFC)
 textTracing options =
     \(size, input) ->
         makeAdvancingFn
@@ -186,7 +190,7 @@ textTracing options =
 
 
 
-image : Solver.Options Vec2 Color -> (Image -> ImageWFC)
+image : ImageOptions -> (Image -> ImageWFC)
 image options =
     makeFn
         (Convert
@@ -198,7 +202,7 @@ image options =
         (FlatSolver.init options)
 
 
-imageAdvancing  : Solver.Options Vec2 Color -> (Image -> ImageWFC)
+imageAdvancing  : ImageOptions -> (Image -> ImageWFC)
 imageAdvancing options =
     makeAdvancingFn
         (Convert
@@ -210,7 +214,7 @@ imageAdvancing options =
         (FlatSolver.init options)
 
 
-imageTracing : Solver.Options Vec2 Color -> (Image -> ImageTracingWFC)
+imageTracing : ImageOptions -> (Image -> ImageTracingWFC)
 imageTracing options =
     \input ->
         makeAdvancingFn

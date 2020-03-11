@@ -41,7 +41,10 @@ type Approach v a
         , symmetry : Symmetry -- FIXME: use in search
         -- TODO: ground : Int
         }
-    | Tiled {- Rules -}
+    | Tiled
+
+
+-- type alias Rules v a = { }
 
 
 type Step v

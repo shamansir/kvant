@@ -18,21 +18,8 @@ import WFC.Solver as WFC exposing (Step(..), Options)
 import WFC.Plane.Impl.Image as ImagePlane exposing (make)
 
 
-options : WFC.Options Vec2 Color
-options =
-    { approach =
-        Overlapping
-            { searchBoundary = Bounded -- Periodic
-            , patternSize = N ( 2, 2 )
-            , symmetry = FlipAndRotate
-            }
-    , outputSize = ( 10, 10 )
-    , outputBoundary = Bounded
-    }
-
-
-quick : Image -> ImageExample
-quick image =
+quick : WFC.Options Vec2 Color -> Image -> ImageExample
+quick options image =
     let
         { width, height } = Image.dimensions image
     in
