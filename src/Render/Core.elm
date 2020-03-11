@@ -6,12 +6,12 @@ import Array
 import Html exposing (..)
 import Html.Attributes exposing (..)
 
-import WFC.Occurrence as WFC exposing (..)
-import WFC.Solver.History exposing (History)
-import WFC.Solver.History as History
-import WFC.Solver exposing (Step(..), StepStatus(..), FocusState(..))
-import WFC.Plane.Impl.Tracing exposing (..)
-import WFC.Matches as Matches exposing (..)
+import Kvant.Occurrence exposing (..)
+import Kvant.Solver.History exposing (History)
+import Kvant.Solver.History as History
+import Kvant.Solver exposing (Step(..), StepStatus(..), FocusState(..))
+import Kvant.Plane.Impl.Tracing exposing (..)
+import Kvant.Matches as Matches exposing (..)
 
 
 type alias Spec v a msg =
@@ -43,7 +43,7 @@ withCoords viewV viewA =
             ]
 
 
-occursText : WFC.Occurrence -> String
+occursText : Occurrence -> String
 occursText occured =
     case occured of
         Unknown -> "occurs unknown amount of times"

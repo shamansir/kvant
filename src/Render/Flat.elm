@@ -5,17 +5,17 @@ import Dict
 import Html exposing (..)
 import Html.Attributes exposing (..)
 
-import WFC.Plane exposing (..)
-import WFC.Plane.Flat exposing (..)
-import WFC.Plane.Flat as Plane exposing (sub ,subAt, foldMap, unpack)
-import WFC.Plane.Offset exposing (Offset, OffsetPlane)
-import WFC.Plane.Offset as Offsets exposing (foldMap)
-import WFC.Plane.Impl.Tracing exposing (TracingPlane, TracingCell)
-import WFC.Matches as Matches exposing (..)
-import WFC.Solver as WFC
-import WFC.Solver.Flat as WFC
-import WFC.Vec2 exposing (..)
-import WFC.Occurrence exposing (frequencyToFloat)
+import Kvant.Plane exposing (..)
+import Kvant.Plane.Flat exposing (..)
+import Kvant.Plane.Flat as Plane exposing (sub ,subAt, foldMap, unpack)
+import Kvant.Plane.Offset exposing (Offset, OffsetPlane)
+import Kvant.Plane.Offset as Offsets exposing (foldMap)
+import Kvant.Plane.Impl.Tracing exposing (TracingPlane, TracingCell)
+import Kvant.Matches as Matches exposing (..)
+import Kvant.Solver as Solver
+import Kvant.Solver.Flat as Solver
+import Kvant.Vec2 exposing (..)
+import Kvant.Occurrence exposing (frequencyToFloat)
 
 import Render.Core as Render exposing (..)
 import Render.Grid as Render exposing (..)
@@ -85,9 +85,9 @@ indexedList default viewElem planes =
 pattern
     :  a
     -> (Vec2 -> a -> Html msg)
-    -> WFC.UniquePatterns Vec2 a
+    -> Solver.UniquePatterns Vec2 a
     -> Int
-    -> WFC.PatternWithStats Vec2 a
+    -> Solver.PatternWithStats Vec2 a
     -> Html msg
 pattern default viewElem uniquePatterns index patternWithStats =
      div
@@ -139,7 +139,7 @@ matches thePlane =
 matchesWithPatterns
     :  a
     -> (Vec2 -> a -> Html msg)
-    -> WFC.UniquePatterns Vec2 a
+    -> Solver.UniquePatterns Vec2 a
     -> OffsetPlane Vec2 (List Int)
     -> Html msg
 matchesWithPatterns default viewElem uniquePatterns thePlane =

@@ -1,5 +1,5 @@
 {
-  "name": "wfc",
+  "name": "kvant",
   "version": "1.0.0",
   "description": "Wave Function Collapse implementation in Elm",
   "main": "index.js",

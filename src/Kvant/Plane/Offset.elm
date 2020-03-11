@@ -1,14 +1,14 @@
-module WFC.Plane.Offset exposing (..)
+module Kvant.Plane.Offset exposing (..)
 
 
 import Dict
 import Dict exposing (Dict)
 
 
-import WFC.Plane exposing (Cell, cellToMaybe)
+import Kvant.Plane exposing (Cell, cellToMaybe)
 
-import WFC.Vec2 exposing (..)
-import WFC.Neighbours exposing (..)
+import Kvant.Vec2 exposing (..)
+import Kvant.Neighbours exposing (..)
 
 
 type Offset v = Offset v

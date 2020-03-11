@@ -6,15 +6,15 @@ import Dict
 import Html exposing (..)
 import Html.Attributes exposing (..)
 
-import WFC.Vec2 exposing (..)
-import WFC.Plane exposing (..)
-import WFC.Plane.Flat exposing (..)
-import WFC.Plane.Flat as Plane exposing (allViews)
-import WFC.Plane.Impl.Tracing exposing (..)
-import WFC.Solver exposing (..)
-import WFC.Solver.Flat as WFC
-import WFC.Solver.History as H exposing (..)
-import WFC.Matches as Matches exposing (..)
+import Kvant.Vec2 exposing (..)
+import Kvant.Plane exposing (..)
+import Kvant.Plane.Flat exposing (..)
+import Kvant.Plane.Flat as Plane exposing (allViews)
+import Kvant.Plane.Impl.Tracing exposing (..)
+import Kvant.Solver exposing (..)
+import Kvant.Solver.Flat as Solver
+import Kvant.Solver.History as H exposing (..)
+import Kvant.Matches as Matches exposing (..)
 
 import Render.Core as Render exposing (..)
 import Render.Grid as Render exposing (..)
@@ -90,7 +90,7 @@ make fmtToGrid spec =
 
         patterns method n plane =
                 let
-                    uniquePatterns = WFC.findUniquePatterns method n plane
+                    uniquePatterns = Solver.findUniquePatterns method n plane
                 in
                     Render.listBy identity
                         <| Dict.values

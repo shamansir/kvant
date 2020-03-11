@@ -9,16 +9,16 @@ import Image.Color as ImageC exposing (toArray2d)
 import Render.Example exposing (ImageExample, Status(..), AdvanceMode(..))
 import Render.Example as Example exposing (make)
 
-import WFC.Vec2 exposing (..)
-import WFC.Plane exposing (Cell, N(..))
-import WFC.Plane.Flat exposing (Boundary(..), Symmetry(..))
-import WFC.Core as WFC exposing (..)
-import WFC.Solver exposing (Approach(..))
-import WFC.Solver as WFC exposing (Step(..), Options)
-import WFC.Plane.Impl.Image as ImagePlane exposing (make)
+import Kvant.Vec2 exposing (..)
+import Kvant.Plane exposing (Cell, N(..))
+import Kvant.Plane.Flat exposing (Boundary(..), Symmetry(..))
+import Kvant.Core as Kvant exposing (..)
+import Kvant.Solver exposing (Approach(..))
+import Kvant.Solver as Solver exposing (Step(..), Options)
+import Kvant.Plane.Impl.Image as ImagePlane exposing (make)
 
 
-quick : WFC.Options Vec2 Color -> Image -> ImageExample
+quick : Solver.Options Vec2 Color -> Image -> ImageExample
 quick options image =
     let
         { width, height } = Image.dimensions image
@@ -26,9 +26,9 @@ quick options image =
         Example.make
             (\advanceMode ->
                 ( case advanceMode of
-                    AtOnce -> WFC.image options image
-                    StepByStep -> WFC.imageAdvancing options image
-                , WFC.imageTracing options image
+                    AtOnce -> Kvant.image options image
+                    StepByStep -> Kvant.imageAdvancing options image
+                , Kvant.imageTracing options image
                 )
             )
             options

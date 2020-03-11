@@ -1,8 +1,8 @@
-module WFC.Cross
+module Kvant.Cross
     exposing (..)
 
 
-import WFC.Neighbours exposing (..)
+import Kvant.Neighbours exposing (..)
 
 
 type Direction

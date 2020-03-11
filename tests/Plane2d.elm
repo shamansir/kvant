@@ -7,12 +7,12 @@ import Fuzz exposing (Fuzzer, int, list, string)
 import Test exposing (..)
 -- import Test.Internal as Internal
 
-import WFC.Plane.Offset exposing (Offset(..))
-import WFC.Plane exposing (N(..))
-import WFC.Plane.Flat as Plane2D
-import WFC.Plane.Impl.Text as TextPlane
-import WFC.Plane.Offset as OffsetPlane
--- import WFC.Frequency
+import Kvant.Plane.Offset exposing (Offset(..))
+import Kvant.Plane exposing (N(..))
+import Kvant.Plane.Flat as Plane2D
+import Kvant.Plane.Impl.Text as TextPlane
+import Kvant.Plane.Offset as OffsetPlane
+-- import Kvant.Frequency
 
 
 testPlane2x2

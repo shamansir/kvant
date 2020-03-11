@@ -1,4 +1,4 @@
-module WFC.Solver.History exposing (..)
+module Kvant.Solver.History exposing (..)
 
 import List.Zipper as Zipper exposing (..)
 import List.Zipper exposing (Zipper)

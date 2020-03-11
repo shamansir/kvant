@@ -1,4 +1,4 @@
-module WFC.Plane.Impl.Image exposing (..)
+module Kvant.Plane.Impl.Image exposing (..)
 
 
 import Array exposing (Array)
@@ -8,9 +8,9 @@ import Image
 import Image exposing (Image)
 import Image.Color as ImageC exposing (fromList2d)
 
-import WFC.Vec2 exposing (..)
-import WFC.Plane exposing (..)
-import WFC.Plane.Flat exposing (..)
+import Kvant.Vec2 exposing (..)
+import Kvant.Plane exposing (..)
+import Kvant.Plane.Flat exposing (..)
 
 
 type alias ImagePlane = Plane Vec2 Color

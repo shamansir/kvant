@@ -1,8 +1,8 @@
-module WFC.Neighbours
+module Kvant.Neighbours
     exposing (..)
 
 
-import WFC.Vec2 exposing (..)
+import Kvant.Vec2 exposing (..)
 
 -- TODO: Move to Plane.Walker
 

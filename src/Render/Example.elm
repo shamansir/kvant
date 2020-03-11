@@ -12,19 +12,19 @@ import Html.Events exposing (..)
 import Color exposing (Color)
 import Image exposing (Image)
 
-import WFC.Vec2 exposing (..)
-import WFC.Core as WFC exposing (..)
-import WFC.Core as Core exposing (firstStep)
-import WFC.Plane exposing (Plane, N)
-import WFC.Plane.Flat exposing (Boundary)
-import WFC.Plane.Impl.Tracing exposing (TracingPlane)
-import WFC.Solver exposing (Step)
-import WFC.Solver as WFC exposing (Options)
-import WFC.Solver.History as H exposing (History)
+import Kvant.Vec2 exposing (..)
+import Kvant.Core as Wfc exposing (..)
+import Kvant.Core as Core exposing (firstStep)
+import Kvant.Plane exposing (Plane, N)
+import Kvant.Plane.Flat exposing (Boundary)
+import Kvant.Plane.Impl.Tracing exposing (TracingPlane)
+import Kvant.Solver exposing (Step)
+import Kvant.Solver as Solver exposing (Options)
+import Kvant.Solver.History as H exposing (History)
 
 
-type TracingStep v = TracingStep (WFC.Step v)
-type alias History v = H.History (WFC.Step v, TracingStep v)
+type TracingStep v = TracingStep (Solver.Step v)
+type alias History v = H.History (Solver.Step v, TracingStep v)
 
 
 type Status v fmt a
@@ -94,10 +94,10 @@ type alias TextBlock = Block Vec2 String Char
 type alias ExampleModel v fmt a =
     { source : fmt
     , sourcePlane : Plane v a
-    , options : WFC.Options v a
+    , options : Solver.Options v a
     , expands : List BlockState
-    , wfc : ( WFC v fmt a, TracingWFC v a )
-    , makeWfc : AdvanceMode -> ( WFC v fmt a, TracingWFC v a )
+    , wfc : ( Wfc v fmt a, TracingWfc v a )
+    , makeWfc : AdvanceMode -> ( Wfc v fmt a, TracingWfc v a )
     , status : Status v fmt a
     }
 
@@ -107,8 +107,8 @@ type alias ImageExample = ExampleModel Vec2 Image Color
 
 
 make
-    :  (AdvanceMode -> ( WFC v fmt a, TracingWFC v a ) )
-    -> WFC.Options v a
+    :  (AdvanceMode -> ( Wfc v fmt a, TracingWfc v a ) )
+    -> Solver.Options v a
     -> fmt
     -> Plane v a
     -> ExampleModel v fmt a
@@ -136,7 +136,7 @@ blocks e =
     ]
     ++
     (case e.options.approach of
-        WFC.Overlapping { patternSize, searchBoundary } ->
+        Solver.Overlapping { patternSize, searchBoundary } ->
             [ Patterns
                     e.sourcePlane
                     searchBoundary
@@ -146,7 +146,7 @@ blocks e =
                     searchBoundary
                     patternSize
             ]
-        WFC.Tiled -> [] -- FIXME: implement
+        Solver.Tiled -> [] -- FIXME: implement
     )
 
 
@@ -221,8 +221,8 @@ update msg model =
                     , status = Solved
                         ( newWfc
                             |> Tuple.mapBoth
-                                    (WFC.run seed)
-                                    (WFC.run seed)
+                                    (Wfc.run seed)
+                                    (Wfc.run seed)
                         )
                     }
             , Cmd.none
@@ -254,9 +254,9 @@ update msg model =
                         let
                             (step, TracingStep tracingStep) = H.last history
                             (lastStep, result) =
-                                model.wfc |> Tuple.first |> WFC.step step
+                                model.wfc |> Tuple.first |> Wfc.step step
                             (lastTracingStep, tracingResult) =
-                                model.wfc |> Tuple.second |> WFC.step tracingStep
+                                model.wfc |> Tuple.second |> Wfc.step tracingStep
                             nextHistory =
                                 history |>
                                     H.push ( lastStep, TracingStep lastTracingStep )
@@ -284,7 +284,7 @@ update msg model =
                             (lastStep, result) =
                                 model.wfc
                                     |> Tuple.first
-                                    |> WFC.stepAtOnce
+                                    |> Wfc.stepAtOnce
                                         (H.toList historyAStepBack
                                             |> List.map Tuple.first)
                                     |> Maybe.withDefault
@@ -294,7 +294,7 @@ update msg model =
                             (lastTracingStep, tracingResult) =
                                 model.wfc
                                     |> Tuple.second
-                                    |> WFC.stepAtOnce
+                                    |> Wfc.stepAtOnce
                                         (H.toList historyAStepBack
                                             |> List.map Tuple.second
                                             |> List.map (\(TracingStep s) -> s))
@@ -306,8 +306,9 @@ update msg model =
                             nextHistory =
                                 historyAStepBack |>
                                     H.push
-                                        ( lastStep |> WFC.changeSeedTo newSeed
-                                        , TracingStep (lastTracingStep |> WFC.changeSeedTo newSeed)
+                                        ( lastStep |> Solver.changeSeedTo newSeed
+                                        , TracingStep
+                                            (lastTracingStep |> Solver.changeSeedTo newSeed)
                                         )
                         in
                             { model

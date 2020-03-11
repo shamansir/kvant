@@ -1,11 +1,11 @@
-module WFC.Plane.Impl.Text exposing (..)
+module Kvant.Plane.Impl.Text exposing (..)
 
 import Array
 
 
-import WFC.Vec2 exposing (..)
-import WFC.Plane exposing (..)
-import WFC.Plane.Flat exposing (..)
+import Kvant.Vec2 exposing (..)
+import Kvant.Plane exposing (..)
+import Kvant.Plane.Flat exposing (..)
 
 
 type alias TextPlane = Plane Vec2 Char
