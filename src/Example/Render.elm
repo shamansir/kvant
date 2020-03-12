@@ -1,4 +1,4 @@
-module Render.Core exposing (..)
+module Example.Render exposing (..)
 
 
 import Array

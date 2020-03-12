@@ -1,4 +1,4 @@
-module Render.Example.Image exposing (..)
+module Example.Image exposing (..)
 
 
 import Color exposing (Color)
@@ -6,8 +6,8 @@ import Color exposing (Color)
 import Image exposing (Image, dimensions)
 import Image.Color as ImageC exposing (toArray2d)
 
-import Render.Example exposing (ImageExample, Status(..), AdvanceMode(..))
-import Render.Example as Example exposing (make)
+import Example.Main exposing (ImageExample, Status(..), AdvanceMode(..))
+import Example.Main as Example exposing (make)
 
 import Kvant.Vec2 exposing (..)
 import Kvant.Plane exposing (Cell, N(..))

@@ -1,4 +1,4 @@
-module Render.Example.Flat exposing (..)
+module Example.Flat exposing (..)
 
 
 import Dict
@@ -16,10 +16,10 @@ import Kvant.Solver.Flat as Solver
 import Kvant.Solver.History as H exposing (..)
 import Kvant.Matches as Matches exposing (..)
 
-import Render.Core as Render exposing (..)
-import Render.Grid as Render exposing (..)
-import Render.Flat as Render exposing (..)
-import Render.Example exposing (Renderer)
+import Example.Render as Render exposing (..)
+import Example.Render.Grid as Render exposing (..)
+import Example.Render.Flat as Render exposing (..)
+import Example.Main exposing (Renderer)
 
 
 subPlanesCoords : List (Vec2, Vec2)

@@ -1,4 +1,4 @@
-module Render.Example exposing (..)
+module Example.Main exposing (..)
 
 
 import Random
