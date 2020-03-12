@@ -1,4 +1,4 @@
-module Render.Grid exposing (..)
+module Example.Render.Grid exposing (..)
 
 
 import Array

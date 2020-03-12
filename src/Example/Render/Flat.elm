@@ -1,4 +1,5 @@
-module Render.Flat exposing (..)
+module Example.Render.Flat exposing (..)
+
 
 import Dict
 
@@ -17,8 +18,8 @@ import Kvant.Solver.Flat as Solver
 import Kvant.Vec2 exposing (..)
 import Kvant.Occurrence exposing (frequencyToFloat)
 
-import Render.Core as Render exposing (..)
-import Render.Grid as Render exposing (..)
+import Example.Render as Render exposing (..)
+import Example.Render.Grid as Render exposing (..)
 
 
 coordText : Vec2 -> String

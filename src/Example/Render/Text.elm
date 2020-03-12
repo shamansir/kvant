@@ -1,15 +1,15 @@
-module Render.Text exposing (..)
+module Example.Render.Text exposing (..)
 
 
 import Html exposing (..)
 import Html.Attributes exposing (..)
 
-import Render.Core as Render exposing (..)
-import Render.Grid as Render exposing (..)
-import Render.Flat as Render exposing (..)
-
 import Kvant.Vec2 exposing (..)
 import Kvant.Plane.Impl.Text exposing (merge)
+
+import Example.Render as Render exposing (..)
+import Example.Render.Grid as Render exposing (..)
+import Example.Render.Flat as Render exposing (..)
 
 
 spec : Spec Vec2 Char msg

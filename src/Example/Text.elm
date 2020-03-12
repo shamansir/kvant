@@ -1,8 +1,4 @@
-module Render.Example.Text exposing (..)
-
-import Render.Example exposing (TextExample, Status(..), AdvanceMode(..))
-import Render.Example as Example exposing (make)
-
+module Example.Text exposing (..)
 
 import Kvant.Vec2 exposing (..)
 import Kvant.Plane exposing (Cell, N(..))
@@ -12,6 +8,9 @@ import Kvant.Solver exposing (Approach(..))
 import Kvant.Solver as Solver exposing (Step(..), Options)
 import Kvant.Plane.Impl.Text as TextPlane exposing (make)
 
+
+import Example.Main exposing (TextExample, Status(..), AdvanceMode(..))
+import Example.Main as Example exposing (make)
 
 
 quick : Solver.Options Vec2 Char -> BoundedString -> TextExample
