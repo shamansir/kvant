@@ -29,7 +29,7 @@ import Example.Main exposing (..)
 import Example.Main as Example exposing (..)
 import Example.Flat as FlatExample exposing (..)
 import Example.Text as TextExample exposing (..)
-import Example.Image as ImageExample exposing (..)
+import Example.Pixels as ImageExample exposing (..)
 import Example.Render as Render exposing (..)
 import Example.Render.Flat as Render exposing (..)
 import Example.Render.Grid as Render exposing (..)
@@ -65,10 +65,12 @@ type CurrentExample
     | WaitingForImage ImageAlias
     | Textual Wfc.TextOptions TextExample
     | FromImage Wfc.ImageOptions Image ImageExample
+    | FromPixels Wfc.ImageOptions Pixels PixelsExample
 
 
 type alias ImageAlias = String
 
+type alias Pixels = Array (Array Color)
 
 type Msg
     = NoOp
@@ -77,6 +79,7 @@ type Msg
     | LoadImageExample ImageAlias
     | ChangeN (N Vec2)
     | GotImage ImageAlias (Result Http.Error Image)
+    | GotPixels Pixels
 
 
 textExamples =
@@ -275,6 +278,16 @@ update msg model =
                 Err _ -> model
             , Cmd.none
             )
+
+        GotPixels pixels ->
+            (
+                { example =
+                    FromPixels defaultImageOptions pixels
+                        <| PixelsExample.quick defaultImageOptions pixels
+                }
+            , Cmd.none
+            )
+
 
 
 view : Model -> Html Msg

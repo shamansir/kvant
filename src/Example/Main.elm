@@ -18,6 +18,7 @@ import Kvant.Core as Core exposing (firstStep)
 import Kvant.Plane exposing (Plane, N)
 import Kvant.Plane.Flat exposing (Boundary)
 import Kvant.Plane.Impl.Tracing exposing (TracingPlane)
+import Kvant.Plane.Impl.Image exposing (Pixels)
 import Kvant.Solver exposing (Step)
 import Kvant.Solver as Solver exposing (Options)
 import Kvant.Solver.History as H exposing (History)
@@ -104,6 +105,7 @@ type alias ExampleModel v fmt a =
 
 type alias TextExample = ExampleModel Vec2 BoundedString Char
 type alias ImageExample = ExampleModel Vec2 Image Color
+type alias PixelsExample = ExampleModel Vec2 Pixels Color
 
 
 make

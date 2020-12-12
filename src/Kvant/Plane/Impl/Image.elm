@@ -13,21 +13,24 @@ import Kvant.Plane exposing (..)
 import Kvant.Plane.Flat exposing (..)
 
 
+type alias Pixels = Array (Array Color)
+
 type alias ImagePlane = Plane Vec2 Color
+type alias PixelsPlane = Plane Vec2 Color
 
 
 transparent : Color
 transparent = Color.rgba 0.0 0.0 0.0 0.0
 
 
-make : Array (Array Color) -> ImagePlane
+make : Pixels -> ImagePlane
 make pixels =
     makeInBounds
         (loadSize pixels |> Maybe.withDefault (0, 0))
         pixels
 
 
-makeInBounds : Vec2 -> Array (Array Color) -> ImagePlane
+makeInBounds : Vec2 -> Pixels -> ImagePlane
 makeInBounds ( width, height ) pixels =
     Plane
         ( width, height )
@@ -88,7 +91,7 @@ toGrid plane =
         |> List.map (List.map <| Maybe.withDefault transparent)
 
 
-toArrayGrid : ImagePlane -> Array (Array Color)
+toArrayGrid : ImagePlane -> Pixels
 toArrayGrid =
     toGrid >> List.map Array.fromList >> Array.fromList
 
@@ -106,3 +109,7 @@ fromImageInBounds size image =
 
 toImage : ImagePlane -> Image
 toImage = toGrid >> ImageC.fromList2d
+
+
+toPixels : PixelsPlane -> Pixels
+toPixels = toGrid >> List.map (Array.fromList) >> Array.fromList
