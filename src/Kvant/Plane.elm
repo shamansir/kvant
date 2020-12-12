@@ -26,7 +26,7 @@ type Plane v a = Plane v (v -> Maybe a)
  --       it dependent on the previous function, it will require more and more memory to hold,
  --       getting over the stack limit could trigger the recalculation of all the items and using --       the dictionary as the backing function (`coords` -> `f coord` -> `Dict` -> make `f` from
  --       `Dict.get`, I would name it `refill`), which is slow, but guarantees not to blow up
- --       the Panel at some point.
+ --       the Plane at some point.
 
 type alias Cell v a = (v, Maybe a)
 

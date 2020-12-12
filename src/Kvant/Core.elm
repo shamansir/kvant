@@ -20,6 +20,7 @@ import Color exposing (Color)
 import Kvant.Vec2 exposing (..)
 import Kvant.Plane.Impl.Text as TextPlane exposing (make, toString, merge)
 import Kvant.Plane.Impl.Image as ImagePlane exposing (makeInBounds, merge)
+import Kvant.Plane.Impl.Image exposing (Pixels, makeInBounds, merge)
 import Kvant.Plane.Impl.Tracing exposing (TracingPlane, TracingCell)
 import Kvant.Plane.Impl.Tracing as TracingPlane exposing (..)
 import Kvant.Plane exposing (Plane)
@@ -59,6 +60,11 @@ type alias TextTracingPlane = TracingPlane Vec2 Char
 type alias ImageWfc = Wfc Vec2 Image Color
 type alias ImageTracingWfc = TracingWfc Vec2 Color
 type alias ImageTracingPlane = TracingPlane Vec2 Color
+
+
+type alias PixelsWfc = Wfc Vec2 Pixels Color
+type alias PixelsTracingWfc = TracingWfc Vec2 Color
+type alias PixelsTracingPlane = TracingPlane Vec2 Color
 
 
 type alias TextOptions = Solver.Options Vec2 Char
@@ -227,6 +233,48 @@ imageTracing options =
             (\_ ->
                 input
                     |> ImagePlane.fromImage
+                    |> FlatSolver.init options
+            )
+            (Plane.empty options.outputSize)
+
+
+pixels : ImageOptions -> (Pixels -> PixelsWfc)
+pixels options =
+    makeFn
+        (Convert
+            { fromInput = ImagePlane.make
+            , toElement = always ImagePlane.merge
+            , toOutput = ImagePlane.toPixels
+            }
+        )
+        (FlatSolver.init options)
+
+
+pixelsAdvancing  : ImageOptions -> (Pixels -> PixelsWfc)
+pixelsAdvancing options =
+    makeAdvancingFn
+        (Convert
+            { fromInput = ImagePlane.make
+            , toElement = always ImagePlane.merge
+            , toOutput = ImagePlane.toPixels
+            }
+        )
+        (FlatSolver.init options)
+
+
+pixelsTracing : ImageOptions -> (Pixels -> PixelsTracingWfc)
+pixelsTracing options =
+    \input ->
+        makeAdvancingFn
+            (Convert
+                { fromInput = identity
+                , toElement = Tuple.pair
+                , toOutput = identity
+                }
+            )
+            (\_ ->
+                input
+                    |> ImagePlane.make
                     |> FlatSolver.init options
             )
             (Plane.empty options.outputSize)
