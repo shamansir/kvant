@@ -5,6 +5,8 @@ module Kvant.Core exposing
     , textTracing, TextTracingWfc, TextTracingPlane
     , image, imageAdvancing, ImageWfc, ImageOptions
     , imageTracing, ImageTracingWfc, ImageTracingPlane
+    , pixels, pixelsAdvancing, PixelsWfc, PixelsOptions
+    , pixelsTracing, PixelsTracingWfc, PixelsTracingPlane
     , firstStep
     , run, step, stepAtOnce
     , BoundedString
@@ -69,6 +71,7 @@ type alias PixelsTracingPlane = TracingPlane Vec2 Color
 
 type alias TextOptions = Solver.Options Vec2 Char
 type alias ImageOptions = Solver.Options Vec2 Color
+type alias PixelsOptions = Solver.Options Vec2 Color
 
 
 type Converter v a x fmt =
@@ -238,7 +241,7 @@ imageTracing options =
             (Plane.empty options.outputSize)
 
 
-pixels : ImageOptions -> (Pixels -> PixelsWfc)
+pixels : PixelsOptions -> (Pixels -> PixelsWfc)
 pixels options =
     makeFn
         (Convert
@@ -250,7 +253,7 @@ pixels options =
         (FlatSolver.init options)
 
 
-pixelsAdvancing  : ImageOptions -> (Pixels -> PixelsWfc)
+pixelsAdvancing  : PixelsOptions -> (Pixels -> PixelsWfc)
 pixelsAdvancing options =
     makeAdvancingFn
         (Convert
@@ -262,7 +265,7 @@ pixelsAdvancing options =
         (FlatSolver.init options)
 
 
-pixelsTracing : ImageOptions -> (Pixels -> PixelsTracingWfc)
+pixelsTracing : PixelsOptions -> (Pixels -> PixelsTracingWfc)
 pixelsTracing options =
     \input ->
         makeAdvancingFn
