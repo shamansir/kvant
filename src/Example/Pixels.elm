@@ -39,5 +39,5 @@ quick options pixels =
                 )
             )
             options
-            image
+            pixels
             (pixels |> ImagePlane.makeInBounds ( width, height ))

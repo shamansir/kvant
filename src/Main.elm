@@ -29,7 +29,8 @@ import Example.Main exposing (..)
 import Example.Main as Example exposing (..)
 import Example.Flat as FlatExample exposing (..)
 import Example.Text as TextExample exposing (..)
-import Example.Pixels as ImageExample exposing (..)
+import Example.Image as ImageExample exposing (..)
+import Example.Pixels as PixelsExample exposing (..)
 import Example.Render as Render exposing (..)
 import Example.Render.Flat as Render exposing (..)
 import Example.Render.Grid as Render exposing (..)
@@ -281,13 +282,13 @@ update msg model =
 
         GotPixels pixels ->
             (
-                { example =
+                { model
+                | example =
                     FromPixels defaultImageOptions pixels
                         <| PixelsExample.quick defaultImageOptions pixels
                 }
             , Cmd.none
             )
-
 
 
 view : Model -> Html Msg
@@ -297,6 +298,8 @@ view model =
             FlatExample.make (\(size, src) -> Text.toGrid size src) Text.spec
         imageRenderer =
             FlatExample.make ImageC.toList2d Image.spec
+        pixelsRenderer =
+            FlatExample.make (Array.toList >> List.map Array.toList) Image.spec
         viewImageExample =
             Example.view ToExample imageRenderer
         viewImage image =
@@ -309,6 +312,15 @@ view model =
                         []
                         [ viewImage image
                         , Example.view ToExample imageRenderer exampleModel
+                        ]
+                FromPixels _ pixels exampleModel ->
+                    div
+                        []
+                        [ pixels
+                            |> Array.toList
+                            |> List.map Array.toList
+                            |> Render.grid Render.pixel
+                        , Example.view ToExample pixelsRenderer exampleModel
                         ]
                 NotSelected -> text "Not Selected"
                 WaitingForImage url -> text <| "Waiting for image " ++ url ++ " to load"
