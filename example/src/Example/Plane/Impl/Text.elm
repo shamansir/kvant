@@ -1,4 +1,4 @@
-module Kvant.Plane.Impl.Text exposing (..)
+module Example.Plane.Impl.Text exposing (..)
 
 import Array
 
