@@ -1,4 +1,4 @@
-module Kvant.Plane.Impl.Image exposing (..)
+module Example.Plane.Impl.Image exposing (..)
 
 
 import Array exposing (Array)
