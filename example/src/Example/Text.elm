@@ -6,11 +6,14 @@ import Kvant.Plane.Flat exposing (Boundary(..), Symmetry(..))
 import Kvant.Core as Kvant exposing (..)
 import Kvant.Solver exposing (Approach(..))
 import Kvant.Solver as Solver exposing (Step(..), Options)
-import Kvant.Plane.Impl.Text as TextPlane exposing (make)
+
+import Example.Plane.Impl.Text as TextPlane exposing (make)
 
 
 import Example.Main exposing (TextExample, Status(..), AdvanceMode(..))
 import Example.Main as Example exposing (make)
+
+type alias BoundedString = (Vec2, String)
 
 
 quick : Solver.Options Vec2 Char -> BoundedString -> TextExample

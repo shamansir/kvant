@@ -1,14 +1,14 @@
 {
-  "name": "kvant",
+  "name": "kvant-example",
   "version": "1.0.0",
-  "description": "Wave Function Collapse implementation in Elm",
+  "description": "Wave Function Collapse implementation in Elm: The example",
   "main": "index.js",
   "scripts": {
     "test": "./node_modules/elm-test/bin/elm-test",
-    "start": "cd ./example && npm start",
-    "debug": "cd ./example && npm run debug",
-    "serve": "cd ./example && npm run serve",
-    "build": "elm make"
+    "start": "elm-live ./src/Main.elm --open --port 2000",
+    "debug": "elm-live ./src/Main.elm --open -- --debug",
+    "build": "elm make ./src/Main.elm",
+    "serve": "node server.js"
   },
   "repository": {
     "type": "git",
