@@ -15,7 +15,8 @@ import Kvant.Plane.Flat exposing (Boundary(..), Symmetry(..))
 import Kvant.Core as Kvant exposing (..)
 import Kvant.Solver exposing (Approach(..))
 import Kvant.Solver as Solver exposing (Step(..), Options)
-import Kvant.Plane.Impl.Image as ImagePlane exposing (make)
+
+import Example.Plane.Impl.Image as ImagePlane exposing (make)
 
 
 quick : Solver.Options Vec2 Color -> Image -> ImageExample

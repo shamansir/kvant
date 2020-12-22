@@ -5,11 +5,12 @@ import Html exposing (..)
 import Html.Attributes exposing (..)
 
 import Kvant.Vec2 exposing (..)
-import Kvant.Plane.Impl.Text exposing (merge)
 
 import Example.Render as Render exposing (..)
 import Example.Render.Grid as Render exposing (..)
 import Example.Render.Flat as Render exposing (..)
+
+import Example.Plane.Impl.Text exposing (merge)
 
 
 spec : Spec Vec2 Char msg

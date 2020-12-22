@@ -15,8 +15,9 @@ import Example.Render.Flat as Render exposing (..)
 import Kvant.Vec2 exposing (..)
 import Kvant.Matches as Matches exposing (..)
 import Kvant.Plane exposing (Cell)
-import Kvant.Plane.Impl.Image exposing (..)
 import Kvant.Plane.Impl.Tracing exposing (..)
+
+import Example.Plane.Impl.Image exposing (merge, transparent)
 
 
 pixel : Color -> Html msg
