@@ -26,9 +26,10 @@ import Kvant.Solver.History as H exposing (History)
 import Example.Example exposing (Example)
 import Example.Advance exposing (..)
 import Example.Msg as Example exposing (Msg(..))
-import Example.Render.Renderer exposing (Renderer)
+import Example.Render.Renderer exposing (HtmlRenderer)
 import Example.Render.Block exposing (..)
 import Example.Render.Block as Block exposing (title)
+import Example.Render.Html.Block exposing (viewBlock)
 
 
 type alias ExampleId = Int
@@ -78,7 +79,7 @@ initExpands exampleModel =
 
 view
     :  (Example.Msg -> msg)
-    -> Renderer v fmt a Example.Msg
+    -> HtmlRenderer v fmt a Example.Msg
     -> Example v fmt a
     -> Html msg
 view toOtherMsg renderer exampleModel =

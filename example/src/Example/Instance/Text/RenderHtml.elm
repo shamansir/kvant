@@ -1,4 +1,4 @@
-module Example.Instance.Text.Render exposing (..)
+module Example.Instance.Text.RenderHtml exposing (..)
 
 
 import Html exposing (..)
@@ -6,14 +6,15 @@ import Html.Attributes exposing (..)
 
 import Kvant.Vec2 exposing (..)
 
+import Example.Render.Spec exposing (HtmlSpec)
 import Example.Render as Render exposing (..)
-import Example.Render.Grid as Render exposing (..)
-import Example.Render.Flat as Render exposing (..)
+import Example.Render.Html.Grid as Render exposing (..)
+import Example.Render.Html.Flat as Render exposing (..)
 
 import Example.Instance.Text.Plane exposing (merge)
 
 
-spec : Spec Vec2 Char msg
+spec : HtmlSpec Vec2 Char msg
 spec =
     { default = '?'
     , contradiction = '∅'
