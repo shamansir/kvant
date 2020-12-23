@@ -1,4 +1,4 @@
-module Example.Render.Text exposing (..)
+module Example.Instance.Text.Render exposing (..)
 
 
 import Html exposing (..)
@@ -10,7 +10,7 @@ import Example.Render as Render exposing (..)
 import Example.Render.Grid as Render exposing (..)
 import Example.Render.Flat as Render exposing (..)
 
-import Example.Plane.Impl.Text exposing (merge)
+import Example.Instance.Text.Plane exposing (merge)
 
 
 spec : Spec Vec2 Char msg
