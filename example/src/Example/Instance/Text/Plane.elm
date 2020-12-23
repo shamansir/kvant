@@ -1,4 +1,4 @@
-module Example.Plane.Impl.Text exposing (..)
+module Example.Instance.Text.Plane exposing (..)
 
 import Array
 

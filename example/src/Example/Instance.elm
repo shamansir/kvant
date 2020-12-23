@@ -17,9 +17,10 @@ import Kvant.Matches exposing (..)
 
 import Kvant.Plane.Impl.Tracing exposing (TracingPlane, TracingCell)
 
-import Example.Plane.Impl.Text as TextPlane exposing (make, toString, merge)
-import Example.Plane.Impl.Image as ImagePlane exposing (makeInBounds, merge)
-import Example.Plane.Impl.Image exposing (Pixels, makeInBounds, merge)
+import Example.Instance.Text.Plane as TextPlane exposing (make, toString, merge)
+import Example.Instance.Image.Plane as ImagePlane exposing (makeInBounds, merge)
+import Example.Instance.Text exposing (Text, BoundedString)
+import Example.Instance.Image.Plane exposing (Pixels, makeInBounds, merge)
 import Kvant.Plane.Impl.Tracing exposing (TracingPlane, TracingCell)
 import Kvant.Plane.Impl.Tracing as TracingPlane exposing (..)
 

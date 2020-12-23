@@ -1,4 +1,4 @@
-module Example.Plane.Impl.Image exposing (..)
+module Example.Instance.Image.Plane exposing (..)
 
 
 import Array exposing (Array)

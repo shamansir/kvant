@@ -1,4 +1,4 @@
-module Example.Pixels exposing (..)
+module Example.Instance.Pixels exposing (..)
 
 
 import Array
@@ -7,17 +7,20 @@ import Color exposing (Color)
 import Image exposing (Image, dimensions)
 import Image.Color as ImageC exposing (toArray2d)
 
-import Example.Main exposing (PixelsExample, Status(..), AdvanceMode(..))
-import Example.Main as Example exposing (make)
-
 import Kvant.Vec2 exposing (..)
 import Kvant.Plane exposing (Cell, N(..))
 import Kvant.Plane.Flat exposing (Boundary(..), Symmetry(..))
 import Kvant.Core as Kvant exposing (..)
 import Kvant.Solver exposing (Approach(..))
 import Kvant.Solver as Solver exposing (Step(..), Options)
-import Example.Plane.Impl.Image exposing (Pixels)
-import Example.Plane.Impl.Image as ImagePlane exposing (make)
+
+import Example.Advance exposing (Status(..), AdvanceMode(..))
+import Example.Main as Example exposing (make)
+import Example.Instance.Image exposing (Pixels)
+import Example.Instance.Image.Plane as ImagePlane exposing (make)
+
+
+type alias PixelsExample = Example Vec2 Pixels Color
 
 
 quick : Solver.Options Vec2 Color -> Pixels -> PixelsExample
