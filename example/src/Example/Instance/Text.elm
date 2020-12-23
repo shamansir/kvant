@@ -1,4 +1,4 @@
-module Example.Text exposing (..)
+module Example.Instance.Text exposing (..)
 
 import Kvant.Vec2 exposing (..)
 import Kvant.Plane exposing (Cell, N(..))
@@ -7,11 +7,15 @@ import Kvant.Core as Kvant exposing (..)
 import Kvant.Solver exposing (Approach(..))
 import Kvant.Solver as Solver exposing (Step(..), Options)
 
-import Example.Plane.Impl.Text as TextPlane exposing (make)
+import Example.Instance.Text.Plane as TextPlane exposing (make)
+
+import Example.Example exposing (Example, make)
+import Example.Example as Example exposing (make)
+import Example.Advance exposing (..)
+import Example.Instance exposing (..)
 
 
-import Example.Main exposing (TextExample, Status(..), AdvanceMode(..))
-import Example.Main as Example exposing (make)
+type alias TextExample = Example Vec2 BoundedString Char
 
 type alias BoundedString = (Vec2, String)
 

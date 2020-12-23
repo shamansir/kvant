@@ -1,4 +1,4 @@
-module Example.Flat exposing (..)
+module Example.Instance.Flat exposing (..)
 
 
 import Dict
@@ -19,7 +19,7 @@ import Kvant.Matches as Matches exposing (..)
 import Example.Render as Render exposing (..)
 import Example.Render.Grid as Render exposing (..)
 import Example.Render.Flat as Render exposing (..)
-import Example.Main exposing (Renderer)
+import Example.Render.Renderer exposing (Renderer)
 
 
 subPlanesCoords : List (Vec2, Vec2)

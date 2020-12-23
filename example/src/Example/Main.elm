@@ -18,116 +18,23 @@ import Kvant.Core as Core exposing (firstStep)
 import Kvant.Plane exposing (Plane, N)
 import Kvant.Plane.Flat exposing (Boundary)
 import Kvant.Plane.Impl.Tracing exposing (TracingPlane)
-import Example.Plane.Impl.Image exposing (Pixels)
-import Example.Text exposing (BoundedString)
 import Kvant.Solver exposing (Step)
 import Kvant.Solver as Solver exposing (Options)
 import Kvant.Solver.History as H exposing (History)
 
 
-type TracingStep v = TracingStep (Solver.Step v)
-type alias History v = H.History (Solver.Step v, TracingStep v)
-
-
-type Status v fmt a
-    = None
-    | Preparation
-    | Solving ( fmt, TracingPlane v a ) (History v)
-    | Solved ( fmt, TracingPlane v a )
-
-
-type ExampleMsg
-    = TriggerRunning
-    | TriggerTracing
-    | TriggerPreviousStep
-    | Run Random.Seed
-    | Trace Random.Seed
-    | NextStep
-    | PreviousStep Random.Seed
-    | Stop
-    | SwitchBlock Int
+import Example.Example exposing (Example)
+import Example.Advance exposing (..)
+import Example.Msg as Example exposing (Msg(..))
+import Example.Render.Renderer exposing (Renderer)
+import Example.Render.Block exposing (..)
+import Example.Render.Block as Block exposing (title)
 
 
 type alias ExampleId = Int
 
 
-type alias Renderer v fmt a msg =
-    { source : fmt -> Html msg
-    , tracing : TracingPlane v a -> Html msg
-    , tracingTiny : TracingPlane v a -> Html msg
-    , subPlanes : Plane v a -> Html msg
-    , periodicSubPlanes : Plane v a -> Html msg
-    , allViews : Plane v a -> Html msg
-    , rotationsAndFlips : Plane v a -> Html msg
-    , materialized : Plane v a -> Html msg
-    , patterns : Boundary -> N v -> Plane v a -> Html msg
-    , allSubPlanes : Boundary -> N v -> Plane v a -> Html msg
-    , step : Step v -> Html msg
-    , history : H.History (Step v) -> Html msg
-    }
-
-
-type Block v fmt a
-    = Source fmt
-    | RunOnce v (Status v fmt a)
-    | Tracing (Status v fmt a)
-    | RotationsAndFlips (Plane v a)
-    | SubPlanes (Plane v a)
-    | PeriodicSubPlanes (Plane v a)
-    | AllViews (Plane v a)
-    | Patterns (Plane v a) Boundary (N v)
-    | AllSubPlanes (Plane v a) Boundary (N v)
-    | Empty
-
-
-type BlockState
-    = Expanded
-    | Collapsed
-
-
-type AdvanceMode
-    = StepByStep
-    | AtOnce
-
-
-type alias TextBlock = Block Vec2 String Char
-
-
-type alias ExampleModel v fmt a =
-    { source : fmt
-    , sourcePlane : Plane v a
-    , options : Solver.Options v a
-    , expands : List BlockState
-    , wfc : ( Wfc v fmt a, TracingWfc v a )
-    , makeWfc : AdvanceMode -> ( Wfc v fmt a, TracingWfc v a )
-    , status : Status v fmt a
-    }
-
-
-type alias TextExample = ExampleModel Vec2 BoundedString Char
-type alias ImageExample = ExampleModel Vec2 Image Color
-type alias PixelsExample = ExampleModel Vec2 Pixels Color
-
-
-make
-    :  (AdvanceMode -> ( Wfc v fmt a, TracingWfc v a ) )
-    -> Solver.Options v a
-    -> fmt
-    -> Plane v a
-    -> ExampleModel v fmt a
-make makeWfc options src sourcePlane =
-    { source = src
-    , sourcePlane = sourcePlane
-    , options = options
-    , expands = []
-    , wfc = makeWfc AtOnce
-    , makeWfc = makeWfc
-    , status = None
-    }
-    |> initExpands
-
-
-blocks : ExampleModel v fmt a -> List (Block v fmt a)
+blocks : Example v fmt a -> List (Block v fmt a)
 blocks e =
     [ Source e.source
     , RunOnce e.options.outputSize e.status
@@ -153,10 +60,26 @@ blocks e =
     )
 
 
+initExpands : Example v fmt a -> Example v fmt a
+initExpands exampleModel =
+    { exampleModel
+    | expands =
+        blocks exampleModel
+            |> List.map
+                (\block ->
+                    case block of
+                        Source _ -> Expanded
+                        RunOnce _ _-> Expanded
+                        Tracing _ -> Expanded
+                        _ -> Collapsed
+                )
+    }
+
+
 view
-    :  (ExampleMsg -> msg)
-    -> Renderer v fmt a ExampleMsg
-    -> ExampleModel v fmt a
+    :  (Example.Msg -> msg)
+    -> Renderer v fmt a Example.Msg
+    -> Example v fmt a
     -> Html msg
 view toOtherMsg renderer exampleModel =
     let
@@ -169,7 +92,7 @@ view toOtherMsg renderer exampleModel =
                             <| toOtherMsg
                             <| SwitchBlock blockIndex
                         ]
-                        [ Html.text <| blockTitle block
+                        [ Html.text <| Block.title block
                         ]
                 , case isExpanded of
                     Expanded ->
@@ -187,9 +110,9 @@ view toOtherMsg renderer exampleModel =
 
 
 update
-    :  ExampleMsg
-    -> ExampleModel v fmt a
-    -> ( ExampleModel v fmt a, Cmd ExampleMsg )
+    :  Example.Msg
+    -> Example v fmt a
+    -> ( Example v fmt a, Cmd Example.Msg )
 update msg model =
     case msg of
 
@@ -340,69 +263,6 @@ update msg model =
             , Cmd.none )
 
 
-initExpands : ExampleModel v fmt a -> ExampleModel v fmt a
-initExpands exampleModel =
-    { exampleModel
-    | expands =
-        blocks exampleModel
-            |> List.map
-                (\block ->
-                    case block of
-                        Source _ -> Expanded
-                        RunOnce _ _-> Expanded
-                        Tracing _ -> Expanded
-                        _ -> Collapsed
-                )
-    }
-
-
-blockTitle : Block v fmt a -> String
-blockTitle block =
-    case block of
-        Source _ -> "Source"
-        RunOnce _ _ -> "Run"
-        Tracing _ -> "Trace"
-        RotationsAndFlips _ -> "Rotations and Flips"
-        SubPlanes _ -> "SubPlanes"
-        PeriodicSubPlanes _ -> "Periodic SubPlanes"
-        AllViews _ -> "Views"
-        Patterns _ _ _ -> "Patterns"
-        AllSubPlanes _ _ _ -> "All Possible SubPlanes"
-        Empty -> "?"
-
-
-doingSomething : Status v fmt a -> Bool
-doingSomething status =
-    case status of
-        None -> False
-        _ -> True
-
-
--- getExampleModel : Example -> ExampleModel v fmt a
--- getExampleModel example =
---     case example of
---        TextExample model -> model
-
-
-getCurrentPlane : Status v fmt a -> Maybe ( fmt, TracingPlane v a )
-getCurrentPlane status =
-    case status of
-        Solving plane _ -> Just plane
-        Solved plane -> Just plane
-        _ -> Nothing
-
-
-getHistory : Status v fmt a -> Maybe (History v)
-getHistory status =
-    case status of
-        Solving plane history -> Just history
-        _ -> Nothing
-
-
-unpackTracingStep : TracingStep v -> Step v
-unpackTracingStep (TracingStep step) = step
-
-
 makeSeedAnd : (Random.Seed -> msg) -> Cmd msg
 makeSeedAnd makeMsg =
     Task.perform
@@ -410,119 +270,3 @@ makeSeedAnd makeMsg =
             makeMsg <| Random.initialSeed <| Time.posixToMillis time
         )
         Time.now
-
-
-switchBlock : Int -> List BlockState -> List BlockState
-switchBlock index states =
-    states
-        |> List.indexedMap
-            (\blockIndex expandState ->
-                if index == blockIndex then
-                    case expandState of
-                        Collapsed -> Expanded
-                        Expanded -> Collapsed
-                else expandState
-            )
-
-
-viewBlock : Renderer v fmt a ExampleMsg -> Block v fmt a -> Html ExampleMsg
-viewBlock render block =
-    case block of
-
-        Source source ->
-            source |> render.source -- |> Html.map (always NoOp)
-                -- viewTextInBounds bounds
-
-        RunOnce bounds status ->
-            div []
-                [ button
-                    [ onClick TriggerRunning
-                    , disabled <| doingSomething status
-                    ]
-                    [ Html.text "Run once" ]
-                , status
-                    |> getCurrentPlane
-                    |> Maybe.map Tuple.first
-                    |> Maybe.map render.source
-                    |> Maybe.withDefault (div [] [])
-                ]
-
-        Tracing status ->
-            div []
-                [ button
-                    [ onClick TriggerTracing
-                    , disabled <| doingSomething status
-                    ]
-                    [ Html.text "Start tracing" ]
-                , button
-                    [ onClick TriggerPreviousStep
-                    , disabled <| status == None
-                    ]
-                    [ Html.text "Previous Step" ]
-                , button
-                    [ onClick NextStep
-                    , disabled <| status == None
-                    ]
-                    [ Html.text "Next Step" ]
-                , status
-                    |> getHistory
-                    |> Maybe.map H.last
-                    |> Maybe.map Tuple.first -- Tuple.second?
-                    |> Maybe.map render.step
-                    |> Maybe.withDefault (span [] [])
-                , button
-                    [ onClick Stop
-                    , disabled <| status == None
-                    ]
-                    [ Html.text "Stop" ]
-                , status
-                    |> getCurrentPlane
-                    |> Maybe.map Tuple.first
-                    |> Maybe.map render.source
-                    |> Maybe.withDefault (div [] [])
-                , status
-                    |> getCurrentPlane
-                    |> Maybe.map Tuple.second
-                    |> Maybe.map render.tracing
-                    |> Maybe.withDefault (div [] [])
-                , status
-                    |> getCurrentPlane
-                    |> Maybe.map Tuple.second
-                    |> Maybe.map render.tracingTiny
-                    |> Maybe.withDefault (div [] [])
-                , status
-                    |> getHistory
-                    |> Maybe.map (H.map Tuple.second >> H.map unpackTracingStep)
-                    |> Maybe.map render.history
-                    |> Maybe.withDefault (div [] [])
-                ]
-
-        RotationsAndFlips plane ->
-            div []
-                {-
-                [ plane |> viewMaterialized
-                , hr [] []
-                , plane |> rotate |> viewMaterialized
-                , hr [] []
-                , plane |> rotate |> flip |> viewMaterialized
-                , hr [] []
-                -}
-                [ plane |> render.rotationsAndFlips
-                ]
-
-        SubPlanes plane ->
-            plane |> render.subPlanes
-
-        PeriodicSubPlanes plane ->
-            plane |> render.periodicSubPlanes
-
-        AllViews plane ->
-            plane |> render.allViews
-
-        Patterns plane patternSearch patternSize ->
-            plane |> render.patterns patternSearch patternSize
-
-        AllSubPlanes plane patternSearch patternSize ->
-            plane |> render.allSubPlanes patternSearch patternSize
-
-        Empty -> div [] []
