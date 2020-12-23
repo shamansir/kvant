@@ -27,6 +27,7 @@ import Html.Events exposing (..)
 
 import Example.Main exposing (..)
 import Example.Main as Example exposing (..)
+import Example.Msg as Example exposing (Msg)
 import Example.Instance.Flat as FlatExample exposing (..)
 import Example.Instance.Text as TextExample exposing (..)
 import Example.Instance.Image as ImageExample exposing (..)
@@ -39,7 +40,9 @@ import Example.Instance.Text.Render as Text exposing (spec)
 import Example.Instance.Image.Render as Render exposing (..)
 import Example.Instance.Image.Render as Image exposing (spec)
 
-import Example.Instance exposing (Wfc, TextWfc, TextTracingWfc, TextTracingPlane)
+import Example.Instance exposing (Instance(..))
+import Example.Instance.Text as Wfc exposing (TextOptions)
+import Example.Instance.Image as Wfc exposing (ImageOptions)
 
 import Kvant.Core as Wfc
 import Kvant.Vec2 exposing (..)
@@ -75,7 +78,7 @@ type alias Pixels = Array (Array Color)
 
 type Msg
     = NoOp
-    | ToExample ExampleMsg
+    | ToExample Example.Msg
     | LoadTextExample Vec2 String
     | LoadImageExample ImageAlias
     | ChangeN (N Vec2)
@@ -322,15 +325,15 @@ view model =
                             |> Render.grid Render.pixel
                         , Example.view ToExample pixelsRenderer exampleModel
                         ]
-                NotSelected -> text "Not Selected"
-                WaitingForImage url -> text <| "Waiting for image " ++ url ++ " to load"
+                NotSelected -> Html.text "Not Selected"
+                WaitingForImage url -> Html.text <| "Waiting for image " ++ url ++ " to load"
         makeTextOptions =
             textExamples
                 |> List.map
                     (\source ->
                         option
                             [ value <| "t" ++ source ]
-                            [ text source ]
+                            [ Html.text source ]
                     )
         makeImagesOptions =
             imagesForOverlap
@@ -338,13 +341,13 @@ view model =
                     (\imageName ->
                         option
                             [ value <| "i" ++ imageName ]
-                            [ text imageName ]
+                            [ Html.text imageName ]
                     )
         makeOptions -- There's `optgroup` !
-            =  [ option [ {- disabled True -} ] [ text "Select example" ] ]
-            ++ [ option [ disabled True ] [ text "-----" ] ]
+            =  [ option [ {- disabled True -} ] [ Html.text "Select example" ] ]
+            ++ [ option [ disabled True ] [ Html.text "-----" ] ]
             ++ makeTextOptions
-            ++ [ option [ disabled True ] [ text "-----" ] ]
+            ++ [ option [ disabled True ] [ Html.text "-----" ] ]
             ++ makeImagesOptions
         selectionToMsg s =
             case s |> String.toList of
@@ -384,7 +387,7 @@ view model =
             , case model.example of
                 Textual options _ -> controls options
                 FromImage options _ _ -> controls options
-                _ -> text ""
+                _ -> Html.text ""
             , viewExample
             ]
 

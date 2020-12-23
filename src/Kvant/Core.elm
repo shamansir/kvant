@@ -3,6 +3,7 @@ module Kvant.Core exposing
     , firstStep
     , run, step, stepAtOnce
     , Converter(..), make, makeAdvancing
+    , makeFn, makeAdvancingFn
     )
 
 
@@ -68,6 +69,22 @@ makeAdvancing (Convert convert) solver =
                     |> Solver.apply convert.toElement solver
                     |> convert.toOutput
                 )
+
+
+makeFn : Converter v a x fmt -> (Plane v x -> Solver v a) -> (fmt -> Wfc v fmt a)
+makeFn (Convert convert as cnv) initSolver input =
+    input
+        |> convert.fromInput
+        |> initSolver
+        |> make cnv
+
+
+makeAdvancingFn : Converter v a x fmt -> (Plane v x -> Solver v a) -> (fmt -> Wfc v fmt a)
+makeAdvancingFn (Convert convert as cnv) initSolver input =
+    input
+        |> convert.fromInput
+        |> initSolver
+        |> makeAdvancing cnv
 
 
 run : Random.Seed -> Wfc v fmt a -> fmt

@@ -1,4 +1,4 @@
-module Example.Render.Image exposing (..)
+module Example.Instance.Image.Render exposing (..)
 
 
 import Html exposing (..)
@@ -17,7 +17,7 @@ import Kvant.Matches as Matches exposing (..)
 import Kvant.Plane exposing (Cell)
 import Kvant.Plane.Impl.Tracing exposing (..)
 
-import Example.Plane.Impl.Image exposing (merge, transparent)
+import Example.Instance.Image.Plane exposing (merge, transparent)
 
 
 pixel : Color -> Html msg
