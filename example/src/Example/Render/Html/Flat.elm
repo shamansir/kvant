@@ -1,4 +1,4 @@
-module Example.Render.Flat exposing (..)
+module Example.Render.Html.Flat exposing (..)
 
 
 import Dict
@@ -19,7 +19,7 @@ import Kvant.Vec2 exposing (..)
 import Kvant.Occurrence exposing (frequencyToFloat)
 
 import Example.Render as Render exposing (..)
-import Example.Render.Grid as Render exposing (..)
+import Example.Render.Html.Grid as Render exposing (..)
 
 
 coordText : Vec2 -> String

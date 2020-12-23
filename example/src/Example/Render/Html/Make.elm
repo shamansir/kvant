@@ -1,4 +1,4 @@
-module Example.Instance.Flat exposing (..)
+module Example.Render.Html.Make exposing (..)
 
 
 import Dict
@@ -17,9 +17,10 @@ import Kvant.Solver.History as H exposing (..)
 import Kvant.Matches as Matches exposing (..)
 
 import Example.Render as Render exposing (..)
-import Example.Render.Grid as Render exposing (..)
-import Example.Render.Flat as Render exposing (..)
-import Example.Render.Renderer exposing (Renderer)
+import Example.Render.Html.Grid as Render exposing (..)
+import Example.Render.Html.Flat as Render exposing (..)
+import Example.Render.Renderer exposing (HtmlRenderer)
+import Example.Render.Spec exposing (HtmlSpec)
 
 
 subPlanesCoords : List (Vec2, Vec2)
@@ -45,8 +46,8 @@ periodicSubPlanesCoords =
 
 make
     :  (fmt -> List (List a))
-    -> Spec Vec2 a msg
-    -> Renderer Vec2 fmt a msg
+    -> HtmlSpec Vec2 a msg
+    -> HtmlRenderer Vec2 fmt a msg
 make fmtToGrid spec =
     let
 

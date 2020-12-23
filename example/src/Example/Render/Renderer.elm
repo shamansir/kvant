@@ -1,6 +1,7 @@
 module Example.Render.Renderer exposing (..)
 
 import Html exposing (Html)
+import Canvas exposing (Renderable)
 
 import Kvant.Plane exposing (Plane, N)
 import Kvant.Plane.Flat exposing (Boundary)
@@ -9,17 +10,22 @@ import Kvant.Solver exposing (Step)
 import Kvant.Solver.History exposing (History)
 
 
-type alias Renderer v fmt a msg =
-    { source : fmt -> Html msg
-    , tracing : TracingPlane v a -> Html msg
-    , tracingTiny : TracingPlane v a -> Html msg
-    , subPlanes : Plane v a -> Html msg
-    , periodicSubPlanes : Plane v a -> Html msg
-    , allViews : Plane v a -> Html msg
-    , rotationsAndFlips : Plane v a -> Html msg
-    , materialized : Plane v a -> Html msg
-    , patterns : Boundary -> N v -> Plane v a -> Html msg
-    , allSubPlanes : Boundary -> N v -> Plane v a -> Html msg
-    , step : Step v -> Html msg
-    , history : History (Step v) -> Html msg
+type alias HtmlRenderer v fmt a msg = Renderer v fmt a (Html msg)
+
+type alias CanvasRenderer v fmt a = Renderer v fmt a Renderable
+
+
+type alias Renderer v fmt a target =
+    { source : fmt -> target
+    , tracing : TracingPlane v a -> target
+    , tracingTiny : TracingPlane v a -> target
+    , subPlanes : Plane v a -> target
+    , periodicSubPlanes : Plane v a -> target
+    , allViews : Plane v a -> target
+    , rotationsAndFlips : Plane v a -> target
+    , materialized : Plane v a -> target
+    , patterns : Boundary -> N v -> Plane v a -> target
+    , allSubPlanes : Boundary -> N v -> Plane v a -> target
+    , step : Step v -> target
+    , history : History (Step v) -> target
     }

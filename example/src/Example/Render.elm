@@ -14,17 +14,6 @@ import Kvant.Plane.Impl.Tracing exposing (..)
 import Kvant.Matches as Matches exposing (..)
 
 
-type alias Spec v a msg =
-    { default : a
-    , contradiction : a
-    , v : v -> Html msg
-    , a : a -> Html msg
-    , merge : List a -> a
-    , scaled : Float -> a -> Html msg
-    , vToString : v -> String
-    }
-
-
 withIndex : Int -> Html msg -> Html msg
 withIndex index subView =
     div []

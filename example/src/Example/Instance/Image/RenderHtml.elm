@@ -1,4 +1,4 @@
-module Example.Instance.Image.Render exposing (..)
+module Example.Instance.Image.RenderHtml exposing (..)
 
 
 import Html exposing (..)
@@ -9,8 +9,9 @@ import Color as Color exposing (..)
 import Image exposing (Image)
 
 import Example.Render as Render exposing (..)
-import Example.Render.Grid as Render exposing (..)
-import Example.Render.Flat as Render exposing (..)
+import Example.Render.Spec exposing (HtmlSpec)
+import Example.Render.Html.Grid as Render exposing (..)
+import Example.Render.Html.Flat as Render exposing (..)
 
 import Kvant.Vec2 exposing (..)
 import Kvant.Matches as Matches exposing (..)
@@ -40,7 +41,7 @@ scaled scale c =
         ]
 
 
-spec : Spec Vec2 Color msg
+spec : HtmlSpec Vec2 Color msg
 spec =
     { default = transparent
     , contradiction = Color.purple
