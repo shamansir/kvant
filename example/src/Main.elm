@@ -229,6 +229,7 @@ update msg model =
                 { model
                 | example =
                     Textual defaultTextOptions
+                        <| initExpands
                         <| TextExample.quick defaultTextOptions ( size, source )
                 }
             , Cmd.none
@@ -258,6 +259,7 @@ update msg model =
                         { model
                         | example =
                             FromImage newOptions image
+                                    <| initExpands
                                     <| ImageExample.quick newOptions image
                         }
                 _ -> model
@@ -275,6 +277,7 @@ update msg model =
                             WaitingForImage waitingForAlias ->
                                 if waitingForAlias == gotAlias then
                                     FromImage defaultImageOptions image
+                                        <| initExpands
                                         <| ImageExample.quick defaultImageOptions image
                                 else model.example
                             _ -> model.example
@@ -288,6 +291,7 @@ update msg model =
                 { model
                 | example =
                     FromPixels defaultImageOptions pixels
+                        <| initExpands
                         <| PixelsExample.quick defaultImageOptions pixels
                 }
             , Cmd.none
