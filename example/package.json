@@ -5,11 +5,11 @@
   "main": "index.js",
   "scripts": {
     "test": "./node_modules/elm-test/bin/elm-test",
-    "start": "elm-live ./mehanik/Main.elm --open --port 2000",
-    "start:truchet": "elm-live ./truchet/Main.elm --open --port 2000",
-    "debug": "elm-live ./mehanik/Main.elm --open -- --debug",
-    "build": "elm make ./mehanik/Main.elm",
-    "build:truchet": "elm make ./truchet/Main.elm",
+    "start": "elm-live ./mehanik/Mehanik.elm --open --port 2000",
+    "start:truchet": "elm-live ./truchet/Truchet.elm --open --port 2000",
+    "debug": "elm-live ./mehanik/Mehanik.elm --open -- --debug",
+    "build": "elm make ./mehanik/Mehanik.elm",
+    "build:truchet": "elm make ./truchet/Truchet.elm",
     "serve": "node server.js"
   },
   "repository": {
