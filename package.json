@@ -5,7 +5,8 @@
   "main": "index.js",
   "scripts": {
     "test": "./node_modules/elm-test/bin/elm-test",
-    "start": "cd ./example && npm start",
+    "start": "cd ./example && npm build && npm start",
+    "start:truchet": "cd ./example && npm build:truchet && npm run start:truchet",
     "debug": "cd ./example && npm run debug",
     "serve": "cd ./example && npm run serve",
     "build": "elm make"
