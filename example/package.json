@@ -6,7 +6,7 @@
   "scripts": {
     "test": "./node_modules/elm-test/bin/elm-test",
     "start": "elm-live ./mehanik/Mehanik.elm --open --port 2000",
-    "start:truchet": "elm-live ./truchet/Truchet.elm --open --start-page ./truchet/truchet.html --port 2000 -- --output=./truchet/kvant.js",
+    "start:truchet": "elm-live ./truchet/KvantProxy.elm --open --start-page ./truchet/truchet.html --port 2000 -- --output=./truchet/kvant-proxy.js",
     "build": "elm make ./mehanik/Mehanik.elm",
     "build:truchet": "elm make ./truchet/Truchet.elm",
     "serve": "node server.js"

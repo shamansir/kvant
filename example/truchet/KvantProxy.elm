@@ -1,4 +1,4 @@
-port module Truchet exposing (..)
+port module KvantProxy exposing (..)
 
 
 import Array exposing (Array)
