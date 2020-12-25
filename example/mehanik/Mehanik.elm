@@ -104,6 +104,14 @@ textExamples =
         "4567" ++
         "89AB" ++
         "CDEF"
+    ,
+        "Platformer"
+    ,
+        "ColoredCity"
+    ,
+        "Dungeon"
+    ,
+        "3Bricks"
     ]
 
 
@@ -310,17 +318,20 @@ view model =
         pixelsRenderer =
             FlatExample.make (Array.toList >> List.map Array.toList) Image.spec
         viewImageExample =
-            Example.view ToExample imageRenderer
+            Example.viewHtml imageRenderer >> Html.map ToExample
         viewImage image =
             Render.grid Render.pixel <| ImageC.toList2d image
-        viewExample =
-            case model.example of
-                Textual _ exampleModel -> Example.view ToExample textRenderer exampleModel
+        viewExample example =
+            case example of
+                Textual _ exampleModel ->
+                    Example.viewHtml textRenderer exampleModel
+                        |> Html.map ToExample
                 FromImage _ image exampleModel ->
                     div
                         []
                         [ viewImage image
-                        , Example.view ToExample imageRenderer exampleModel
+                        , Example.viewHtml imageRenderer exampleModel
+                            |> Html.map ToExample
                         ]
                 FromPixels _ pixels exampleModel ->
                     div
@@ -329,7 +340,8 @@ view model =
                             |> Array.toList
                             |> List.map Array.toList
                             |> Render.grid Render.pixel
-                        , Example.view ToExample pixelsRenderer exampleModel
+                        , Example.viewHtml pixelsRenderer exampleModel
+                            |> Html.map ToExample
                         ]
                 NotSelected -> Html.text "Not Selected"
                 WaitingForImage url -> Html.text <| "Waiting for image " ++ url ++ " to load"
@@ -384,17 +396,65 @@ view model =
                         ]
 
                 _ -> div [] []
+        exampleFrame msg =
+            div
+                [ style "margin" "5px"
+                , style "padding" "10px"
+                , style "border" "1px solid black"
+                , style "border-radius" "5px"
+                , style "background-color" "#f5f5f5"
+                , style "cursor" "pointer"
+                , onClick msg
+                ]
+        examples
+            = div
+                [ style "display" "flex"
+                , style "overflow" "scroll"
+                ]
+                (
+                    (textExamples
+                    |> List.map (Tuple.pair (4, 4))
+                    |> List.map
+                        (\(size, str) ->
+                            exampleFrame (LoadTextExample size str)
+                                <| List.singleton
+                                <| Html.map ToExample
+                                <| Example.previewHtml textRenderer (size, str)
+                        )
+                    )
+                ++
+                    (imagesForOverlap
+                    |> List.map
+                        (\imgAlias ->
+                            case model.images |> Dict.get imgAlias of
+                                Just image ->
+                                    exampleFrame (LoadImageExample imgAlias)
+                                        <| List.singleton
+                                        <| Html.map ToExample
+                                        <| Example.previewHtml imageRenderer image
+                                Nothing ->
+                                    exampleFrame (LoadImageExample imgAlias)
+                                        <| List.singleton
+                                        <| Html.text <| "Loading... " ++ imgAlias
+                            -- exampleFrame (LoadTextExample size str)
+                            --     <| List.singleton
+                            --     <| Html.map ToExample
+                            --     <| Example.previewHtml textRenderer (size, str)
+                        )
+                    )
+                )
     in
         div
-            []
-            [ select
+            [ style "font-family" "sans-serif" ]
+            [ examples
+            {-, select
                 [ onInput selectionToMsg ]
-                makeOptions
+                makeOptions -}
             , case model.example of
                 Textual options _ -> controls options
                 FromImage options _ _ -> controls options
                 _ -> Html.text ""
-            , viewExample
+            , viewExample model.example
             ]
 
 
@@ -404,13 +464,13 @@ main =
         { init =
             \_ _ _ ->
                 ( init
-                , requestImages [ "Hogs" ]
+                , requestImages imagesForOverlap
                 )
         , onUrlChange = always NoOp
         , onUrlRequest = always NoOp
         , subscriptions = always Sub.none
         , update = update
-        , view = \model -> { title = "Kvant", body = [ view model ] }
+        , view = \model -> { title = "Kvant : Mehanik", body = [ view model ] }
         }
 
 

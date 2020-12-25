@@ -39,11 +39,12 @@ blocks : Example v fmt a -> List (Block v fmt a)
 blocks e =
     [ Source e.source
     , RunOnce e.options.outputSize e.status
-    , Tracing e.status
+    {-, Tracing e.status
     , RotationsAndFlips e.sourcePlane
     , SubPlanes e.sourcePlane
     , PeriodicSubPlanes e.sourcePlane
     , AllViews e.sourcePlane
+    -}
     ]
     ++
     (case e.options.approach of
@@ -77,12 +78,19 @@ initExpands exampleModel =
     }
 
 
-view
-    :  (Example.Msg -> msg)
-    -> HtmlRenderer v fmt a Example.Msg
+previewHtml
+    :  HtmlRenderer v fmt a Example.Msg
+    -> fmt
+    -> Html Example.Msg
+previewHtml renderer source =
+    viewBlock renderer <| Source source
+
+
+viewHtml
+    :  HtmlRenderer v fmt a Example.Msg
     -> Example v fmt a
-    -> Html msg
-view toOtherMsg renderer exampleModel =
+    -> Html Example.Msg
+viewHtml renderer example =
     let
         viewBlockItem blockIndex ( isExpanded, block ) =
             div []
@@ -90,7 +98,6 @@ view toOtherMsg renderer exampleModel =
                     span
                         [ style "cursor" "pointer"
                         , onClick
-                            <| toOtherMsg
                             <| SwitchBlock blockIndex
                         ]
                         [ Html.text <| Block.title block
@@ -98,13 +105,12 @@ view toOtherMsg renderer exampleModel =
                 , case isExpanded of
                     Expanded ->
                         viewBlock renderer block
-                            |> Html.map toOtherMsg
                     Collapsed -> Html.text "..."
                 ]
     in
         div []
-            (blocks exampleModel
-                |> List.map2 Tuple.pair exampleModel.expands
+            (blocks example
+                |> List.map2 Tuple.pair example.expands
                 |> List.indexedMap viewBlockItem
                 |> List.intersperse (hr [] [])
             )
