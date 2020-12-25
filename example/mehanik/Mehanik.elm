@@ -32,7 +32,7 @@ import Example.Instance.Image as Wfc exposing (ImageOptions)
 import Example.Main exposing (..)
 import Example.Main as Example exposing (..)
 import Example.Msg as Example exposing (Msg)
-import Example.Render.Html.Make as FlatExample exposing (..)
+import Example.Render.Html.Make as HtmlRenderer exposing (..)
 import Example.Render as Render exposing (..)
 import Example.Render.Html.Flat as Render exposing (..)
 import Example.Render.Html.Grid as Render exposing (..)
@@ -68,7 +68,6 @@ type alias Model =
 
 type CurrentExample
     = NotSelected
-    | WaitingForImage ImageAlias
     | Textual Wfc.TextOptions TextExample
     | FromImage Wfc.ImageOptions Image ImageExample
     | FromPixels Wfc.ImageOptions Pixels PixelsExample
@@ -81,8 +80,8 @@ type alias Pixels = Array (Array Color)
 type Msg
     = NoOp
     | ToExample Example.Msg
-    | LoadTextExample Vec2 String
-    | LoadImageExample ImageAlias
+    | SwitchToTextExample Vec2 String
+    | SwitchToImageExample Image
     | ChangeN (N Vec2)
     | GotImage ImageAlias (Result Http.Error Image)
     | GotPixels Pixels
@@ -234,7 +233,7 @@ update msg model =
                         )
                 _ -> ( model, Cmd.none )
 
-        LoadTextExample size source ->
+        SwitchToTextExample size source ->
             (
                 { model
                 | example =
@@ -245,12 +244,15 @@ update msg model =
             , Cmd.none
             )
 
-        LoadImageExample imageAlias ->
+        SwitchToImageExample image ->
             (
                 { model
-                | example = WaitingForImage imageAlias
+                | example =
+                    FromImage defaultImageOptions image
+                        <| initExpands
+                        <| ImageExample.quick defaultImageOptions image
                 }
-            , requestImages [ imageAlias ]
+            , Cmd.none
             )
 
         ChangeN n ->
@@ -273,7 +275,8 @@ update msg model =
                                     <| ImageExample.quick newOptions image
                         }
                 _ -> model
-            , Cmd.none )
+            , Cmd.none
+            )
 
         GotImage gotAlias result ->
             ( case result of
@@ -282,15 +285,6 @@ update msg model =
                     | images =
                         model.images
                             |> Dict.insert gotAlias image
-                    , example =
-                        case model.example of
-                            WaitingForImage waitingForAlias ->
-                                if waitingForAlias == gotAlias then
-                                    FromImage defaultImageOptions image
-                                        <| initExpands
-                                        <| ImageExample.quick defaultImageOptions image
-                                else model.example
-                            _ -> model.example
                     }
                 Err _ -> model
             , Cmd.none
@@ -312,11 +306,11 @@ view : Model -> Html Msg
 view model =
     let
         textRenderer =
-            FlatExample.make (\(size, src) -> Text.toGrid size src) Text.spec
+            HtmlRenderer.make (\(size, src) -> Text.toGrid size src) Text.spec
         imageRenderer =
-            FlatExample.make ImageC.toList2d Image.spec
+            HtmlRenderer.make ImageC.toList2d Image.spec
         pixelsRenderer =
-            FlatExample.make (Array.toList >> List.map Array.toList) Image.spec
+            HtmlRenderer.make (Array.toList >> List.map Array.toList) Image.spec
         viewImageExample =
             Example.viewHtml imageRenderer >> Html.map ToExample
         viewImage image =
@@ -344,37 +338,7 @@ view model =
                             |> Html.map ToExample
                         ]
                 NotSelected -> Html.text "Not Selected"
-                WaitingForImage url -> Html.text <| "Waiting for image " ++ url ++ " to load"
-        makeTextOptions =
-            textExamples
-                |> List.map
-                    (\source ->
-                        option
-                            [ value <| "t" ++ source ]
-                            [ Html.text source ]
-                    )
-        makeImagesOptions =
-            imagesForOverlap
-                |> List.map
-                    (\imageName ->
-                        option
-                            [ value <| "i" ++ imageName ]
-                            [ Html.text imageName ]
-                    )
-        makeOptions -- There's `optgroup` !
-            =  [ option [ {- disabled True -} ] [ Html.text "Select example" ] ]
-            ++ [ option [ disabled True ] [ Html.text "-----" ] ]
-            ++ makeTextOptions
-            ++ [ option [ disabled True ] [ Html.text "-----" ] ]
-            ++ makeImagesOptions
-        selectionToMsg s =
-            case s |> String.toList of
-                marker::rest ->
-                    case marker of
-                        'i' -> LoadImageExample <| String.fromList rest
-                        't' -> LoadTextExample (4, 4) <| String.fromList rest
-                        _ -> NoOp
-                _ -> NoOp
+                -- WaitingForImage url -> Html.text <| "Waiting for image " ++ url ++ " to load"
         controls options  =
             case options.approach of
                 Overlapping { patternSize } ->
@@ -416,10 +380,10 @@ view model =
                     |> List.map (Tuple.pair (4, 4))
                     |> List.map
                         (\(size, str) ->
-                            exampleFrame (LoadTextExample size str)
-                                <| List.singleton
-                                <| Html.map ToExample
-                                <| Example.previewHtml textRenderer (size, str)
+                            exampleFrame (SwitchToTextExample size str)
+                                [ Example.previewHtml textRenderer (size, str)
+                                    |> Html.map ToExample
+                                ]
                         )
                     )
                 ++
@@ -428,18 +392,18 @@ view model =
                         (\imgAlias ->
                             case model.images |> Dict.get imgAlias of
                                 Just image ->
+                                    exampleFrame (SwitchToImageExample image)
+                                        [ img [ src <| Image.toPngUrl image ] []
+                                        ]
+                                    {-
                                     exampleFrame (LoadImageExample imgAlias)
                                         <| List.singleton
                                         <| Html.map ToExample
                                         <| Example.previewHtml imageRenderer image
+                                    -}
                                 Nothing ->
-                                    exampleFrame (LoadImageExample imgAlias)
-                                        <| List.singleton
-                                        <| Html.text <| "Loading... " ++ imgAlias
-                            -- exampleFrame (LoadTextExample size str)
-                            --     <| List.singleton
-                            --     <| Html.map ToExample
-                            --     <| Example.previewHtml textRenderer (size, str)
+                                    exampleFrame NoOp
+                                        [ Html.text <| "Loading... " ++ imgAlias ]
                         )
                     )
                 )
