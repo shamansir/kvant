@@ -62,7 +62,7 @@ import Kvant.Solver.History as H exposing (..)
 
 type alias Model =
     { example : CurrentExample
-    , images : Dict ImageAlias Image
+    , images : Dict ImageAlias (Result Http.Error Image)
     }
 
 
@@ -279,14 +279,12 @@ update msg model =
             )
 
         GotImage gotAlias result ->
-            ( case result of
-                Ok image ->
-                    { model
-                    | images =
-                        model.images
-                            |> Dict.insert gotAlias image
-                    }
-                Err _ -> model
+            (
+                { model
+                | images =
+                    model.images
+                        |> Dict.insert gotAlias result
+                }
             , Cmd.none
             )
 
@@ -391,9 +389,15 @@ view model =
                     |> List.map
                         (\imgAlias ->
                             case model.images |> Dict.get imgAlias of
-                                Just image ->
+                                Just (Ok image) ->
                                     exampleFrame (SwitchToImageExample image)
-                                        [ img [ src <| Image.toPngUrl image ] []
+                                        [ img
+                                            [ src <| Image.toPngUrl image
+                                            , style "min-width" "50px"
+                                            , style "min-height" "50px"
+                                            , style "image-rendering" "pixelated"
+                                            ]
+                                            []
                                         ]
                                     {-
                                     exampleFrame (LoadImageExample imgAlias)
@@ -401,9 +405,12 @@ view model =
                                         <| Html.map ToExample
                                         <| Example.previewHtml imageRenderer image
                                     -}
+                                Just (Err error) ->
+                                    exampleFrame NoOp
+                                        [ Html.text <| imgAlias ++ ": Error " ++ errorToString error ]
                                 Nothing ->
                                     exampleFrame NoOp
-                                        [ Html.text <| "Loading... " ++ imgAlias ]
+                                        [ Html.text <| imgAlias ++ ": Loading..." ]
                         )
                     )
                 )
@@ -453,7 +460,7 @@ requestImages : List ImageAlias -> Cmd Msg
 requestImages = List.map requestImage >> Cmd.batch
 
 
-loadImage : Http.Response Bytes -> Result Http.Error (Image)
+loadImage : Http.Response Bytes -> Result Http.Error Image
 loadImage response =
     case response of
         Http.BadUrl_ url ->
@@ -475,6 +482,25 @@ loadImage response =
 
             Nothing ->
               Err (Http.BadBody "Image failed to be decoded")
+
+
+errorToString : Http.Error -> String
+errorToString error =
+    case error of
+        Http.BadUrl url ->
+            "The URL " ++ url ++ " was invalid"
+        Http.Timeout ->
+            "Unable to reach the server, try again"
+        Http.NetworkError ->
+            "Unable to reach the server, check your network connection"
+        Http.BadStatus 500 ->
+            "The server had a problem, try again later"
+        Http.BadStatus 400 ->
+            "Verify your information and try again"
+        Http.BadStatus _ ->
+            "Unknown error"
+        Http.BadBody errorMessage ->
+            errorMessage
 
 
 changeN : N Vec2 -> Solver.Options Vec2 a -> Solver.Options Vec2 a
