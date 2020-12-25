@@ -1,6 +1,7 @@
 elm-stuff
 node_modules
-index.html
+/index.html
+/example/index.html
 
 .DS_Store
 .idea/
