@@ -2,6 +2,7 @@ elm-stuff
 node_modules
 /index.html
 /example/index.html
+/example/truchet/kvant.js
 
 .DS_Store
 .idea/
