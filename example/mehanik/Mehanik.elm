@@ -32,18 +32,13 @@ import Example.Instance.Image as Wfc exposing (ImageOptions)
 import Example.Main exposing (..)
 import Example.Main as Example exposing (..)
 import Example.Msg as Example exposing (Msg)
-import Example.Render.Html.Make as HtmlRenderer exposing (..)
 import Example.Render as Render exposing (..)
-import Example.Render.Html.Flat as Render exposing (..)
-import Example.Render.Html.Grid as Render exposing (..)
 
 import Example.Instance.Text as TextExample exposing (..)
 import Example.Instance.Image as ImageExample exposing (..)
 import Example.Instance.Pixels as PixelsExample exposing (..)
-import Example.Instance.Text.RenderHtml as Render exposing (..)
-import Example.Instance.Text.RenderHtml as Text exposing (spec)
-import Example.Instance.Image.RenderHtml as Render exposing (..)
-import Example.Instance.Image.RenderHtml as Image exposing (spec)
+import Example.Instance.Text.Render as TextRenderer exposing (make)
+import Example.Instance.Image.Render as ImageRenderer exposing (make)
 import Example.Instance.Text.Plane exposing (TextPlane)
 import Example.Instance.Text.Plane as Text exposing (toGrid)
 import Example.Instance.Text.Plane as TextPlane exposing (make)
@@ -238,7 +233,6 @@ update msg model =
                 { model
                 | example =
                     Textual defaultTextOptions
-                        <| initExpands
                         <| TextExample.quick defaultTextOptions ( size, source )
                 }
             , Cmd.none
@@ -249,7 +243,6 @@ update msg model =
                 { model
                 | example =
                     FromImage defaultImageOptions image
-                        <| initExpands
                         <| ImageExample.quick defaultImageOptions image
                 }
             , Cmd.none
@@ -271,7 +264,6 @@ update msg model =
                         { model
                         | example =
                             FromImage newOptions image
-                                    <| initExpands
                                     <| ImageExample.quick newOptions image
                         }
                 _ -> model
@@ -293,7 +285,6 @@ update msg model =
                 { model
                 | example =
                     FromPixels defaultImageOptions pixels
-                        <| initExpands
                         <| PixelsExample.quick defaultImageOptions pixels
                 }
             , Cmd.none
@@ -303,37 +294,33 @@ update msg model =
 view : Model -> Html Msg
 view model =
     let
+        {-
         textRenderer =
-            HtmlRenderer.make (\(size, src) -> Text.toGrid size src) Text.spec
+            TextRenderer.make (\(size, src) -> Text.toGrid size src) Text.spec
         imageRenderer =
             HtmlRenderer.make ImageC.toList2d Image.spec
         pixelsRenderer =
-            HtmlRenderer.make (Array.toList >> List.map Array.toList) Image.spec
+            HtmlRenderer.make (Array.toList >> List.map Array.toList) Image.spec -}
         viewImageExample =
-            Example.viewHtml imageRenderer >> Html.map ToExample
-        viewImage image =
-            Render.grid Render.pixel <| ImageC.toList2d image
+            Example.view ImageRenderer.make >> Html.map ToExample
+        -- viewImage image =
+        --     Render.grid Render.pixel <| ImageC.toList2d image
         viewExample example =
             case example of
                 Textual _ exampleModel ->
-                    Example.viewHtml textRenderer exampleModel
-                        |> Html.map ToExample
+                    Example.view TextRenderer.make exampleModel
+                        -- |> Html.map ToExample
                 FromImage _ image exampleModel ->
                     div
                         []
-                        [ viewImage image
-                        , Example.viewHtml imageRenderer exampleModel
-                            |> Html.map ToExample
+                        [ Example.view ImageRenderer.make exampleModel
+                            -- |> Html.map ToExample
                         ]
                 FromPixels _ pixels exampleModel ->
                     div
                         []
-                        [ pixels
-                            |> Array.toList
-                            |> List.map Array.toList
-                            |> Render.grid Render.pixel
-                        , Example.viewHtml pixelsRenderer exampleModel
-                            |> Html.map ToExample
+                        [ {- Example.view ImageRenderer.make exampleModel
+                            |> Html.map ToExample -}
                         ]
                 NotSelected -> Html.text "Not Selected"
                 -- WaitingForImage url -> Html.text <| "Waiting for image " ++ url ++ " to load"
@@ -379,8 +366,8 @@ view model =
                     |> List.map
                         (\(size, str) ->
                             exampleFrame (SwitchToTextExample size str)
-                                [ Example.previewHtml textRenderer (size, str)
-                                    |> Html.map ToExample
+                                [ Example.preview TextRenderer.make (size, str)
+                                    -- |> Html.map ToExample
                                 ]
                         )
                     )

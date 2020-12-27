@@ -1,4 +1,4 @@
-module Example.Instance.Text.RenderHtml exposing (..)
+module Example.Instance.Text.Render exposing (..)
 
 
 import Html exposing (..)
@@ -6,15 +6,13 @@ import Html.Attributes exposing (..)
 
 import Kvant.Vec2 exposing (..)
 
-import Example.Render.Spec exposing (HtmlSpec)
 import Example.Render as Render exposing (..)
-import Example.Render.Html.Grid as Render exposing (..)
-import Example.Render.Html.Flat as Render exposing (..)
 
+import Example.Instance.Text exposing (BoundedString)
 import Example.Instance.Text.Plane exposing (merge)
 
 
-spec : HtmlSpec Vec2 Char msg
+{- spec : HtmlSpec Vec2 Char msg
 spec =
     { default = '?'
     , contradiction = '∅'
@@ -23,6 +21,14 @@ spec =
     , merge = merge
     , scaled = scaled
     , vToString = Render.coordText
+    } -}
+
+make : Renderer Vec2 BoundedString Char (Html msg)
+make =
+    { source = always <| div [] []
+    , plane = always <| div [] []
+    , tracingPlane = always <| div [] []
+    , tracingCell = always <| div [] []
     }
 
 
