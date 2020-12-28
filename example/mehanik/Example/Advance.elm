@@ -30,6 +30,15 @@ doingSomething status =
         _ -> True
 
 
+isSolving : Status v fmt a -> Bool
+isSolving status =
+    case status of
+        None -> False
+        Preparation -> False
+        Solved _ -> False
+        Solving _ _ -> True
+
+
 -- getExampleModel : Example -> ExampleModel v fmt a
 -- getExampleModel example =
 --     case example of

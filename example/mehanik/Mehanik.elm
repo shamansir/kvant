@@ -28,6 +28,7 @@ import Html.Events exposing (..)
 import Example.Instance exposing (Instance(..))
 import Example.Instance.Text as Wfc exposing (TextOptions)
 import Example.Instance.Image as Wfc exposing (ImageOptions)
+import Example.Advance exposing (..)
 
 import Example.Main exposing (..)
 import Example.Main as Example exposing (..)
@@ -323,47 +324,86 @@ view model =
                         ]
                 NotSelected -> Html.text "Not Selected"
                 -- WaitingForImage url -> Html.text <| "Waiting for image " ++ url ++ " to load"
-        fancyEmojiButton label msg =
+        fancyButton isEnabled label msg =
             button
                 [ onClick msg
                 , style "border" "none"
                 , style "background" "none"
                 , style "cursor" "pointer"
                 , style "outline" "none"
+                , style "opacity" <| if isEnabled then "1.0" else "0.5"
                 ]
                 [ Html.text label ]
-        fancyButton label msg =
-            button
-                [ onClick msg
-                , style "border" "1px solid black"
+        checkbox isChecked label msg =
+            span
+                []
+                [ input
+                    [ type_ "radio"
+                    , onClick msg
+                    , checked isChecked
+                    , style "border"
+                        <| if isChecked
+                            then "1px solid aqua"
+                            else "1px solid black"
+                    , style "padding" "5px"
+                    , style "margin" "5px"
+                    , style "background" "none"
+                    , style "cursor" "pointer"
+                    , style "outline" "none"
+                    , style "display" "inline-block"
+                    , value label
+                    ] []
+                , Html.text label ]
+        controlPanel =
+            div [ style "display" "flex"
                 , style "padding" "5px"
                 , style "margin" "5px"
-                , style "background" "none"
-                , style "cursor" "pointer"
-                , style "outline" "none"
-                , style "display" "inline-block"
+                , style "border" "1px solid black"
+                , style "border-radius" "3px"
+                , style "width" "fit-content"
                 ]
-                [ Html.text label ]
         controls options  =
             case options.approach of
                 Overlapping { patternSize } ->
 
-                    div [ style "display" "flex"
-                        , style "padding" "5px"
-                        , style "margin" "5px"
-                        , style "border" "1px solid black"
-                        , style "border-radius" "3px"
-                        , style "width" "fit-content"
-                        ]
-                        [ fancyEmojiButton "▶️" Example.TriggerRunning |> Html.map ToExample
-                        , fancyEmojiButton "⏭️" Example.TriggerTracing |> Html.map ToExample
-                        , fancyEmojiButton "⏭️" Example.NextStep |> Html.map ToExample
-                        , fancyEmojiButton "⏮️" Example.TriggerPreviousStep |> Html.map ToExample
-                        -- , fancyEmojiButton "▶️" Example.TriggerFastForward |> Html.map ToExample
-                        , fancyButton "2x" <| ChangeN <| N (2, 2)
-                        , fancyButton "3x" <| ChangeN <| N (3, 3)
-                        ]
+                    div
+                        []
+                        [ controlPanel
+                            [ fancyButton
+                                (not <| isSolving model.example)
+                                "▶️"
+                                Example.TriggerRunning
+                                |> Html.map ToExample
+                            , fancyButton
+                                True
+                                "⏭️"
+                                (if not <| isSolving model.example
+                                    then Example.TriggerTracing
+                                    else Example.NextStep
+                                )
+                                |> Html.map ToExample
+                            , fancyButton
+                                (isSolving model.example)
+                                "⏮️"
+                                Example.TriggerPreviousStep
+                                |> Html.map ToExample
+                            , fancyButton
+                                (isSolving model.example)
+                                "⏹️"
+                                Example.Stop
+                                |> Html.map ToExample
+                            ]
 
+                        , controlPanel
+                            [ checkbox
+                                (case patternSize of N (n, _) -> n == 2) "2x"
+                                <| ChangeN <| N (2, 2)
+                            , checkbox
+                                (case patternSize of N (n, _) -> n == 3) "3x"
+                                <| ChangeN <| N (3, 3)
+                            ]
+
+                        ]
                 _ -> div [] []
         exampleFrame msg =
             div
@@ -450,6 +490,16 @@ main =
         , update = update
         , view = \model -> { title = "Kvant : Mehanik", body = [ view model ] }
         }
+
+
+isSolving : CurrentExample -> Bool
+isSolving example =
+    case example of
+        NotSelected -> False
+        Textual _ e -> Example.Advance.isSolving e.status
+        FromImage _ _ e -> Example.Advance.isSolving e.status
+        FromPixels _ _ e -> Example.Advance.isSolving e.status
+
 
 
 requestImage : ImageAlias -> Cmd Msg
