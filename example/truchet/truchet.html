@@ -11,85 +11,18 @@
             display: block;
         }
     </style>
+    <script src="./kvant-proxy.js"></script>
 </head>
 <body>
+<div id="truchetapp"></div>
+
+<script>
+    var app = Elm.KvantProxy.init({
+        node: document.getElementById('truchetapp')
+    });
+</script>
 
 <script src="https://cdn.jsdelivr.net/npm/p5@1.1.9/lib/p5.js"></script>
-<script>
-
-    let numTilesW;
-    let numTilesH;
-    let sizeTile = 40;
-    let tiles = [];
-    let n = 0;
-
-    function setup() {
-        createCanvas(windowWidth, windowHeight);
-        background(0);
-        numTilesW = ceil(width / sizeTile);
-        numTilesH = ceil(height / sizeTile);
-        colorMode(HSB, 255)
-        noFill();
-        strokeWeight(3);
-        for (var i = 0; i < numTilesW; i++) {
-            for (var j = 0; j < numTilesH; j++) {
-                tiles.push(new Tile);
-                tiles[j + i * numTilesH].x = i * sizeTile + sizeTile / 2;
-                tiles[j + i * numTilesH].y = j * sizeTile + sizeTile / 2;
-                tiles[j + i * numTilesH].col = [0.04 * j, 0.04 * i];
-            }
-        }
-    }
-
-    function draw() {
-        background(0);
-        for (var i = 0; i < numTilesW * numTilesH; i++) {
-            tiles[i].display();
-        }
-    }
-
-    function Tile() {
-        this.x;
-        this.y;
-        this.r = sizeTile;
-        this.orientation = random();
-        this.rotation = 0;
-        this.rotating = false;
-        this.col;
-
-
-        this.display = () => {
-            push();
-                translate(this.x, this.y);
-                rotate(radians(this.rotation));
-                const currentNoise = noise(this.col[0], this.col[1])
-                stroke(120 * currentNoise + 80, 255, 255);
-                if (this.orientation > 0.5) {
-                    arc(-this.r / 2, -this.r / 2, this.r, this.r, 0, PI / 2);
-                    arc(this.r / 2, this.r / 2, this.r, this.r, -PI, -PI / 2);
-                } else {
-                    arc(-this.r / 2, this.r / 2, this.r, this.r, -PI / 2, 0);
-                    arc(this.r / 2, -this.r / 2, this.r, this.r, PI / 2, PI);
-                }
-            pop();
-
-            if (currentNoise.toFixed(2) == 0.25
-                || currentNoise.toFixed(2) == 0.45
-                || currentNoise.toFixed(2) == 0.65
-            ) {
-                this.rotating = true;
-            }
-
-            this.col[0] += 0.008;
-            this.col[1] += 0.008;
-            if (this.rotating) {
-                this.rotation += 3;
-                if (this.rotation % 90 === 0) {
-                    this.rotating = false;
-                }
-            }
-        }
-    }
-</script>
+<script src="./truchet.js"></script>
 </body>
 </html>
