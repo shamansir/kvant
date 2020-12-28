@@ -10,7 +10,7 @@ import Kvant.Solver exposing (Approach(..))
 import Kvant.Solver as Solver exposing (Step(..), Options)
 import Kvant.Solver.Flat as FlatSolver exposing (..)
 
-import Example.Instance.Text.Plane as TextPlane exposing (make)
+import Example.Instance.Text.Plane as TextPlane exposing (make, BoundedString)
 
 import Example.Example exposing (Example, make)
 import Example.Example as Example exposing (make)
@@ -26,8 +26,6 @@ type alias TextTracingPlane = TracingPlane Vec2 Char
 type alias TextOptions = Solver.Options Vec2 Char
 
 type alias TextExample = Example Vec2 BoundedString Char
-
-type alias BoundedString = (Vec2, String)
 
 
 quick : Solver.Options Vec2 Char -> BoundedString -> TextExample
