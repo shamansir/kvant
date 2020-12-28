@@ -28,7 +28,7 @@ type alias TextOptions = Solver.Options Vec2 Char
 type alias TextExample = Example Vec2 BoundedString Char
 
 
-quick : Solver.Options Vec2 Char -> BoundedString -> TextExample
+quick : TextOptions -> BoundedString -> TextExample
 quick options ((size, src) as boundedSrc) =
     Example.make
         (\advanceMode ->

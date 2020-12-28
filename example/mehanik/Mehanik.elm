@@ -28,6 +28,7 @@ import Html.Events exposing (..)
 import Example.Instance exposing (Instance(..))
 import Example.Instance.Text as Wfc exposing (TextOptions)
 import Example.Instance.Image as Wfc exposing (ImageOptions)
+import Example.Instance.Tiles as Wfc exposing (TilesOptions)
 import Example.Advance exposing (..)
 
 import Example.Main exposing (..)
@@ -37,7 +38,7 @@ import Example.Render as Render exposing (..)
 
 import Example.Instance.Text as TextExample exposing (..)
 import Example.Instance.Image as ImageExample exposing (..)
-import Example.Instance.Pixels as PixelsExample exposing (..)
+import Example.Instance.Tiles as TilesExample exposing (..)
 import Example.Instance.Text.Render as TextRenderer exposing (make)
 import Example.Instance.Image.Render as ImageRenderer exposing (make)
 import Example.Instance.Text.Plane exposing (TextPlane)
@@ -65,7 +66,7 @@ type CurrentExample
     = NotSelected
     | Textual Wfc.TextOptions TextExample
     | FromImage Wfc.ImageOptions Image ImageExample
-    | FromPixels Wfc.ImageOptions Pixels PixelsExample
+    | FromTiles Wfc.TilesOptions TilesRegistry TilesExample
 
 
 type alias ImageAlias = String
@@ -79,7 +80,7 @@ type Msg
     | SwitchToImageExample Image
     | ChangeN (N Vec2)
     | GotImage ImageAlias (Result Http.Error Image)
-    | GotPixels Pixels
+    -- | GotPixels Pixels
 
 
 textExamples =
@@ -280,7 +281,7 @@ update msg model =
             , Cmd.none
             )
 
-        GotPixels pixels ->
+        {- GotPixels pixels ->
             (
                 { model
                 | example =
@@ -288,7 +289,7 @@ update msg model =
                         <| PixelsExample.quick defaultImageOptions pixels
                 }
             , Cmd.none
-            )
+            ) -}
 
 
 view : Model -> Html Msg
@@ -316,7 +317,7 @@ view model =
                         [ Example.view ImageRenderer.make exampleModel
                             -- |> Html.map ToExample
                         ]
-                FromPixels _ pixels exampleModel ->
+                FromTiles _ registry exampleModel ->
                     div
                         []
                         [ {- Example.view ImageRenderer.make exampleModel
@@ -498,7 +499,7 @@ isSolving example =
         NotSelected -> False
         Textual _ e -> Example.Advance.isSolving e.status
         FromImage _ _ e -> Example.Advance.isSolving e.status
-        FromPixels _ _ e -> Example.Advance.isSolving e.status
+        FromTiles _ _ e -> Example.Advance.isSolving e.status
 
 
 
