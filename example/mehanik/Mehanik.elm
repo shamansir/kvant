@@ -40,7 +40,6 @@ import Example.Instance.Pixels as PixelsExample exposing (..)
 import Example.Instance.Text.Render as TextRenderer exposing (make)
 import Example.Instance.Image.Render as ImageRenderer exposing (make)
 import Example.Instance.Text.Plane exposing (TextPlane)
-import Example.Instance.Text.Plane as Text exposing (toGrid)
 import Example.Instance.Text.Plane as TextPlane exposing (make)
 
 

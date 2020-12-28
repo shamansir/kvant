@@ -11,6 +11,9 @@ import Kvant.Plane.Flat exposing (..)
 type alias TextPlane = Plane Vec2 Char
 
 
+type alias BoundedString = (Vec2, String)
+
+
 make : Vec2 -> String -> TextPlane
 make ( width, height ) src =
     let
@@ -34,15 +37,15 @@ toString plane =
         |> String.fromList
 
 
-toBoundedString : TextPlane -> (Vec2, String)
+toBoundedString : TextPlane -> BoundedString
 toBoundedString (Plane size _ as plane) =
     ( size
     , plane |> toString
     )
 
 
-toGrid : Vec2 -> String -> List (List Char)
-toGrid (width, height) string =
+boundedStringToGrid : BoundedString -> List (List Char)
+boundedStringToGrid ((width, height), string) =
     let
         splitBy : Int -> String -> List String
         splitBy w src =
