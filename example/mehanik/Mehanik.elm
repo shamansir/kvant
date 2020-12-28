@@ -323,36 +323,45 @@ view model =
                         ]
                 NotSelected -> Html.text "Not Selected"
                 -- WaitingForImage url -> Html.text <| "Waiting for image " ++ url ++ " to load"
-        fancyButton label msg =
+        fancyEmojiButton label msg =
             button
-                [ onClick <| ToExample msg
+                [ onClick msg
                 , style "border" "none"
                 , style "background" "none"
                 , style "cursor" "pointer"
-                , style "width" "15px"
-                , style "height" "15px"
                 , style "outline" "none"
+                ]
+                [ Html.text label ]
+        fancyButton label msg =
+            button
+                [ onClick msg
+                , style "border" "1px solid black"
+                , style "padding" "5px"
+                , style "margin" "5px"
+                , style "background" "none"
+                , style "cursor" "pointer"
+                , style "outline" "none"
+                , style "display" "inline-block"
                 ]
                 [ Html.text label ]
         controls options  =
             case options.approach of
                 Overlapping { patternSize } ->
 
-                    div []
-                        [ {- input
-                            [ type_ "number"
-                            , H.min "2"
-                            , H.max "4"
-                            , value <| String.fromInt <| case patternSize of N ( n, _ ) -> n
-                            , onInput
-                                (String.toInt
-                                    >> Maybe.withDefault 2
-                                    >> (\n -> (n, n))
-                                    >> N
-                                    >> ChangeN
-                                )
-                            ] [] -}
-                        fancyButton "▶️" Example.TriggerRunning
+                    div [ style "display" "flex"
+                        , style "padding" "5px"
+                        , style "margin" "5px"
+                        , style "border" "1px solid black"
+                        , style "border-radius" "3px"
+                        , style "width" "fit-content"
+                        ]
+                        [ fancyEmojiButton "▶️" Example.TriggerRunning |> Html.map ToExample
+                        , fancyEmojiButton "⏭️" Example.TriggerTracing |> Html.map ToExample
+                        , fancyEmojiButton "⏭️" Example.NextStep |> Html.map ToExample
+                        , fancyEmojiButton "⏮️" Example.TriggerPreviousStep |> Html.map ToExample
+                        -- , fancyEmojiButton "▶️" Example.TriggerFastForward |> Html.map ToExample
+                        , fancyButton "2x" <| ChangeN <| N (2, 2)
+                        , fancyButton "3x" <| ChangeN <| N (3, 3)
                         ]
 
                 _ -> div [] []
