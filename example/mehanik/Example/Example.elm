@@ -6,6 +6,7 @@ import Kvant.Plane exposing (Plane)
 import Kvant.Solver as Solver exposing (Options)
 import Example.Advance exposing (..)
 
+
 type alias Example v fmt a =
     { source : fmt
     , sourcePlane : Plane v a
