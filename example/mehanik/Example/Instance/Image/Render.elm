@@ -1,6 +1,7 @@
 module Example.Instance.Image.Render exposing (..)
 
 
+import Array
 import Color exposing (Color)
 import Image exposing (Image, dimensions)
 import Image.Color as ImageC exposing (fromList2d)
@@ -35,6 +36,10 @@ make =
             >> List.map (List.map <| Maybe.withDefault Color.purple)
             >> ImageC.fromList2d
             >> drawImage
+        -- Array.repeat 120 (Array.repeat 120 Color.purple)
+        --     |> ImageC.fromArray2d
+        --     |> drawImage
+        --     |> always
     , tracingPlane = always <| div [] []
     , tracingCell = always <| div [] []
     }
@@ -44,8 +49,8 @@ drawImage : Image -> Html msg
 drawImage srcImage =
     img
         [ src <| Image.toPngUrl srcImage
-        , style "min-width" "50px"
-        , style "min-height" "50px"
+        , style "min-width" "100px"
+        , style "min-height" "100px"
         , style "image-rendering" "pixelated"
         ]
         []

@@ -46,7 +46,27 @@ view
     -> Example v fmt a
     -> Html msg -- Example.Msg
 view renderer example =
-    renderer.plane example.sourcePlane
+    div
+        []
+        [ renderer.plane example.sourcePlane
+        , case example.status of
+            None ->
+                Html.text ""
+            Preparation ->
+                Html.text "Solving..."
+            Solving ( fmt, tracingPlane ) history ->
+                div
+                    [ style "margin" "5px" ]
+                    [ renderer.source fmt
+                    , renderer.tracingPlane tracingPlane
+                    ]
+            Solved ( fmt, tracingPlane ) ->
+                div
+                    [ style "margin" "5px" ]
+                    [ renderer.source fmt
+                    , renderer.tracingPlane tracingPlane
+                    ]
+        ]
 
 
 update

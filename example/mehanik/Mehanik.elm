@@ -109,8 +109,7 @@ textExamples =
 
 
 imagesForOverlap =
-    [ "3Bricks"
-    , "Angular"
+    [ "Angular"
     , "Cat"
     , "Cats"
     , "Cave"
@@ -157,6 +156,7 @@ imagesForOverlap =
     , "TrickKnot"
     , "Village"
     , "Water"
+    , "3Bricks"
     ]
 
 
@@ -323,12 +323,23 @@ view model =
                         ]
                 NotSelected -> Html.text "Not Selected"
                 -- WaitingForImage url -> Html.text <| "Waiting for image " ++ url ++ " to load"
+        fancyButton label msg =
+            button
+                [ onClick <| ToExample msg
+                , style "border" "none"
+                , style "background" "none"
+                , style "cursor" "pointer"
+                , style "width" "15px"
+                , style "height" "15px"
+                , style "outline" "none"
+                ]
+                [ Html.text label ]
         controls options  =
             case options.approach of
                 Overlapping { patternSize } ->
 
                     div []
-                        [ input
+                        [ {- input
                             [ type_ "number"
                             , H.min "2"
                             , H.max "4"
@@ -340,7 +351,8 @@ view model =
                                     >> N
                                     >> ChangeN
                                 )
-                            ] []
+                            ] [] -}
+                        fancyButton "▶️" Example.TriggerRunning
                         ]
 
                 _ -> div [] []
