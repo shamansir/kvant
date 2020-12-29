@@ -26,94 +26,47 @@ import Kvant.Solver.History as H exposing (History)
 import Example.Example exposing (Example)
 import Example.Advance exposing (..)
 import Example.Msg as Example exposing (Msg(..))
-import Example.Render.Renderer exposing (HtmlRenderer)
-import Example.Render.Block exposing (..)
-import Example.Render.Block as Block exposing (title)
-import Example.Render.Html.Block exposing (viewBlock)
+import Example.Render exposing (Renderer)
 
 
 type alias ExampleId = Int
 
 
-blocks : Example v fmt a -> List (Block v fmt a)
-blocks e =
-    [ Source e.source
-    , RunOnce e.options.outputSize e.status
-    {-, Tracing e.status
-    , RotationsAndFlips e.sourcePlane
-    , SubPlanes e.sourcePlane
-    , PeriodicSubPlanes e.sourcePlane
-    , AllViews e.sourcePlane
-    -}
-    ]
-    ++
-    (case e.options.approach of
-        Solver.Overlapping { patternSize, searchBoundary } ->
-            [ Patterns
-                    e.sourcePlane
-                    searchBoundary
-                    patternSize
-            , AllSubPlanes
-                    e.sourcePlane
-                    searchBoundary
-                    patternSize
-            ]
-        Solver.Tiled -> [] -- FIXME: implement
-    )
-
-
-initExpands : Example v fmt a -> Example v fmt a
-initExpands exampleModel =
-    { exampleModel
-    | expands =
-        blocks exampleModel
-            |> List.map
-                (\block ->
-                    case block of
-                        Source _ -> Expanded
-                        RunOnce _ _-> Expanded
-                        Tracing _ -> Expanded
-                        _ -> Collapsed
-                )
-    }
-
-
-previewHtml
-    :  HtmlRenderer v fmt a Example.Msg
+preview
+    :  Renderer v fmt a (Html msg)
     -> fmt
-    -> Html Example.Msg
-previewHtml renderer source =
-    viewBlock renderer <| Source source
+    -> Html msg -- Example.Msg
+preview renderer source =
+    renderer.source source
 
 
-viewHtml
-    :  HtmlRenderer v fmt a Example.Msg
+
+view
+    :  Renderer v fmt a (Html msg)
     -> Example v fmt a
-    -> Html Example.Msg
-viewHtml renderer example =
-    let
-        viewBlockItem blockIndex ( isExpanded, block ) =
-            div []
-                [
-                    span
-                        [ style "cursor" "pointer"
-                        , onClick
-                            <| SwitchBlock blockIndex
-                        ]
-                        [ Html.text <| Block.title block
-                        ]
-                , case isExpanded of
-                    Expanded ->
-                        viewBlock renderer block
-                    Collapsed -> Html.text "..."
-                ]
-    in
-        div []
-            (blocks example
-                |> List.map2 Tuple.pair example.expands
-                |> List.indexedMap viewBlockItem
-                |> List.intersperse (hr [] [])
-            )
+    -> Html msg -- Example.Msg
+view renderer example =
+    div
+        []
+        [ renderer.plane example.sourcePlane
+        , case example.status of
+            None ->
+                Html.text ""
+            Preparation ->
+                Html.text "Solving..."
+            Solving ( fmt, tracingPlane ) history ->
+                div
+                    [ style "margin" "5px" ]
+                    [ renderer.source fmt
+                    , renderer.tracingPlane tracingPlane
+                    ]
+            Solved ( fmt, tracingPlane ) ->
+                div
+                    [ style "margin" "5px" ]
+                    [ renderer.source fmt
+                    , renderer.tracingPlane tracingPlane
+                    ]
+        ]
 
 
 update
@@ -142,6 +95,11 @@ update msg model =
         TriggerPreviousStep ->
             ( model
             , makeSeedAnd PreviousStep
+            )
+
+        TriggerFastForward ->
+            ( model
+            , makeSeedAnd Trace -- FIXME
             )
 
         Run seed ->
@@ -258,14 +216,6 @@ update msg model =
             (
                 { model
                 | status = None
-                }
-            , Cmd.none )
-
-        SwitchBlock index ->
-            (
-                { model
-                | expands =
-                    model.expands |> switchBlock index
                 }
             , Cmd.none )
 

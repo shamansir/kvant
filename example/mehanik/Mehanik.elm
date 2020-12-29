@@ -28,24 +28,20 @@ import Html.Events exposing (..)
 import Example.Instance exposing (Instance(..))
 import Example.Instance.Text as Wfc exposing (TextOptions)
 import Example.Instance.Image as Wfc exposing (ImageOptions)
+import Example.Instance.Tiles as Wfc exposing (TilesOptions)
+import Example.Advance exposing (..)
 
 import Example.Main exposing (..)
 import Example.Main as Example exposing (..)
 import Example.Msg as Example exposing (Msg)
-import Example.Render.Html.Make as HtmlRenderer exposing (..)
 import Example.Render as Render exposing (..)
-import Example.Render.Html.Flat as Render exposing (..)
-import Example.Render.Html.Grid as Render exposing (..)
 
 import Example.Instance.Text as TextExample exposing (..)
 import Example.Instance.Image as ImageExample exposing (..)
-import Example.Instance.Pixels as PixelsExample exposing (..)
-import Example.Instance.Text.RenderHtml as Render exposing (..)
-import Example.Instance.Text.RenderHtml as Text exposing (spec)
-import Example.Instance.Image.RenderHtml as Render exposing (..)
-import Example.Instance.Image.RenderHtml as Image exposing (spec)
+import Example.Instance.Tiles as TilesExample exposing (..)
+import Example.Instance.Text.Render as TextRenderer exposing (make)
+import Example.Instance.Image.Render as ImageRenderer exposing (make)
 import Example.Instance.Text.Plane exposing (TextPlane)
-import Example.Instance.Text.Plane as Text exposing (toGrid)
 import Example.Instance.Text.Plane as TextPlane exposing (make)
 
 
@@ -63,6 +59,7 @@ import Kvant.Solver.History as H exposing (..)
 type alias Model =
     { example : CurrentExample
     , images : Dict ImageAlias (Result Http.Error Image)
+    , tiles : Dict TileGroup (Dict TileAlias (Result Http.Error Image))
     }
 
 
@@ -70,21 +67,33 @@ type CurrentExample
     = NotSelected
     | Textual Wfc.TextOptions TextExample
     | FromImage Wfc.ImageOptions Image ImageExample
-    | FromPixels Wfc.ImageOptions Pixels PixelsExample
+    | FromTiles Wfc.TilesOptions TilesRegistry TilesExample
 
 
 type alias ImageAlias = String
 
+
+type alias TileGroup = String
+
+
+type alias TileAlias = String
+
+type alias TileKey = ( TileGroup, TileAlias )
+
+
 type alias Pixels = Array (Array Color)
+
 
 type Msg
     = NoOp
     | ToExample Example.Msg
     | SwitchToTextExample Vec2 String
     | SwitchToImageExample Image
+    | SwitchToTiledExample TileGroup
     | ChangeN (N Vec2)
     | GotImage ImageAlias (Result Http.Error Image)
-    | GotPixels Pixels
+    | GotTile TileKey (Result Http.Error Image)
+    -- | GotPixels Pixels
 
 
 textExamples =
@@ -115,8 +124,7 @@ textExamples =
 
 
 imagesForOverlap =
-    [ "3Bricks"
-    , "Angular"
+    [ "Angular"
     , "Cat"
     , "Cats"
     , "Cave"
@@ -163,6 +171,20 @@ imagesForOverlap =
     , "TrickKnot"
     , "Village"
     , "Water"
+    , "3Bricks"
+    ]
+
+
+tiledForOverlap =
+    [
+        ( "Castle"
+        , [ "bridge", "ground", "river", "riverturn", "road", "roadturn", "t", "tower", "wall", "wallriver", "wallroad" ]
+        )
+    ,
+        ( "Circles"
+        , [ "b_half", "b_i", "b_quarter", "b", "w_half", "w_i", "w_quarter", "w" ]
+        )
+
     ]
 
 
@@ -170,6 +192,7 @@ init : Model
 init =
     { example = NotSelected
     , images = Dict.empty
+    , tiles = Dict.empty
     }
 
 
@@ -186,6 +209,18 @@ defaultTextOptions =
 
 
 defaultImageOptions =
+    { approach =
+        Overlapping
+            { searchBoundary = Bounded -- Periodic
+            , patternSize = N ( 2, 2 )
+            , symmetry = FlipAndRotate
+            }
+    , outputSize = ( 10, 10 )
+    , outputBoundary = Bounded
+    }
+
+
+defaultTilesOptions =
     { approach =
         Overlapping
             { searchBoundary = Bounded -- Periodic
@@ -238,7 +273,6 @@ update msg model =
                 { model
                 | example =
                     Textual defaultTextOptions
-                        <| initExpands
                         <| TextExample.quick defaultTextOptions ( size, source )
                 }
             , Cmd.none
@@ -249,8 +283,22 @@ update msg model =
                 { model
                 | example =
                     FromImage defaultImageOptions image
-                        <| initExpands
                         <| ImageExample.quick defaultImageOptions image
+                }
+            , Cmd.none
+            )
+
+        SwitchToTiledExample group ->
+            (
+                { model
+                | example = model.example
+                    {- case rules of
+                        FromGrid tilesGrid ->
+                            FromTiles defaultTilesOptions registry
+                                <| TilesExample.quick defaultTilesOptions tilesGrid
+                        FromRules _ ->
+                            -- FIXME
+                            model.example -}
                 }
             , Cmd.none
             )
@@ -271,7 +319,6 @@ update msg model =
                         { model
                         | example =
                             FromImage newOptions image
-                                    <| initExpands
                                     <| ImageExample.quick newOptions image
                         }
                 _ -> model
@@ -288,13 +335,19 @@ update msg model =
             , Cmd.none
             )
 
-        GotPixels pixels ->
+        GotTile ( tileGroup, tileAlias ) result ->
             (
                 { model
-                | example =
-                    FromPixels defaultImageOptions pixels
-                        <| initExpands
-                        <| PixelsExample.quick defaultImageOptions pixels
+                | tiles =
+                    model.tiles
+                        |> Dict.update tileGroup
+                            (\maybeGroupDict ->
+                                Just
+                                    <| Dict.insert tileAlias result
+                                    <| case maybeGroupDict of
+                                        Just groupDict -> groupDict
+                                        Nothing -> Dict.empty
+                            )
                 }
             , Cmd.none
             )
@@ -303,61 +356,134 @@ update msg model =
 view : Model -> Html Msg
 view model =
     let
-        textRenderer =
-            HtmlRenderer.make (\(size, src) -> Text.toGrid size src) Text.spec
-        imageRenderer =
-            HtmlRenderer.make ImageC.toList2d Image.spec
-        pixelsRenderer =
-            HtmlRenderer.make (Array.toList >> List.map Array.toList) Image.spec
+
         viewImageExample =
-            Example.viewHtml imageRenderer >> Html.map ToExample
-        viewImage image =
-            Render.grid Render.pixel <| ImageC.toList2d image
+            Example.view ImageRenderer.make >> Html.map ToExample
+
         viewExample example =
             case example of
                 Textual _ exampleModel ->
-                    Example.viewHtml textRenderer exampleModel
-                        |> Html.map ToExample
+                    Example.view TextRenderer.make exampleModel
                 FromImage _ image exampleModel ->
                     div
                         []
-                        [ viewImage image
-                        , Example.viewHtml imageRenderer exampleModel
-                            |> Html.map ToExample
+                        [ Example.view ImageRenderer.make exampleModel
                         ]
-                FromPixels _ pixels exampleModel ->
+                FromTiles _ registry exampleModel ->
                     div
                         []
-                        [ pixels
-                            |> Array.toList
-                            |> List.map Array.toList
-                            |> Render.grid Render.pixel
-                        , Example.viewHtml pixelsRenderer exampleModel
-                            |> Html.map ToExample
+                        [ {- Example.view ImageRenderer.make exampleModel
+                            |> Html.map ToExample -}
                         ]
                 NotSelected -> Html.text "Not Selected"
                 -- WaitingForImage url -> Html.text <| "Waiting for image " ++ url ++ " to load"
+
+        fancyButton isEnabled label msg =
+            button
+                [ onClick msg
+                , style "border" "none"
+                , style "background" "none"
+                , style "cursor" "pointer"
+                , style "outline" "none"
+                , style "opacity" <| if isEnabled then "1.0" else "0.5"
+                ]
+                [ Html.text label
+                ]
+
+        checkbox isChecked label msg =
+            span
+                []
+                [ input
+                    [ type_ "radio"
+                    , onClick msg
+                    , checked isChecked
+                    , style "border"
+                        <| if isChecked
+                            then "1px solid aqua"
+                            else "1px solid black"
+                    , style "padding" "5px"
+                    , style "margin" "5px"
+                    , style "background" "none"
+                    , style "cursor" "pointer"
+                    , style "outline" "none"
+                    , style "display" "inline-block"
+                    , value label
+                    ] []
+                , Html.text label
+                ]
+
+        controlPanel =
+            div [ style "display" "flex"
+                , style "padding" "5px"
+                , style "margin" "5px"
+                , style "border" "1px solid black"
+                , style "border-radius" "3px"
+                , style "width" "fit-content"
+                ]
+
         controls options  =
             case options.approach of
                 Overlapping { patternSize } ->
 
-                    div []
-                        [ input
-                            [ type_ "number"
-                            , H.min "2"
-                            , H.max "4"
-                            , value <| String.fromInt <| case patternSize of N ( n, _ ) -> n
-                            , onInput
-                                (String.toInt
-                                    >> Maybe.withDefault 2
-                                    >> (\n -> (n, n))
-                                    >> N
-                                    >> ChangeN
+                    div
+                        []
+                        [ controlPanel
+                            [ fancyButton
+                                (not <| isSolving model.example)
+                                "▶️"
+                                Example.TriggerRunning
+                                |> Html.map ToExample
+                            , fancyButton
+                                True
+                                "⏭️"
+                                (if not <| isSolving model.example
+                                    then Example.TriggerTracing
+                                    else Example.NextStep
                                 )
-                            ] []
-                        ]
+                                |> Html.map ToExample
+                            , fancyButton
+                                (isSolving model.example)
+                                "⏮️"
+                                Example.TriggerPreviousStep
+                                |> Html.map ToExample
+                            , fancyButton
+                                (isSolving model.example)
+                                "⏹️"
+                                Example.Stop
+                                |> Html.map ToExample
+                            ]
 
+                        , controlPanel
+                            [ checkbox
+                                (case patternSize of N (n, _) -> n == 2) "2x"
+                                <| ChangeN <| N (2, 2)
+                            , checkbox
+                                (case patternSize of N (n, _) -> n == 3) "3x"
+                                <| ChangeN <| N (3, 3)
+                            ]
+
+                        ]
                 _ -> div [] []
+
+        imageFrom toMsg dict imgAlias =
+            case dict |> Dict.get imgAlias of
+                Just (Ok image) ->
+                    exampleFrame (toMsg image)
+                        [ img
+                            [ src <| Image.toPngUrl image
+                            , style "min-width" "50px"
+                            , style "min-height" "50px"
+                            , style "image-rendering" "pixelated"
+                            ]
+                            []
+                        ]
+                Just (Err error) ->
+                    exampleFrame NoOp
+                        [ Html.text <| imgAlias ++ ": Error " ++ errorToString error ]
+                Nothing ->
+                    exampleFrame NoOp
+                        [ Html.text <| imgAlias ++ ": Loading..." ]
+
         exampleFrame msg =
             div
                 [ style "margin" "5px"
@@ -368,6 +494,7 @@ view model =
                 , style "cursor" "pointer"
                 , onClick msg
                 ]
+
         examples
             = div
                 [ style "display" "flex"
@@ -379,39 +506,34 @@ view model =
                     |> List.map
                         (\(size, str) ->
                             exampleFrame (SwitchToTextExample size str)
-                                [ Example.previewHtml textRenderer (size, str)
-                                    |> Html.map ToExample
+                                [ Example.preview TextRenderer.make (size, str)
                                 ]
+                        )
+                    )
+                ++
+                    (tiledForOverlap
+                    |> List.map
+                        (\(group, files) ->
+                            case model.tiles |> Dict.get group of
+                                Just tilesDict ->
+                                    case files |> List.head of
+                                        Just firstImage ->
+                                            imageFrom
+                                                (\_ -> SwitchToTiledExample group)
+                                                tilesDict
+                                                firstImage
+                                        Nothing ->
+                                            exampleFrame NoOp
+                                                [ Html.text <| group ++ ": No images" ]
+                                Nothing ->
+                                    exampleFrame NoOp
+                                        [ Html.text <| group ++ ": Loading..." ]
                         )
                     )
                 ++
                     (imagesForOverlap
                     |> List.map
-                        (\imgAlias ->
-                            case model.images |> Dict.get imgAlias of
-                                Just (Ok image) ->
-                                    exampleFrame (SwitchToImageExample image)
-                                        [ img
-                                            [ src <| Image.toPngUrl image
-                                            , style "min-width" "50px"
-                                            , style "min-height" "50px"
-                                            , style "image-rendering" "pixelated"
-                                            ]
-                                            []
-                                        ]
-                                    {-
-                                    exampleFrame (LoadImageExample imgAlias)
-                                        <| List.singleton
-                                        <| Html.map ToExample
-                                        <| Example.previewHtml imageRenderer image
-                                    -}
-                                Just (Err error) ->
-                                    exampleFrame NoOp
-                                        [ Html.text <| imgAlias ++ ": Error " ++ errorToString error ]
-                                Nothing ->
-                                    exampleFrame NoOp
-                                        [ Html.text <| imgAlias ++ ": Loading..." ]
-                        )
+                        (imageFrom SwitchToImageExample model.images)
                     )
                 )
     in
@@ -435,7 +557,10 @@ main =
         { init =
             \_ _ _ ->
                 ( init
-                , requestImages imagesForOverlap
+                , Cmd.batch
+                    [ requestImages imagesForOverlap
+                    , requestTiles tiledForOverlap
+                    ]
                 )
         , onUrlChange = always NoOp
         , onUrlRequest = always NoOp
@@ -443,6 +568,16 @@ main =
         , update = update
         , view = \model -> { title = "Kvant : Mehanik", body = [ view model ] }
         }
+
+
+isSolving : CurrentExample -> Bool
+isSolving example =
+    case example of
+        NotSelected -> False
+        Textual _ e -> Example.Advance.isSolving e.status
+        FromImage _ _ e -> Example.Advance.isSolving e.status
+        FromTiles _ _ e -> Example.Advance.isSolving e.status
+
 
 
 requestImage : ImageAlias -> Cmd Msg
@@ -456,8 +591,28 @@ requestImage imageAlias =
         }
 
 
+requestTile : TileKey -> Cmd Msg
+requestTile ( tileGroup, tileAlias ) =
+    Http.get
+        { url = "http://localhost:3000/tiled/" ++ tileGroup ++ "/" ++ tileAlias ++ ".png"
+        , expect =
+            Http.expectBytesResponse
+                (GotTile ( tileGroup, tileAlias ))
+                loadImage
+        }
+
+
 requestImages : List ImageAlias -> Cmd Msg
 requestImages = List.map requestImage >> Cmd.batch
+
+
+
+requestTiles : List ( TileGroup, List TileAlias ) -> Cmd Msg
+requestTiles =
+    List.concatMap
+        (\(group, tiles) -> tiles |> List.map (Tuple.pair group))
+        >> List.map requestTile
+        >> Cmd.batch
 
 
 loadImage : Http.Response Bytes -> Result Http.Error Image

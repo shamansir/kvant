@@ -33,7 +33,7 @@ type alias ImageTracingPlane = TracingPlane Vec2 Color
 type alias ImageOptions = Solver.Options Vec2 Color
 
 
-quick : Solver.Options Vec2 Color -> Image -> ImageExample
+quick : ImageOptions -> Image -> ImageExample
 quick options source =
     let
         { width, height } = Image.dimensions source

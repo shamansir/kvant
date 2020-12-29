@@ -1,20 +1,18 @@
-module Example.Instance.Text.RenderHtml exposing (..)
+module Example.Instance.Text.Render exposing (..)
 
 
 import Html exposing (..)
 import Html.Attributes exposing (..)
 
 import Kvant.Vec2 exposing (..)
+import Kvant.Plane.Flat as Plane exposing (unpack)
 
-import Example.Render.Spec exposing (HtmlSpec)
 import Example.Render as Render exposing (..)
-import Example.Render.Html.Grid as Render exposing (..)
-import Example.Render.Html.Flat as Render exposing (..)
 
-import Example.Instance.Text.Plane exposing (merge)
+import Example.Instance.Text.Plane exposing (merge, BoundedString, boundedStringToGrid)
 
 
-spec : HtmlSpec Vec2 Char msg
+{- spec : HtmlSpec Vec2 Char msg
 spec =
     { default = '?'
     , contradiction = '∅'
@@ -23,6 +21,18 @@ spec =
     , merge = merge
     , scaled = scaled
     , vToString = Render.coordText
+    } -}
+
+
+make : Renderer Vec2 BoundedString Char (Html msg)
+make =
+    { source = boundedStringToGrid >> grid char
+    , plane =
+        Plane.unpack
+            >> List.map (List.map <| Maybe.withDefault '?')
+            >> grid char
+    , tracingPlane = always <| div [] []
+    , tracingCell = always <| div [] []
     }
 
 
@@ -72,3 +82,18 @@ scaled scale c =
         , style "width" "10px"
         , style "height" "10px" ]
         [ text <| String.fromChar c ]
+
+
+grid : (a -> Html msg) -> List (List a) -> Html msg
+grid viewElem rows =
+    rows
+        |> List.map
+            (\row ->
+                div [ style "display" "flex", style "flex-direction" "row" ]
+                    <| List.map viewElem row
+            )
+        |> div [ style "display" "flex", style "flex-direction" "column" ]
+
+
+gridV : (v -> a -> Html msg) -> List (List (v, a)) -> Html msg
+gridV viewElem = grid (\(v, a) -> viewElem v a)  -- a.k.a. `uncurry`
