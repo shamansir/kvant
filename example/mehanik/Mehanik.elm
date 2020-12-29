@@ -245,6 +245,7 @@ update msg model =
 
         ToExample exampleMsg ->
             case model.example of
+                -- FIXME: fix repitition
                 Textual options example ->
                     let
                         ( newExampleModel, commands ) =
@@ -264,6 +265,17 @@ update msg model =
                         (
                             { model
                             | example = FromImage options image newExampleModel
+                            }
+                        , commands |> Cmd.map ToExample
+                        )
+                FromTiles options registry example ->
+                    let
+                        ( newExampleModel, commands ) =
+                            Example.update exampleMsg example
+                    in
+                        (
+                            { model
+                            | example = FromTiles options registry newExampleModel
                             }
                         , commands |> Cmd.map ToExample
                         )
@@ -292,14 +304,16 @@ update msg model =
         SwitchToTiledExample group ->
             (
                 { model
-                | example = model.example
-                    {- case rules of
-                        FromGrid tilesGrid ->
-                            FromTiles defaultTilesOptions registry
-                                <| TilesExample.quick defaultTilesOptions tilesGrid
-                        FromRules _ ->
-                            -- FIXME
-                            model.example -}
+                | example =
+                    case model.rules |> Dict.get group of
+                        Just _ ->
+                            FromTiles defaultTilesOptions Dict.empty -- FIXME
+                                <| TilesExample.quick defaultTilesOptions
+                                <| Array.empty -- FIXME
+                        Nothing ->
+                            FromTiles defaultTilesOptions Dict.empty -- FIXME
+                                <| TilesExample.quick defaultTilesOptions
+                                <| Array.empty -- FIXME
                 }
             , Cmd.none
             )
@@ -515,6 +529,8 @@ view model =
                                                 ++ group ++ "/" ++
                                                 (files |> List.head |> Maybe.withDefault "")
                                                 ++ "." ++ format
+                                            , width 50
+                                            , height 50
                                             ]
                                             []
                                         ]
@@ -539,7 +555,8 @@ view model =
             , case model.example of
                 Textual options _ -> controls options
                 FromImage options _ _ -> controls options
-                _ -> Html.text ""
+                FromTiles options _ _ -> controls options
+                NotSelected -> Html.text ""
             , viewExample model.example
             ]
 

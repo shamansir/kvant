@@ -21,7 +21,7 @@ import Kvant.Solver.Flat as FlatSolver exposing (init)
 import Example.Example exposing (Example)
 import Example.Example as Example exposing (make)
 import Example.Advance exposing (Status(..), AdvanceMode(..))
-import Example.Instance.Tiles.Plane exposing (TileId)
+import Example.Instance.Tiles.Plane exposing (TileId, TileGrid)
 import Example.Instance.Tiles.Plane as TilesPlane exposing (make)
 
 
@@ -32,8 +32,6 @@ type TilingRules
     = FromGrid TileGrid
     | FromRules ()
 
-
-type alias TileGrid = Array (Array TileId)
 
 type alias TilesExample = Example Vec2 TileGrid TileId
 
