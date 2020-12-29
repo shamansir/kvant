@@ -28,6 +28,11 @@ import Example.Instance.Tiles.Plane as TilesPlane exposing (make)
 type alias TilesRegistry = Dict TileId Image
 
 
+type TilingRules
+    = FromGrid TileGrid
+    | FromRules ()
+
+
 type alias TileGrid = Array (Array TileId)
 
 type alias TilesExample = Example Vec2 TileGrid TileId
