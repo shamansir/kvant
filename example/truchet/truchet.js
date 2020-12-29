@@ -3,10 +3,11 @@ let numTilesH;
 let sizeTile = 40;
 let tiles = [];
 let n = 0;
-let kvantData = [];
 const stepCount = 2;
-const stepAmount = 100;
+const stepAmount = 60;
 let timer = 0;
+const timerStep = 1;
+const waitAmount = 60;
 
 function setup() {
     createCanvas(windowWidth, windowHeight);
@@ -27,19 +28,19 @@ function setup() {
     };
 
      app.ports.sendOutput.subscribe(function(message) {
-        kvantData = message;
         for (var i = 0; i < numTilesW; i++) {
             for (var j = 0; j < numTilesH; j++) {
+
                 if (tiles.length < count) {
                     tiles.push(new Tile);
                     tiles[j + i * numTilesH].x = i * sizeTile + sizeTile / 2;
                     tiles[j + i * numTilesH].y = j * sizeTile + sizeTile / 2;
                     tiles[j + i * numTilesH].col = [0.04 * j, 0.04 * i];
                     tiles[j + i * numTilesH].values.push(message[j][i]/1000);
-                    tiles[j + i * numTilesH].orientation.push(message[j][i]/1000);
+                    tiles[j + i * numTilesH].orientation.push(message[j][i]/1000 > 0.5 ? 90 : 0);
                 } else {
                     tiles[j + i * numTilesH].values.push(message[j][i]/1000);
-                    tiles[j + i * numTilesH].orientation.push(message[j][i]/1000);
+                    tiles[j + i * numTilesH].orientation.push(message[j][i]/1000 > 0.5 ? 90 : 0);
                 }
             }
         }
@@ -51,10 +52,10 @@ function draw() {
     for (var i = 0; i < numTilesW * numTilesH; i++) {
         tiles[i].display();
     }
-    if (timer < stepAmount) {
-        timer += 1
+    if (timer < stepAmount + waitAmount) {
+        timer += timerStep;
     } else {
-        timer = 0 // FIX IT
+        timer = 0;
     }
 }
 
@@ -65,48 +66,48 @@ function Tile() {
     this.orientation = [];
     this.rotation = 0;
     this.rotating = false;
-    this.col;
     this.values = [];
-    this.phase = 0;
+    this.reverse = false;
 
     this.display = () => {
-        push();
-        translate(this.x, this.y);
-        rotate(radians(this.rotation));
-        const currentNoise = this.values[this.phase];
-        let incr = abs(this.values[0] - this.values[1]) / stepAmount * timer;
-        let col = this.values[0] < this.values[1] ? currentNoise + incr : currentNoise - incr;
 
-        stroke(100 * col + 80, 255, 255);
-
-        if (this.orientation[0] > 0.5) {
-            arc(-this.r / 2, -this.r / 2, this.r, this.r, 0, PI / 2);
-            arc(this.r / 2, this.r / 2, this.r, this.r, -PI, -PI / 2);
-        } else {
-            arc(-this.r / 2, this.r / 2, this.r, this.r, -PI / 2, 0);
-            arc(this.r / 2, -this.r / 2, this.r, this.r, PI / 2, PI);
-        }
-        pop();
-
-        // noLoop();
-
-        if (currentNoise.toFixed(2) == 0.25
-            || currentNoise.toFixed(2) == 0.45
-            || currentNoise.toFixed(2) == 0.65
-        ) {
+        if (this.orientation[0] !== this.orientation[1]) {
             this.rotating = true;
         }
 
-        if (timer >=100) {
-            noLoop();
-        }
-        // this.data += 0.001;
+        push();
+            translate(this.x, this.y);
+            rotate(radians(this.rotation));
+            const currentNoise = this.values[0];
+            let t = timer < stepAmount ? timer : stepAmount;
+            let incr = abs(this.values[0] - this.values[1]) / stepAmount * t;
+            let col = this.values[0] < this.values[1] ? currentNoise + incr : currentNoise - incr;
 
-        // if (this.rotating) {
-        //     this.rotation += 3;
-        //     if (this.rotation % 90 === 0) {
-        //         this.rotating = false;
-        //     }
-        // }
+            stroke(100 * col + 80, 255, 255);
+
+            if (this.orientation[0] === 0 ) {
+                arc(-this.r / 2, -this.r / 2, this.r, this.r, 0, PI / 2);
+                arc(this.r / 2, this.r / 2, this.r, this.r, -PI, -PI / 2);
+            } else {
+                arc(-this.r / 2, this.r / 2, this.r, this.r, -PI / 2, 0);
+                arc(this.r / 2, -this.r / 2, this.r, this.r, PI / 2, PI);
+            }
+        pop();
+
+
+        if (timer < stepAmount) {
+            if (this.rotating) {
+                if (this.reverse) {
+                    this.rotation -= 90/stepAmount;
+                } else {
+                    this.rotation += 90/stepAmount;
+                }
+            }
+        } else if (timer >= (stepAmount + waitAmount)) {
+            const v1 = this.values[1];
+            this.values[1] = this.values[0];
+            this.values[0] = v1;
+            this.reverse = !this.reverse;
+        }
     }
 }
