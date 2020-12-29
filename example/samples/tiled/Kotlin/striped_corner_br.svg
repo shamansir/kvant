@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <line x1="100" y2="100" fill="none" stroke="#000" stroke-linecap="square" stroke-miterlimit="10" stroke-width="3"/>
+  <line x1="100" y1="20" x2="20" y2="100" fill="none" stroke="#000" stroke-linecap="square" stroke-miterlimit="10" stroke-width="3"/>
+  <line x1="100" y1="40" x2="40" y2="100" fill="none" stroke="#000" stroke-linecap="square" stroke-miterlimit="10" stroke-width="3"/>
+  <line x1="100" y1="60" x2="60" y2="100" fill="none" stroke="#000" stroke-linecap="square" stroke-miterlimit="10" stroke-width="3"/>
+  <line x1="100" y1="80" x2="80" y2="100" fill="none" stroke="#000" stroke-linecap="square" stroke-miterlimit="10" stroke-width="3"/>
+</svg>
