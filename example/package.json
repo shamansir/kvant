@@ -8,7 +8,7 @@
     "start": "elm-live ./mehanik/Mehanik.elm --open --port 2000",
     "start:truchet": "elm-live ./truchet/KvantProxy.elm --open --start-page ./truchet/truchet.html --port 2000 -- --output=./truchet/kvant-proxy.js",
     "build": "elm make ./mehanik/Mehanik.elm",
-    "build:truchet": "elm make ./truchet/Truchet.elm",
+    "build:truchet": "elm make ./truchet/KvantProxy.elm --output=./truchet/kvant-proxy.js",
     "serve": "node server.js"
   },
   "repository": {
