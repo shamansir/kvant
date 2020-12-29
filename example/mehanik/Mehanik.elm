@@ -59,7 +59,7 @@ import Kvant.Solver.History as H exposing (..)
 type alias Model =
     { example : CurrentExample
     , images : Dict ImageAlias (Result Http.Error Image)
-    , tiles : Dict TileGroup (Dict TileAlias (Result Http.Error Image))
+    , rules : Dict TileGroup (Result Http.Error ())
     }
 
 
@@ -92,8 +92,7 @@ type Msg
     | SwitchToTiledExample TileGroup
     | ChangeN (N Vec2)
     | GotImage ImageAlias (Result Http.Error Image)
-    | GotTile TileKey (Result Http.Error Image)
-    -- | GotPixels Pixels
+    | GotRules TileGroup (Result Http.Error ())
 
 
 textExamples =
@@ -123,7 +122,7 @@ textExamples =
     ]
 
 
-imagesForOverlap =
+pixelatedExamples =
     [ "Angular"
     , "Cat"
     , "Cats"
@@ -175,14 +174,16 @@ imagesForOverlap =
     ]
 
 
-tiledForOverlap =
+tiledExamples =
     [
         ( "Castle"
         , [ "bridge", "ground", "river", "riverturn", "road", "roadturn", "t", "tower", "wall", "wallriver", "wallroad" ]
+        , "png"
         )
     ,
         ( "Circles"
         , [ "b_half", "b_i", "b_quarter", "b", "w_half", "w_i", "w_quarter", "w" ]
+        , "png"
         )
 
     ]
@@ -192,7 +193,7 @@ init : Model
 init =
     { example = NotSelected
     , images = Dict.empty
-    , tiles = Dict.empty
+    , rules = Dict.empty
     }
 
 
@@ -335,23 +336,15 @@ update msg model =
             , Cmd.none
             )
 
-        GotTile ( tileGroup, tileAlias ) result ->
+        GotRules tileGroup result ->
             (
                 { model
-                | tiles =
-                    model.tiles
-                        |> Dict.update tileGroup
-                            (\maybeGroupDict ->
-                                Just
-                                    <| Dict.insert tileAlias result
-                                    <| case maybeGroupDict of
-                                        Just groupDict -> groupDict
-                                        Nothing -> Dict.empty
-                            )
+                | rules =
+                    model.rules
+                        |> Dict.insert tileGroup result
                 }
             , Cmd.none
             )
-
 
 view : Model -> Html Msg
 view model =
@@ -511,27 +504,27 @@ view model =
                         )
                     )
                 ++
-                    (tiledForOverlap
+                    (tiledExamples
                     |> List.map
-                        (\(group, files) ->
-                            case model.tiles |> Dict.get group of
-                                Just tilesDict ->
-                                    case files |> List.head of
-                                        Just firstImage ->
-                                            imageFrom
-                                                (\_ -> SwitchToTiledExample group)
-                                                tilesDict
-                                                firstImage
-                                        Nothing ->
-                                            exampleFrame NoOp
-                                                [ Html.text <| group ++ ": No images" ]
+                        (\(group, files, format) ->
+                            case model.rules |> Dict.get group of
+                                Just _ ->
+                                    exampleFrame (SwitchToTiledExample group)
+                                        [ img
+                                            [ src <| "http://localhost:3000/tiled/"
+                                                ++ group ++ "/" ++
+                                                (files |> List.head |> Maybe.withDefault "")
+                                                ++ "." ++ format
+                                            ]
+                                            []
+                                        ]
                                 Nothing ->
                                     exampleFrame NoOp
                                         [ Html.text <| group ++ ": Loading..." ]
                         )
                     )
                 ++
-                    (imagesForOverlap
+                    (pixelatedExamples
                     |> List.map
                         (imageFrom SwitchToImageExample model.images)
                     )
@@ -558,8 +551,8 @@ main =
             \_ _ _ ->
                 ( init
                 , Cmd.batch
-                    [ requestImages imagesForOverlap
-                    , requestTiles tiledForOverlap
+                    [ requestAllImages pixelatedExamples
+                    , requestAllRules <| List.map (\(group, _, _) -> group) <| tiledExamples
                     ]
                 )
         , onUrlChange = always NoOp
@@ -591,28 +584,22 @@ requestImage imageAlias =
         }
 
 
-requestTile : TileKey -> Cmd Msg
-requestTile ( tileGroup, tileAlias ) =
+requestAllImages : List ImageAlias -> Cmd Msg
+requestAllImages = List.map requestImage >> Cmd.batch
+
+
+requestRules : TileGroup -> Cmd Msg
+requestRules tileGroup =
     Http.get
-        { url = "http://localhost:3000/tiled/" ++ tileGroup ++ "/" ++ tileAlias ++ ".png"
+        { url = "http://localhost:3000/tiled/" ++ tileGroup ++ "/data.xml"
         , expect =
-            Http.expectBytesResponse
-                (GotTile ( tileGroup, tileAlias ))
-                loadImage
+            Http.expectWhatever -- FIXME
+                (GotRules tileGroup)
         }
 
 
-requestImages : List ImageAlias -> Cmd Msg
-requestImages = List.map requestImage >> Cmd.batch
-
-
-
-requestTiles : List ( TileGroup, List TileAlias ) -> Cmd Msg
-requestTiles =
-    List.concatMap
-        (\(group, tiles) -> tiles |> List.map (Tuple.pair group))
-        >> List.map requestTile
-        >> Cmd.batch
+requestAllRules : List TileGroup -> Cmd Msg
+requestAllRules = List.map requestRules >> Cmd.batch
 
 
 loadImage : Http.Response Bytes -> Result Http.Error Image
