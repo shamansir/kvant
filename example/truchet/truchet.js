@@ -2,14 +2,18 @@ let numTilesW;
 let numTilesH;
 let sizeTile = 40;
 let tiles = [];
-let n = 0;
+let count;
 const stepCount = 2;
-const stepAmount = 60;
 let timer = 0;
 const timerStep = 1;
-const waitAmount = 60;
+const tileVariations = 2;
 
-function setup() {
+// change these numbers to make animation faster or slower
+const stepAmount = 30;
+const waitAmount = 20;
+
+
+async function setup() {
     createCanvas(windowWidth, windowHeight);
     background(0);
     colorMode(HSB, 255);
@@ -17,31 +21,35 @@ function setup() {
     strokeWeight(3);
     numTilesW = ceil(width / sizeTile);
     numTilesH = ceil(height / sizeTile);
-    const count = numTilesW * numTilesH;
+    count = numTilesW * numTilesH;
 
-    for (var a = 0; a < stepCount; a++) {
-        app.ports.triggerCalculation.send({
-            count,
+    for (let a = 0; a < stepCount; a++) {
+        await app.ports.triggerCalculation.send({
+            count: tileVariations,
             rules: [],
             size: [numTilesW, numTilesH],
         });
     };
 
-     app.ports.sendOutput.subscribe(function(message) {
-        for (var i = 0; i < numTilesW; i++) {
-            for (var j = 0; j < numTilesH; j++) {
+     await app.ports.sendOutput.subscribe(function(message) {
+         for (let i = 0; i < numTilesW; i++) {
+             for (let j = 0; j < numTilesH; j++) {
 
-                if (tiles.length < count) {
-                    tiles.push(new Tile);
-                    tiles[j + i * numTilesH].x = i * sizeTile + sizeTile / 2;
-                    tiles[j + i * numTilesH].y = j * sizeTile + sizeTile / 2;
-                    tiles[j + i * numTilesH].col = [0.04 * j, 0.04 * i];
-                    tiles[j + i * numTilesH].values.push(message[j][i]/1000);
-                    tiles[j + i * numTilesH].orientation.push(message[j][i]/1000 > 0.5 ? 90 : 0);
-                } else {
-                    tiles[j + i * numTilesH].values.push(message[j][i]/1000);
-                    tiles[j + i * numTilesH].orientation.push(message[j][i]/1000 > 0.5 ? 90 : 0);
-                }
+                 if (tiles.length < count) {
+                     tiles.push(new Tile);
+                     const tile = tiles[j + i * numTilesH];
+
+                     tile.x = i * sizeTile + sizeTile / 2;
+                     tile.y = j * sizeTile + sizeTile / 2;
+                     tile.values.push(message[j][i]);
+                     tile.angles.push(message[j][i] * 90);
+                 } else {
+                     const tile = tiles[j + i * numTilesH];
+
+                     tile.values.push(message[j][i]);
+                     tile.angles.push(message[j][i] * 90);
+                     tile.needMorph = tile.values[0] !== tile.values[1];
+                 }
             }
         }
     });
@@ -60,32 +68,28 @@ function draw() {
 }
 
 function Tile() {
-    this.x;
-    this.y;
+    this.x = 0;
+    this.y = 0;
     this.r = sizeTile;
-    this.orientation = [];
+    this.angles = [];
     this.rotation = 0;
-    this.rotating = false;
     this.values = [];
     this.reverse = false;
+    this.needMorph = false;
 
     this.display = () => {
-
-        if (this.orientation[0] !== this.orientation[1]) {
-            this.rotating = true;
-        }
 
         push();
             translate(this.x, this.y);
             rotate(radians(this.rotation));
             const currentNoise = this.values[0];
             let t = timer < stepAmount ? timer : stepAmount;
-            let incr = abs(this.values[0] - this.values[1]) / stepAmount * t;
+            let incr = this.needMorph ? 1 / stepAmount * t : 0;
             let col = this.values[0] < this.values[1] ? currentNoise + incr : currentNoise - incr;
 
-            stroke(100 * col + 80, 255, 255);
+            stroke(50 * col + 120, 255, 255);
 
-            if (this.orientation[0] === 0 ) {
+            if (this.angles[0] === 0 ) {
                 arc(-this.r / 2, -this.r / 2, this.r, this.r, 0, PI / 2);
                 arc(this.r / 2, this.r / 2, this.r, this.r, -PI, -PI / 2);
             } else {
@@ -94,16 +98,13 @@ function Tile() {
             }
         pop();
 
-
-        if (timer < stepAmount) {
-            if (this.rotating) {
-                if (this.reverse) {
-                    this.rotation -= 90/stepAmount;
-                } else {
-                    this.rotation += 90/stepAmount;
-                }
+        if (timer < stepAmount && this.needMorph) {
+            if (this.reverse) {
+                this.rotation -= 90/stepAmount;
+            } else {
+                this.rotation += 90/stepAmount;
             }
-        } else if (timer >= (stepAmount + waitAmount)) {
+        } else if (timer >= (stepAmount + waitAmount) && this.needMorph) {
             const v1 = this.values[1];
             this.values[1] = this.values[0];
             this.values[0] = v1;
