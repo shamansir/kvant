@@ -41,6 +41,7 @@ import Example.Instance.Image as ImageExample exposing (..)
 import Example.Instance.Tiles as TilesExample exposing (..)
 import Example.Instance.Text.Render as TextRenderer exposing (make)
 import Example.Instance.Image.Render as ImageRenderer exposing (make)
+import Example.Instance.Tiles.Render as TilesRenderer exposing (grid)
 import Example.Instance.Text.Plane exposing (TextPlane)
 import Example.Instance.Text.Plane as TextPlane exposing (make)
 import Example.Instance.Tiles.Plane exposing (TileKey)
@@ -378,33 +379,26 @@ view model =
                 Textual _ exampleModel ->
                     Example.view TextRenderer.make exampleModel
                 FromImage _ image exampleModel ->
-                    div
-                        []
-                        [ Example.view ImageRenderer.make exampleModel
-                        ]
+                    Example.view ImageRenderer.make exampleModel
                 FromTiles _ group exampleModel ->
-                    div
-                        []
-                        [ case tiledExamples |> Dict.get group of
-                            Just ( tiles, format ) ->
-                                div []
-                                    <| List.map
-                                        (\tile ->
-                                            img
-                                                [ src <| "http://localhost:3000/tiled/"
-                                                    ++ group ++ "/" ++
-                                                    tile
-                                                    ++ "." ++ format
-                                                , width 50
-                                                , height 50
-                                                ]
-                                                []
-                                        )
+                    case tiledExamples |> Dict.get group of
+                        Just ( tiles, format ) ->
+                            div []
+                                [ div
+                                    []
+                                    <| List.map (tileToImage format group)
                                     <| tiles
-                            Nothing -> div [] []
-                        {- , Example.view ImageRenderer.make exampleModel
-                            |> Html.map ToExample -}
-                        ]
+                                , case model.rules |> Dict.get group of
+                                    Just (Ok (FromGrid grid)) ->
+                                        grid
+                                            |> Array.map (Array.toList)
+                                            |> Array.toList
+                                            |> TilesRenderer.grid (tileToImage format group)
+                                    _ -> div [] []
+                                ]
+                        Nothing -> div [] []
+                    {- , Example.view ImageRenderer.make exampleModel
+                        |> Html.map ToExample -}
                 NotSelected -> Html.text "Not Selected"
                 -- WaitingForImage url -> Html.text <| "Waiting for image " ++ url ++ " to load"
 
@@ -494,6 +488,16 @@ view model =
 
                         ]
                 _ -> div [] []
+
+        tileToImage format group tile =
+            img
+                [ src <| "http://localhost:3000/tiled/"
+                    ++ group ++ "/" ++ tile
+                    ++ "." ++ format
+                , width 50
+                , height 50
+                ]
+                [ ]
 
         imageFrom toMsg dict imgAlias =
             case dict |> Dict.get imgAlias of
