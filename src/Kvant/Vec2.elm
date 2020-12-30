@@ -31,3 +31,4 @@ loadSize grid =
     Array.get 0 grid
         |> Maybe.map (Array.length)
         |> Maybe.map (Tuple.pair <| Array.length grid)
+        |> Maybe.map swap

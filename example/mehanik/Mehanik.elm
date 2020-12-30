@@ -360,10 +360,10 @@ update msg model =
                         |> Dict.insert tileGroup result
                 }
             ,
-                if tileGroup == "Kotlin" then
+                {- if tileGroup == "Kotlin" then
                     Task.succeed "Kotlin"
                         |> Task.perform SwitchToTiledExample
-                else Cmd.none
+                else -} Cmd.none
                 -- FIXME
             )
 
