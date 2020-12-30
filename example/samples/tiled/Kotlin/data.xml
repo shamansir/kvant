@@ -1,0 +1,24 @@
+<set size="15">
+	<tiles>
+		<tile name="filled_corner_bl" alias="fbl" />
+        <tile name="filled_corner_br" alias="fbr" />
+        <tile name="filled_corner_tl" alias="ftl" />
+        <tile name="filled_corner_tr" alias="ftr" />
+        <tile name="filled_quad" alias="fq" />
+        <tile name="mixed_corner_bl" alias="mbl" />
+        <tile name="mixed_corner_br" alias="mbr" />
+        <tile name="mixed_corner_tl" alias="mtl" />
+        <tile name="mixed_corner_tr" alias="mtr" />
+        <tile name="striped_corner_bl" alias="sbl" />
+        <tile name="striped_corner_br" alias="sbr" />
+        <tile name="striped_corner_tl" alias="stl" />
+        <tile name="striped_corner_tr" alias="str" />
+        <tile name="striped_quad_l" alias="sql" />
+        <tile name="striped_quad_r" alias="sqr" />
+        <tile name="empty" alias="e" />
+	</tiles>
+    <grid>
+        <row tiles="fbl:sbr:sql:stl:ftr:e:ftr:fq:sql"></row>
+        <row tiles="fq:sqr:stl:e*4:ftr:mbr:fq*2:e*2:str:fbr:fq*2:fq*2:mbl:stl:e*2:fq*2:stl:e*2"></row>
+    </grid>
+</set>

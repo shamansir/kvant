@@ -44,6 +44,7 @@ import Example.Instance.Image.Render as ImageRenderer exposing (make)
 import Example.Instance.Text.Plane exposing (TextPlane)
 import Example.Instance.Text.Plane as TextPlane exposing (make)
 import Example.Instance.Tiles.Plane exposing (TileKey)
+import Example.Instance.Tiles.Rules as Rules
 
 
 import Kvant.Core as Wfc
@@ -61,7 +62,7 @@ import List.Extra exposing (group)
 type alias Model =
     { example : CurrentExample
     , images : Dict ImageAlias (Result Http.Error Image)
-    , rules : Dict TileGroup (Result Http.Error ())
+    , rules : Dict TileGroup (Result String TilingRules)
     }
 
 
@@ -89,7 +90,7 @@ type Msg
     | SwitchToTiledExample TileGroup
     | ChangeN (N Vec2)
     | GotImage ImageAlias (Result Http.Error Image)
-    | GotRules TileGroup (Result Http.Error ())
+    | GotRules TileGroup (Result String TilingRules)
 
 
 textExamples =
@@ -178,7 +179,7 @@ tiledExamples =
             ,
                 ( [ "filled_corner_bl", "filled_corner_br", "filled_corner_tl", "filled_corner_tr", "filled_quad", "mixed_corner_bl", "mixed_corner_bl", "mixed_corner_br", "mixed_corner_tl", "mixed_corner_tr", "mixed_corner_bl", "mixed_corner_tr", "striped_corner_bl", "striped_corner_br", "striped_corner_tl", "striped_corner_tr", "striped_quad_l", "striped_quad_r" ], "svg" )
             )
-        ,
+        {- ,
             ( "Castle"
             ,
                 ( [ "bridge", "ground", "river", "riverturn", "road", "roadturn", "t", "tower", "wall", "wallriver", "wallroad" ], "png" )
@@ -187,7 +188,7 @@ tiledExamples =
             ( "Circles"
             ,
                 ( [ "b_half", "b_i", "b_quarter", "b", "w_half", "w_i", "w_quarter", "w" ], "png" )
-            )
+            ) -}
         ]
 
 
@@ -270,14 +271,14 @@ update msg model =
                             }
                         , commands |> Cmd.map ToExample
                         )
-                FromTiles options registry example ->
+                FromTiles options group example ->
                     let
                         ( newExampleModel, commands ) =
                             Example.update exampleMsg example
                     in
                         (
                             { model
-                            | example = FromTiles options registry newExampleModel
+                            | example = FromTiles options group newExampleModel
                             }
                         , commands |> Cmd.map ToExample
                         )
@@ -357,7 +358,12 @@ update msg model =
                     model.rules
                         |> Dict.insert tileGroup result
                 }
-            , Cmd.none
+            ,
+                if tileGroup == "Kotlin" then
+                    Task.succeed "Kotlin"
+                        |> Task.perform SwitchToTiledExample
+                else Cmd.none
+                -- FIXME
             )
 
 view : Model -> Html Msg
@@ -628,8 +634,11 @@ requestRules tileGroup =
     Http.get
         { url = "http://localhost:3000/tiled/" ++ tileGroup ++ "/data.xml"
         , expect =
-            Http.expectWhatever -- FIXME
-                (GotRules tileGroup)
+            Http.expectString
+                (Result.mapError errorToString
+                >> Result.andThen Rules.decode
+                >> GotRules tileGroup
+                )
         }
 
 
