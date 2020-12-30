@@ -230,7 +230,7 @@ defaultTilesOptions =
         Overlapping
             { searchBoundary = Bounded -- Periodic
             , patternSize = N ( 2, 2 )
-            , symmetry = FlipAndRotate
+            , symmetry = NoSymmetry
             }
     , outputSize = ( 10, 10 )
     , outputBoundary = Bounded
@@ -391,18 +391,18 @@ view model =
                                     <| tiles
                                 , case model.rules |> Dict.get group of
                                     Just (Ok (FromGrid grid)) ->
-                                        -- FIXME: this is proper
-                                        {- Example.view
-                                            (TilesRenderer.make <| toTileUrl format group) exampleModel -}
                                         div
                                             [ style "transform" "scale(0.6)"
                                             , style "transform-origin" "0 0"
                                             ]
-                                            [ grid
+                                            [ Example.view
+                                                (TilesRenderer.make <| toTileUrl format group)
+                                                exampleModel
+                                            {- grid
                                                     |> Array.map (Array.toList)
                                                     |> Array.toList
                                                     |> TilesRenderer.grid
-                                                        (toTileUrl format group >> TilesRenderer.tile)
+                                                        (toTileUrl format group >> TilesRenderer.tile) -}
                                             ]
                                     _ -> div [] []
                                 ]
