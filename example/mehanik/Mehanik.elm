@@ -394,11 +394,16 @@ view model =
                                         -- FIXME: this is proper
                                         {- Example.view
                                             (TilesRenderer.make <| toTileUrl format group) exampleModel -}
-                                        grid
-                                            |> Array.map (Array.toList)
-                                            |> Array.toList
-                                            |> TilesRenderer.grid
-                                                (toTileUrl format group >> TilesRenderer.tile)
+                                        div
+                                            [ style "transform" "scale(0.6)"
+                                            , style "transform-origin" "0 0"
+                                            ]
+                                            [ grid
+                                                    |> Array.map (Array.toList)
+                                                    |> Array.toList
+                                                    |> TilesRenderer.grid
+                                                        (toTileUrl format group >> TilesRenderer.tile)
+                                            ]
                                     _ -> div [] []
                                 ]
                         Nothing -> div [] []
