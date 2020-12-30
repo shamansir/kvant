@@ -14,22 +14,32 @@ import Example.Render as Render exposing (..)
 import Example.Instance.Tiles.Plane exposing (..)
 
 
-make : Renderer Vec2 TileGrid TileKey (Html msg)
-make =
+make : (TileKey -> String) -> Renderer Vec2 TileGrid TileKey (Html msg)
+make toPath =
     { source =
-        Array.toList >> List.map Array.toList >> grid tile
+        Array.toList >> List.map Array.toList >> grid (tile1 toPath)
     , plane =
         Plane.unpack
             >> List.map (List.map <| Maybe.withDefault noTile)
-            >> grid tile
+            >> grid (tile1 toPath)
     , tracingPlane = always <| div [] []
     , tracingCell = always <| div [] []
     }
 
 
-tile : TileKey -> Html msg
-tile _ =
-    div [] []
+tile : String -> Html msg
+tile path =
+    img
+        [ src path
+        , width 50
+        , height 50
+        ]
+        [ ]
+
+
+tile1 : (TileKey -> String) -> TileKey -> Html msg
+tile1 toPath key =
+    tile <| toPath key
 
 
 grid : (a -> Html msg) -> List (List a) -> Html msg

@@ -310,10 +310,10 @@ update msg model =
                 { model
                 | example =
                     case model.rules |> Dict.get group of
-                        Just _ ->
+                        Just (Ok (FromGrid grid)) ->
                             FromTiles defaultTilesOptions group
                                 <| TilesExample.quick defaultTilesOptions
-                                <| Array.empty -- FIXME
+                                <| grid
                         _ ->
                             model.example
                 }
@@ -386,19 +386,22 @@ view model =
                             div []
                                 [ div
                                     []
-                                    <| List.map (tileToImage format group)
+                                    <| List.map TilesRenderer.tile
+                                    <| List.map (toTileUrl format group)
                                     <| tiles
                                 , case model.rules |> Dict.get group of
                                     Just (Ok (FromGrid grid)) ->
+                                        -- FIXME: this is proper
+                                        {- Example.view
+                                            (TilesRenderer.make <| toTileUrl format group) exampleModel -}
                                         grid
                                             |> Array.map (Array.toList)
                                             |> Array.toList
-                                            |> TilesRenderer.grid (tileToImage format group)
+                                            |> TilesRenderer.grid
+                                                (toTileUrl format group >> TilesRenderer.tile)
                                     _ -> div [] []
                                 ]
                         Nothing -> div [] []
-                    {- , Example.view ImageRenderer.make exampleModel
-                        |> Html.map ToExample -}
                 NotSelected -> Html.text "Not Selected"
                 -- WaitingForImage url -> Html.text <| "Waiting for image " ++ url ++ " to load"
 
@@ -489,15 +492,8 @@ view model =
                         ]
                 _ -> div [] []
 
-        tileToImage format group tile =
-            img
-                [ src <| "http://localhost:3000/tiled/"
-                    ++ group ++ "/" ++ tile
-                    ++ "." ++ format
-                , width 50
-                , height 50
-                ]
-                [ ]
+        toTileUrl format group tile =
+            "http://localhost:3000/tiled/" ++ group ++ "/" ++ tile ++ "." ++ format
 
         imageFrom toMsg dict imgAlias =
             case dict |> Dict.get imgAlias of
