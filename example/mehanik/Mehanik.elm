@@ -43,6 +43,7 @@ import Example.Instance.Text.Render as TextRenderer exposing (make)
 import Example.Instance.Image.Render as ImageRenderer exposing (make)
 import Example.Instance.Text.Plane exposing (TextPlane)
 import Example.Instance.Text.Plane as TextPlane exposing (make)
+import Example.Instance.Tiles.Plane exposing (TileKey)
 
 
 import Kvant.Core as Wfc
@@ -54,6 +55,7 @@ import Kvant.Plane.Impl.Tracing exposing (TracingPlane)
 import Kvant.Solver exposing (Approach(..))
 import Kvant.Solver as Solver exposing (Step, Options)
 import Kvant.Solver.History as H exposing (..)
+import List.Extra exposing (group)
 
 
 type alias Model =
@@ -67,18 +69,13 @@ type CurrentExample
     = NotSelected
     | Textual Wfc.TextOptions TextExample
     | FromImage Wfc.ImageOptions Image ImageExample
-    | FromTiles Wfc.TilesOptions TilesRegistry TilesExample
+    | FromTiles Wfc.TilesOptions TileGroup TilesExample
 
 
 type alias ImageAlias = String
 
 
 type alias TileGroup = String
-
-
-type alias TileAlias = String
-
-type alias TileKey = ( TileGroup, TileAlias )
 
 
 type alias Pixels = Array (Array Color)
@@ -175,18 +172,23 @@ pixelatedExamples =
 
 
 tiledExamples =
-    [
-        ( "Castle"
-        , [ "bridge", "ground", "river", "riverturn", "road", "roadturn", "t", "tower", "wall", "wallriver", "wallroad" ]
-        , "png"
-        )
-    ,
-        ( "Circles"
-        , [ "b_half", "b_i", "b_quarter", "b", "w_half", "w_i", "w_quarter", "w" ]
-        , "png"
-        )
-
-    ]
+    Dict.fromList
+        [
+            ( "Kotlin"
+            ,
+                ( [ "filled_corner_bl", "filled_corner_br", "filled_corner_tl", "filled_corner_tr", "filled_quad", "mixed_corner_bl", "mixed_corner_bl", "mixed_corner_br", "mixed_corner_tl", "mixed_corner_tr", "mixed_corner_bl", "mixed_corner_tr", "striped_corner_bl", "striped_corner_br", "striped_corner_tl", "striped_corner_tr", "striped_quad_l", "striped_quad_r" ], "svg" )
+            )
+        ,
+            ( "Castle"
+            ,
+                ( [ "bridge", "ground", "river", "riverturn", "road", "roadturn", "t", "tower", "wall", "wallriver", "wallroad" ], "png" )
+            )
+        ,
+            ( "Circles"
+            ,
+                ( [ "b_half", "b_i", "b_quarter", "b", "w_half", "w_i", "w_quarter", "w" ], "png" )
+            )
+        ]
 
 
 init : Model
@@ -307,13 +309,11 @@ update msg model =
                 | example =
                     case model.rules |> Dict.get group of
                         Just _ ->
-                            FromTiles defaultTilesOptions Dict.empty -- FIXME
+                            FromTiles defaultTilesOptions group
                                 <| TilesExample.quick defaultTilesOptions
                                 <| Array.empty -- FIXME
-                        Nothing ->
-                            FromTiles defaultTilesOptions Dict.empty -- FIXME
-                                <| TilesExample.quick defaultTilesOptions
-                                <| Array.empty -- FIXME
+                        _ ->
+                            model.example
                 }
             , Cmd.none
             )
@@ -376,10 +376,27 @@ view model =
                         []
                         [ Example.view ImageRenderer.make exampleModel
                         ]
-                FromTiles _ registry exampleModel ->
+                FromTiles _ group exampleModel ->
                     div
                         []
-                        [ {- Example.view ImageRenderer.make exampleModel
+                        [ case tiledExamples |> Dict.get group of
+                            Just ( tiles, format ) ->
+                                div []
+                                    <| List.map
+                                        (\tile ->
+                                            img
+                                                [ src <| "http://localhost:3000/tiled/"
+                                                    ++ group ++ "/" ++
+                                                    tile
+                                                    ++ "." ++ format
+                                                , width 50
+                                                , height 50
+                                                ]
+                                                []
+                                        )
+                                    <| tiles
+                            Nothing -> div [] []
+                        {- , Example.view ImageRenderer.make exampleModel
                             |> Html.map ToExample -}
                         ]
                 NotSelected -> Html.text "Not Selected"
@@ -519,8 +536,9 @@ view model =
                     )
                 ++
                     (tiledExamples
+                    |> Dict.toList
                     |> List.map
-                        (\(group, files, format) ->
+                        (\( group, ( files, format ) ) ->
                             case model.rules |> Dict.get group of
                                 Just _ ->
                                     exampleFrame (SwitchToTiledExample group)
@@ -569,7 +587,7 @@ main =
                 ( init
                 , Cmd.batch
                     [ requestAllImages pixelatedExamples
-                    , requestAllRules <| List.map (\(group, _, _) -> group) <| tiledExamples
+                    , requestAllRules <| Dict.keys tiledExamples
                     ]
                 )
         , onUrlChange = always NoOp

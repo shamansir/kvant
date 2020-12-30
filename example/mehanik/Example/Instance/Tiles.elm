@@ -21,11 +21,8 @@ import Kvant.Solver.Flat as FlatSolver exposing (init)
 import Example.Example exposing (Example)
 import Example.Example as Example exposing (make)
 import Example.Advance exposing (Status(..), AdvanceMode(..))
-import Example.Instance.Tiles.Plane exposing (TileId, TileGrid)
+import Example.Instance.Tiles.Plane exposing (TileKey, TileGrid)
 import Example.Instance.Tiles.Plane as TilesPlane exposing (make)
-
-
-type alias TilesRegistry = Dict TileId Image
 
 
 type TilingRules
@@ -33,15 +30,15 @@ type TilingRules
     | FromRules ()
 
 
-type alias TilesExample = Example Vec2 TileGrid TileId
+type alias TilesExample = Example Vec2 TileGrid TileKey
 
 
-type alias TilesWfc = Wfc Vec2 TileGrid TileId
-type alias TilesTracingWfc = TracingWfc Vec2 TileId
-type alias TilesTracingPlane = TracingPlane Vec2 TileId
+type alias TilesWfc = Wfc Vec2 TileGrid TileKey
+type alias TilesTracingWfc = TracingWfc Vec2 TileKey
+type alias TilesTracingPlane = TracingPlane Vec2 TileKey
 
 
-type alias TilesOptions = Solver.Options Vec2 TileId
+type alias TilesOptions = Solver.Options Vec2 TileKey
 
 
 quick : TilesOptions -> TileGrid -> TilesExample
@@ -64,7 +61,7 @@ tiles options =
     makeFn
         (Convert
             { fromInput = TilesPlane.make
-            , toElement = \_ _ -> -1
+            , toElement = \_ _ -> "none"
             , toOutput = TilesPlane.toGrid >> List.map (Array.fromList) >> Array.fromList
             }
         )
@@ -76,7 +73,7 @@ tilesAdvancing options =
     makeAdvancingFn
         (Convert
             { fromInput = TilesPlane.make
-            , toElement = \_ _ -> -1
+            , toElement = \_ _ -> "none"
             , toOutput = TilesPlane.toGrid >> List.map (Array.fromList) >> Array.fromList
             }
         )

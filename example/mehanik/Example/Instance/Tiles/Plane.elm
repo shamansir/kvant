@@ -8,17 +8,17 @@ import Kvant.Plane exposing (..)
 import Kvant.Plane.Flat exposing (..)
 
 
-type alias TileId = Int
+type alias TileKey = String
 
 
-type alias TileGrid = Array (Array TileId)
+type alias TileGrid = Array (Array TileKey)
 
 
-type alias TilesPlane = Plane Vec2 TileId
+type alias TilesPlane = Plane Vec2 TileKey
 
 
-noTile : TileId
-noTile = -1
+noTile : TileKey
+noTile = "none"
 
 
 make : TileGrid -> TilesPlane
@@ -41,11 +41,11 @@ makeInBounds ( width, height ) tileGrid =
         )
 
 
-toGrid : TilesPlane -> List (List TileId)
+toGrid : TilesPlane -> List (List TileKey)
 toGrid plane =
     unpack plane
         |> List.map (List.map <| Maybe.withDefault noTile)
 
 
-merge : List TileId -> TileId
+merge : List TileKey -> TileKey
 merge = always noTile -- FIXME

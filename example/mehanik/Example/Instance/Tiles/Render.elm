@@ -1,6 +1,7 @@
 module Example.Instance.Tiles.Render exposing (..)
 
 
+import Array exposing (Array)
 import Html exposing (..)
 import Html.Attributes exposing (..)
 
@@ -10,13 +11,13 @@ import Kvant.Plane.Flat as Plane exposing (unpack)
 
 import Example.Render as Render exposing (..)
 
-import Example.Instance.Tiles exposing (TilesRegistry)
-import Example.Instance.Tiles.Plane exposing (merge, TileGrid, TileId)
+import Example.Instance.Tiles.Plane exposing (..)
 
 
-make : Renderer Vec2 TileGrid TileId (Html msg)
+make : Renderer Vec2 TileGrid TileKey (Html msg)
 make =
-    { source = grid tile
+    { source =
+        Array.toList >> List.map Array.toList >> grid tile
     , plane =
         Plane.unpack
             >> List.map (List.map <| Maybe.withDefault noTile)
@@ -26,7 +27,7 @@ make =
     }
 
 
-tile : TileId -> Html msg
+tile : TileKey -> Html msg
 tile _ =
     div [] []
 
