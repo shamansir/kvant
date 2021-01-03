@@ -7,7 +7,7 @@
     "test": "./node_modules/elm-test/bin/elm-test",
     "start": "concurrently \"npm:start:worker\" \"npm:start:mehanik\"",
     "start:worker": "elm-live ./mehanik/Worker.elm --no-server -- --output=./worker.js",
-    "start:mehanik": "elm-live ./mehanik/Mehanik.elm --open --hot --start-page ./index.html --port 2000 -- --output=./mehanik.js",
+    "start:mehanik": "elm-live ./mehanik/Mehanik.elm --open --start-page ./index.html --port 2000 -- --output=./mehanik.js",
     "start:truchet": "elm-live ./truchet/KvantProxy.elm --open --start-page ./truchet/index.html --port 2000 -- --output=./truchet/kvant-proxy.js",
     "build": "npm run build:worker && npm run build:mehanik",
     "build:mehanik": "elm make ./mehanik/Mehanik.elm -- output=./mehanink.js",

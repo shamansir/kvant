@@ -9,15 +9,24 @@
         }
     </style>
 	<script src="./mehanik.js"></script>
-	<script src="./worker.js"></script>
+	<!-- <script src="./worker.js"></script> -->
 </head>
 <body>
 <div id="mehanik"></div>
 
 <script>
-    var app = Elm.Mehanik.init({
+    var mehanik = Elm.Mehanik.init({
         node: document.getElementById('mehanik')
-    });
+	});
+	var jsWorker = new Worker('./worker-runner.js');
+	console.log(jsWorker);
+	jsWorker.postMessage({'cmd': 'start'});
+	// jsWorker.onmessage();
+
+	/* var worker = Elm.Worker.init();
+	console.log(worker);
+	var jsWorker = new Worker();
+	console.log(jsWorker); */
 </script>
 </body>
 </html>
