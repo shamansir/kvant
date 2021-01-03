@@ -25,6 +25,9 @@ import Kvant.Plane.Impl.Tracing exposing (TracingPlane, TracingCell)
 
 
 type Wfc v fmt a =
+    -- FIXME: get rid of `fmt` —> Conversion should be performed outside
+    -- FIXME: `a` should be `comparable`
+    -- FIXME: `a` is not used!
     Wfc ( Solver.Step v -> ( Solver.Step v, fmt ) )
 
 type alias TracingWfc v a = Wfc v (TracingPlane v a) a

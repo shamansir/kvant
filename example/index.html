@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Kvant : Mehanik</title>
+    <style>
+        body {
+            margin: 0;
+        }
+    </style>
+	<script src="./mehanik.js"></script>
+	<script src="./worker.js"></script>
+</head>
+<body>
+<div id="mehanik"></div>
+
+<script>
+    var app = Elm.Mehanik.init({
+        node: document.getElementById('mehanik')
+    });
+</script>
+</body>
+</html>

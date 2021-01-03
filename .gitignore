@@ -1,9 +1,10 @@
 elm-stuff
 node_modules
 /index.html
-/example/index.html
 /example/truchet/kvant-proxy.js
-
+/example/mehanik.js
+/example/worker.js
+/example/package-lock.json
 .DS_Store
 .idea/
 
