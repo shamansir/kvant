@@ -6,7 +6,7 @@ import Dict
 
 
 import Kvant.Plane exposing (..)
-import Kvant.Plane.Flat exposing (Boundary, Symmetry, findAllSubs, findOccurrence, findMatches)
+import Kvant.Plane.Flat exposing (Boundary, Symmetry, findAllSubsAlt, findOccurrence, findMatches)
 import Kvant.Vec2 exposing (..)
 import Kvant.Matches exposing (..)
 import Kvant.Solver exposing (..)
@@ -55,7 +55,7 @@ findUniquePatterns
     -> UniquePatterns Vec2 a
 findUniquePatterns boundary ofSize inPlane =
     let
-        allSubplanes = findAllSubs boundary ofSize inPlane
+        allSubplanes = findAllSubsAlt boundary ofSize inPlane
         uniquePatterns = findOccurrence allSubplanes
         uniquePatternsDict =
             uniquePatterns
