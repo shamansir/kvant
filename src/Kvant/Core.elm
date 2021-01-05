@@ -4,6 +4,7 @@ module Kvant.Core exposing
     , run, step, stepAtOnce
     , Converter(..), make, makeAdvancing
     , makeFn, makeAdvancingFn
+    , noConvert
     )
 
 
@@ -43,6 +44,15 @@ type Converter v a x fmt =
         { fromInput : fmt -> Plane v x
         , toElement : Matches Solver.PatternId -> List a -> x
         , toOutput : Plane v x -> fmt
+        }
+
+
+noConvert : Converter v a (List a) (Plane v (List a))
+noConvert =
+    Convert
+        { fromInput = identity
+        , toElement = always identity
+        , toOutput = identity
         }
 
 

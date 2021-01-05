@@ -3,12 +3,14 @@ module Kvant.Plane.Flat exposing (..)
 
 import Dict
 import Dict exposing (Dict)
+import Array exposing (Array)
 
 import Kvant.Vec2 exposing (..)
 import Kvant.Occurrence exposing (Occurrence, Frequency, frequencyFromFloat)
 import Kvant.Occurrence as Occurrence
 import Kvant.Plane exposing (..)
 import Kvant.Plane.Offset exposing (..)
+import List.Zipper exposing (from)
 
 
 type Boundary
@@ -385,6 +387,26 @@ findMatches from (Plane size f as plane) =
         OffsetPlane limits (\(Offset v) -> Dict.get v offsetToMatches)
 
 
--- neighbours : SearchMethod -> Vec2 -> Plane Vec2 a -> List ( Direction, Vec2 )
--- neighbours v (x, y) =
+fromGrid : List (List a) -> Plane Vec2 a
+fromGrid =
+    List.map Array.fromList
+        >> Array.fromList
+        >> fromArrayGrid
+
+
+fromArrayGrid : Array (Array a) -> Plane Vec2 a
+fromArrayGrid grid =
+    let
+        ( width, height )
+            = Array.get 0 grid
+                |> Maybe.map Array.length
+                |> Maybe.map (Tuple.pair <| Array.length grid)
+                |> Maybe.map swap
+                |> Maybe.withDefault (0, 0)
+    in
+        Plane ( width, height )
+            <| \(x, y) ->
+                grid
+                    |> Array.get y
+                    |> Maybe.andThen (Array.get x)
 
