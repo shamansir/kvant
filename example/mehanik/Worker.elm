@@ -18,7 +18,7 @@ import Kvant.Plane.Flat as Plane exposing (..)
 type alias Source = Array (Array Int)
 
 type alias StepResult = Array (Array (Array Int))
-type alias RunResult = Array (Array Int)
+type alias RunResult = StepResult
 
 
 type alias Options = -- TODO
@@ -74,14 +74,16 @@ update msg model =
             )
 
         RunWith options source seed ->
-            (
-                Wfc.make Wfc.noConvert
-                        (FlatSolver.init defaultOptions <| Plane.fromArrayGrid source)
-                    |> Wfc.run seed
-                    |> fromPlane
-                    |> Solution
-            , Cmd.none
-            )
+            let
+                solution =
+                    Wfc.make Wfc.noConvert
+                            (FlatSolver.init defaultOptions <| Plane.fromArrayGrid source)
+                        |> Wfc.run seed
+                        |> fromPlane
+            in
+                ( Solution solution
+                , onResult solution
+                )
 
         Trace options source ->
             ( model
@@ -89,33 +91,32 @@ update msg model =
             )
 
         TraceWith options source seed ->
-            (
-                let
-                    tracingWfc = Wfc.makeAdvancing Wfc.noConvert
-                        (FlatSolver.init defaultOptions <| Plane.fromArrayGrid source)
-                    ( nextStep, traceResult ) =
-                        tracingWfc
-                            |> Wfc.firstStep seed
-                            --|> Tuple.mapSecond fromPlane
-                in
-                    Tracing tracingWfc nextStep
-            , Cmd.none
-            )
+            let
+                tracingWfc = Wfc.makeAdvancing Wfc.noConvert
+                    (FlatSolver.init defaultOptions <| Plane.fromArrayGrid source)
+                ( nextStep, traceResult ) =
+                    tracingWfc
+                        |> Wfc.firstStep seed
+                        --|> Tuple.mapSecond fromPlane
+            in
+                ( Tracing tracingWfc nextStep
+                , onStep <| fromPlane traceResult
+                )
 
         Step ->
-            (
-                case model of
-                    Tracing tracingWfc prevStep ->
-                        let
-                            (nextStep, traceResult )
-                                = tracingWfc
-                                    |> Wfc.step prevStep
-                        in  Tracing tracingWfc nextStep
-                        -- history |>
-                        --             H.push ( lastStep, TracingStep lastTracingStep )
-                    _ -> model
-            , Cmd.none
-            )
+            case model of
+                Tracing tracingWfc prevStep ->
+                    let
+                        (nextStep, traceResult )
+                            = tracingWfc
+                                |> Wfc.step prevStep
+                    in
+                        ( Tracing tracingWfc nextStep
+                        , onStep <| fromPlane traceResult
+                        )
+                    -- history |>
+                    --             H.push ( lastStep, TracingStep lastTracingStep )
+                _ -> ( model, Cmd.none )
 
         StepBack newSeed ->
             {-
