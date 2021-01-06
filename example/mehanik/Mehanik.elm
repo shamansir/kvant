@@ -1,4 +1,4 @@
-module Mehanik exposing (..)
+port module Mehanik exposing (..)
 
 
 import Browser
@@ -43,7 +43,8 @@ import Example.Instance.Text.Render as TextRenderer exposing (make)
 import Example.Instance.Image.Render as ImageRenderer exposing (make)
 import Example.Instance.Tiles.Render as TilesRenderer exposing (grid)
 import Example.Instance.Text.Plane exposing (TextPlane)
-import Example.Instance.Text.Plane as TextPlane exposing (make)
+import Example.Instance.Text.Plane as TextPlane exposing
+    (make, boundedStringToGrid, toBoundedStringFromGrid, merge)
 import Example.Instance.Tiles.Plane exposing (TileKey)
 import Example.Instance.Tiles.Rules as Rules
 
@@ -92,6 +93,7 @@ type Msg
     | ChangeN (N Vec2)
     | GotImage ImageAlias (Result Http.Error Image)
     | GotRules TileGroup (Result String TilingRules)
+    | DisplayResult (Array (Array (Array Int)))
 
 
 textExamples =
@@ -288,11 +290,18 @@ update msg model =
         SwitchToTextExample size source ->
             (
                 { model
-                | example =
-                    Textual defaultTextOptions
+                | example = NotSelected
+
+                    {- Textual defaultTextOptions
                         <| TextExample.quick defaultTextOptions ( size, source )
+                    -}
                 }
-            , Cmd.none
+            , ( size, source )
+                |> boundedStringToGrid
+                |> List.map (List.map Char.toCode)
+                |> List.map Array.fromList
+                |> Array.fromList
+                |> runInWorker
             )
 
         SwitchToImageExample image ->
@@ -365,6 +374,20 @@ update msg model =
                         |> Task.perform SwitchToTiledExample
                 else -} Cmd.none
                 -- FIXME
+            )
+
+        DisplayResult grid ->
+            (
+                { model
+                | example
+                    = grid
+                        |> Array.map
+                            (Array.map <| Array.toList >> List.map Char.fromCode >> TextPlane.merge)
+                        |> toBoundedStringFromGrid
+                        |> TextExample.quick defaultTextOptions
+                        |> Textual defaultTextOptions
+                }
+            , Cmd.none
             )
 
 view : Model -> Html Msg
@@ -603,7 +626,9 @@ main =
                 )
         , onUrlChange = always NoOp
         , onUrlRequest = always NoOp
-        , subscriptions = always Sub.none
+        , subscriptions =
+            \_ ->
+                displayResult DisplayResult
         , update = update
         , view = \model -> { title = "Kvant : Mehanik", body = [ view model ] }
         }
@@ -707,3 +732,8 @@ changeN n options =
             _ -> options.approach
     }
 
+
+port runInWorker : Array (Array Int) -> Cmd msg
+
+
+port displayResult : (Array (Array (Array Int)) -> msg) -> Sub msg

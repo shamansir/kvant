@@ -1,9 +1,9 @@
 module Example.Instance.Text.Plane exposing (..)
 
-import Array
+import Array exposing (Array)
 
 
-import Kvant.Vec2 exposing (..)
+import Kvant.Vec2 as V2 exposing (..)
 import Kvant.Plane exposing (..)
 import Kvant.Plane.Flat exposing (..)
 
@@ -41,6 +41,17 @@ toBoundedString : TextPlane -> BoundedString
 toBoundedString (Plane size _ as plane) =
     ( size
     , plane |> toString
+    )
+
+
+toBoundedStringFromGrid : Array (Array Char) -> BoundedString
+toBoundedStringFromGrid grid =
+    ( V2.loadSize grid |> Maybe.withDefault (0, 0)
+    , grid
+        |> Array.map Array.toList
+        |> Array.toList
+        |> List.concat
+        |> String.fromList
     )
 
 
