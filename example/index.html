@@ -30,7 +30,7 @@
         console.log(data);
         switch (data.cmd) {
             case 'result':
-                mehanik.ports.displayResult.send(data.grid);
+                mehanik.ports.gotWorkerResult.send(data.grid);
             default: return;
         }
     });

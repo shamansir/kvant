@@ -1,6 +1,8 @@
 module Example.Instance.Text.Render exposing (..)
 
 
+import Array exposing (Array)
+
 import Html exposing (..)
 import Html.Attributes exposing (..)
 
@@ -97,3 +99,8 @@ grid viewElem rows =
 
 gridV : (v -> a -> Html msg) -> List (List (v, a)) -> Html msg
 gridV viewElem = grid (\(v, a) -> viewElem v a)  -- a.k.a. `uncurry`
+
+
+grid1 : (Array a -> Html msg) -> Array (Array (Array a)) -> Html msg
+grid1 viewElem =
+    Array.map Array.toList >> Array.toList >> grid viewElem

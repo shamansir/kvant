@@ -39,7 +39,7 @@ import Example.Render as Render exposing (..)
 import Example.Instance.Text as TextExample exposing (..)
 import Example.Instance.Image as ImageExample exposing (..)
 import Example.Instance.Tiles as TilesExample exposing (..)
-import Example.Instance.Text.Render as TextRenderer exposing (make)
+import Example.Instance.Text.Render as TextRenderer exposing (make, grid1)
 import Example.Instance.Image.Render as ImageRenderer exposing (make)
 import Example.Instance.Tiles.Render as TilesRenderer exposing (grid)
 import Example.Instance.Text.Plane exposing (TextPlane)
@@ -70,9 +70,12 @@ type alias Model =
 
 type CurrentExample
     = NotSelected
-    | Textual Wfc.TextOptions TextExample
-    | FromImage Wfc.ImageOptions Image ImageExample
-    | FromTiles Wfc.TilesOptions TileGroup TilesExample
+    | Textual Wfc.TextOptions ( Vec2, String ) ( Maybe (Grid Char) )
+    | FromImage Wfc.ImageOptions Image (Maybe Image)
+    | FromTiles Wfc.TilesOptions TileGroup TilingRules ( Maybe (Grid TileKey) )
+
+
+type alias Grid a = Array (Array (Array a))
 
 
 type alias ImageAlias = String
@@ -86,14 +89,18 @@ type alias Pixels = Array (Array Color)
 
 type Msg
     = NoOp
-    | ToExample Example.Msg
-    | SwitchToTextExample Vec2 String
+    -- | ToExample Example.Msg
+    | SwitchToTextExample ( Vec2, String )
     | SwitchToImageExample Image
     | SwitchToTiledExample TileGroup
+    | Run
+    | Step
+    | StepBack
+    | Stop
     | ChangeN (N Vec2)
     | GotImage ImageAlias (Result Http.Error Image)
     | GotRules TileGroup (Result String TilingRules)
-    | DisplayResult (Array (Array (Array Int)))
+    | GotResult (Grid Int)
 
 
 textExamples =
@@ -249,7 +256,7 @@ update msg model =
         NoOp ->
             ( model, Cmd.none )
 
-        ToExample exampleMsg ->
+        {- ToExample exampleMsg ->
             case model.example of
                 -- FIXME: fix repitition
                 Textual options example ->
@@ -285,12 +292,12 @@ update msg model =
                             }
                         , commands |> Cmd.map ToExample
                         )
-                _ -> ( model, Cmd.none )
+                _ -> ( model, Cmd.none ) -}
 
-        SwitchToTextExample size source ->
+        SwitchToTextExample source ->
             (
                 { model
-                | example = NotSelected
+                | example = Textual defaultTextOptions source
 
                     {- Textual defaultTextOptions
                         <| TextExample.quick defaultTextOptions ( size, source )
@@ -307,9 +314,7 @@ update msg model =
         SwitchToImageExample image ->
             (
                 { model
-                | example =
-                    FromImage defaultImageOptions image
-                        <| ImageExample.quick defaultImageOptions image
+                | example = FromImage defaultImageOptions image
                 }
             , Cmd.none
             )
@@ -319,10 +324,8 @@ update msg model =
                 { model
                 | example =
                     case model.rules |> Dict.get group of
-                        Just (Ok (FromGrid grid)) ->
-                            FromTiles defaultTilesOptions group
-                                <| TilesExample.quick defaultTilesOptions
-                                <| grid
+                        Just (Ok rules) ->
+                            FromTiles defaultTilesOptions group rules
                         _ ->
                             model.example
                 }
@@ -331,22 +334,21 @@ update msg model =
 
         ChangeN n ->
             ( case model.example of
-                Textual options example ->
-                    let newOptions = options |> changeN n
-                    in
-                        { model
-                        | example =
-                            Textual newOptions
-                                <| TextExample.quick newOptions example.source
-                        }
-                FromImage options image example ->
-                    let newOptions = options |> changeN n
-                    in
-                        { model
-                        | example =
-                            FromImage newOptions image
-                                    <| ImageExample.quick newOptions image
-                        }
+                Textual options source maybeGrid ->
+                    { model
+                    | example =
+                        Textual (options |> changeN n) source maybeGrid
+                    }
+                FromImage options image maybeGrid ->
+                    { model
+                    | example =
+                        FromImage (options |> changeN n) image maybeGrid
+                    }
+                FromTiles options group rules maybeGrid ->
+                    { model
+                    | example =
+                        FromTiles (options |> changeN n) group rules maybeGrid
+                    }
                 _ -> model
             , Cmd.none
             )
@@ -376,7 +378,7 @@ update msg model =
                 -- FIXME
             )
 
-        DisplayResult grid ->
+        GotResult grid ->
             (
                 { model
                 | example
@@ -390,17 +392,23 @@ update msg model =
             , Cmd.none
             )
 
+
 view : Model -> Html Msg
 view model =
     let
 
         viewImageExample =
-            Example.view ImageRenderer.make >> Html.map ToExample
+            Example.view ImageRenderer.make -->> Html.map ToExample
 
         viewExample example =
             case example of
-                Textual _ exampleModel ->
-                    Example.view TextRenderer.make exampleModel
+                Textual _ source maybeGrid ->
+                    div
+                        [ Example.preview TextRenderer.make source
+                        , maybeGrid
+                            |> Maybe.map (viewGrid <| TextPlane.merge >> TextRenderer.char)
+                            |> Maybe.withDefault (div [] [])
+                        ]
                 FromImage _ image exampleModel ->
                     Example.view ImageRenderer.make exampleModel
                 FromTiles _ group exampleModel ->
@@ -628,20 +636,19 @@ main =
         , onUrlRequest = always NoOp
         , subscriptions =
             \_ ->
-                displayResult DisplayResult
+                gotWorkerResult GotResult
         , update = update
         , view = \model -> { title = "Kvant : Mehanik", body = [ view model ] }
         }
 
 
-isSolving : CurrentExample -> Bool
-isSolving example =
-    case example of
-        NotSelected -> False
-        Textual _ e -> Example.Advance.isSolving e.status
-        FromImage _ _ e -> Example.Advance.isSolving e.status
-        FromTiles _ _ e -> Example.Advance.isSolving e.status
+mapGrid : (a -> b) -> Grid a -> Grid b
+mapGrid f = Array.map <| Array.map <| Array.map f
 
+
+viewGrid : (Array a -> Html msg) -> Array (Array (Array a)) -> Html msg
+viewGrid viewElem =
+    Array.map Array.toList >> Array.toList >> grid viewElem
 
 
 requestImage : ImageAlias -> Cmd Msg
@@ -736,4 +743,4 @@ changeN n options =
 port runInWorker : Array (Array Int) -> Cmd msg
 
 
-port displayResult : (Array (Array (Array Int)) -> msg) -> Sub msg
+port gotWorkerResult : (Array (Array (Array Int)) -> msg) -> Sub msg
