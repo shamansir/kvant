@@ -42,6 +42,21 @@ tile1 toPath key =
     tile <| toPath key
 
 
+tileAndCount : (TileKey -> String) -> ( TileKey, Int ) -> Html msg
+tileAndCount toPath ( key, count ) =
+    if count <= 1 then
+        tile1 toPath key
+    else
+        div
+            [ style "position" "relative" ]
+            [ span
+                [ style "position" "absolute" ]
+                [ text <| String.fromInt count
+                ]
+            , tile1 toPath key
+            ]
+
+
 grid : (a -> Html msg) -> List (List a) -> Html msg
 grid viewElem rows =
     rows

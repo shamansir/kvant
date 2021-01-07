@@ -250,6 +250,10 @@ findAllSubsAlt method ofSize inPlane =
 findOccurrence : List (Plane Vec2 a) -> List ((Occurrence, Maybe Frequency), Plane Vec2 a)
 findOccurrence allPlanes =
     let
+        _ =
+            allPlanes
+                |> List.map unpack
+                |> Debug.log "allPlanes"
         uniquePatterns =
             allPlanes
                 |> List.foldr
@@ -280,6 +284,10 @@ findOccurrence allPlanes =
                     )
                     0
                  |> toFloat
+        _ =
+            withOccurrence
+                |> List.map (Tuple.mapSecond unpack)
+                |> Debug.log "withOccurence"
     in
         withOccurrence
             |> List.map

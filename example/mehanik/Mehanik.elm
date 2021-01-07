@@ -568,8 +568,9 @@ view model =
                                                     (TilesRenderer.grid1
                                                         <| Array.toList
                                                             >> TilesPlane.merge
-                                                            >> toTileUrl format group
-                                                            >> TilesRenderer.tile)
+                                                            >> TilesRenderer.tileAndCount
+                                                                    (toTileUrl format group)
+                                                    )
                                                 |> Maybe.withDefault (div [] [])
                                             ]
                                     _ -> div [] []

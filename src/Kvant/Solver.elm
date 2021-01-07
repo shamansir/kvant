@@ -430,7 +430,7 @@ loadFrequencies = Dict.map <| always <| (.frequency >> Tuple.second)
 initWave : UniquePatterns v a -> v -> Wave v
 initWave uniquePatterns size =
     -- Dict.keys uniquePatterns >> Matches.fromList >> Plane.filled
-    Plane.filled size <| Matches.fromList <| Dict.keys uniquePatterns
+    Plane.filled size <| Matches.fromList <| Debug.log "patternCount" <| Dict.keys uniquePatterns
 
 
 apply

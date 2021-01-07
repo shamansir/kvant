@@ -47,5 +47,8 @@ toGrid plane =
         |> List.map (List.map <| Maybe.withDefault noTile)
 
 
-merge : List TileKey -> TileKey
-merge = List.head >> Maybe.withDefault noTile
+merge : List TileKey -> ( TileKey, Int )
+merge tiles =
+    ( List.head tiles |> Maybe.withDefault noTile
+    , List.length tiles
+    )
