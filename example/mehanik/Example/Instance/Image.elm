@@ -30,10 +30,7 @@ type alias ImageTracingWfc = TracingWfc Vec2 Color
 type alias ImageTracingPlane = TracingPlane Vec2 Color
 
 
-type alias ImageOptions = Solver.Options Vec2 Color
-
-
-quick : ImageOptions -> Image -> ImageExample
+quick : Solver.Options Vec2 -> Image -> ImageExample
 quick options source =
     let
         { width, height } = Image.dimensions source
@@ -52,7 +49,7 @@ quick options source =
                 |> ImagePlane.makeInBounds ( width, height ))
 
 
-image : ImageOptions -> (Image -> ImageWfc)
+image : Solver.Options Vec2 -> (Image -> ImageWfc)
 image options =
     makeFn
         (Convert
@@ -64,7 +61,7 @@ image options =
         (FlatSolver.init options)
 
 
-imageAdvancing  : ImageOptions -> (Image -> ImageWfc)
+imageAdvancing  : Solver.Options Vec2 -> (Image -> ImageWfc)
 imageAdvancing options =
     makeAdvancingFn
         (Convert
@@ -76,7 +73,7 @@ imageAdvancing options =
         (FlatSolver.init options)
 
 
-imageTracing : ImageOptions -> (Image -> ImageTracingWfc)
+imageTracing : Solver.Options Vec2 -> (Image -> ImageTracingWfc)
 imageTracing options =
     \input ->
         makeAdvancingFn

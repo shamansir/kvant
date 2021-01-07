@@ -26,9 +26,6 @@ import Html.Attributes as H exposing (min, max)
 import Html.Events exposing (..)
 
 import Example.Instance exposing (Instance(..))
-import Example.Instance.Text as Wfc exposing (TextOptions)
-import Example.Instance.Image as Wfc exposing (ImageOptions)
-import Example.Instance.Tiles as Wfc exposing (TilesOptions)
 import Example.Advance exposing (..)
 
 import Example.Main exposing (..)
@@ -81,9 +78,9 @@ type Status
 
 type CurrentExample
     = NotSelected
-    | Textual Wfc.TextOptions ( Vec2, String ) ( Maybe (Grid Char) )
-    | FromImage Wfc.ImageOptions Image (Maybe Image)
-    | FromTiles Wfc.TilesOptions TileGroup TilingRules ( Maybe (Grid TileKey) )
+    | Textual (Solver.Options Vec2) ( Vec2, String ) ( Maybe (Grid Char) )
+    | FromImage (Solver.Options Vec2) Image (Maybe Image)
+    | FromTiles (Solver.Options Vec2) TileGroup TilingRules ( Maybe (Grid TileKey) )
 
 
 type alias Grid a = Array (Array (Array a))
@@ -100,19 +97,29 @@ type alias Pixels = Array (Array Color)
 
 type Msg
     = NoOp
-    -- | ToExample Example.Msg
+    -- switch to example
     | SwitchToTextExample ( Vec2, String )
     | SwitchToImageExample Image
     | SwitchToTiledExample TileGroup
+    -- controls for worker
     | Run
     | Trace
     | Step
     | StepBack
     | Stop
-    | ChangeN (N Vec2)
+    -- receiving from Http requests
     | GotImage ImageAlias (Result Http.Error Image)
     | GotRules TileGroup (Result String TilingRules)
+    -- receiving from worker
     | GotResult (Grid Int)
+    -- change options
+    | ChangeN (N Vec2)
+    | ChangeSymmetry Symmetry
+    | ChangeOutputSize Vec2
+    | UsePeriodicInput
+    | UseBoundedInput
+    | UsePeriodicOutput
+    | UseBoundedOutput
 
 
 textExamples =
@@ -423,23 +430,58 @@ update msg model =
             )
 
         ChangeN n ->
-            ( case model.example of
-                Textual options source maybeGrid ->
-                    { model
-                    | example =
-                        Textual (options |> changeN n) source maybeGrid
-                    }
-                FromImage options image maybeGrid ->
-                    { model
-                    | example =
-                        FromImage (options |> changeN n) image maybeGrid
-                    }
-                FromTiles options group rules maybeGrid ->
-                    { model
-                    | example =
-                        FromTiles (options |> changeN n) group rules maybeGrid
-                    }
-                _ -> model
+            (
+                { model
+                | example = changeOptions (changeN n) model.example
+                }
+            , Cmd.none
+            )
+
+        ChangeSymmetry symmetry ->
+            (
+                { model
+                | example = changeOptions (changeSymmetry symmetry) model.example
+                }
+            , Cmd.none
+            )
+
+        ChangeOutputSize size ->
+            (
+                { model
+                | example = changeOptions (changeOutputSize size) model.example
+                }
+            , Cmd.none
+            )
+
+        UsePeriodicInput ->
+            (
+                { model
+                | example = changeOptions (changeInputBoundary Periodic) model.example
+                }
+            , Cmd.none
+            )
+
+        UseBoundedInput ->
+            (
+                { model
+                | example = changeOptions (changeInputBoundary Bounded) model.example
+                }
+            , Cmd.none
+            )
+
+        UsePeriodicOutput ->
+            (
+                { model
+                | example = changeOptions (changeOutputBoundary Periodic) model.example
+                }
+            , Cmd.none
+            )
+
+        UseBoundedOutput ->
+            (
+                { model
+                | example = changeOptions (changeOutputBoundary Bounded) model.example
+                }
             , Cmd.none
             )
 
@@ -869,7 +911,7 @@ errorToString error =
             errorMessage
 
 
-changeN : N Vec2 -> Solver.Options Vec2 a -> Solver.Options Vec2 a
+changeN : N Vec2 -> Solver.Options Vec2 -> Solver.Options Vec2
 changeN n options =
     { options
     | approach =
@@ -881,6 +923,59 @@ changeN n options =
                     }
             _ -> options.approach
     }
+
+changeSymmetry : Symmetry -> Solver.Options v -> Solver.Options v
+changeSymmetry symmetry options =
+    { options
+    | approach =
+        case options.approach of
+            Overlapping overlappingOpts ->
+                Overlapping
+                    { overlappingOpts
+                    | symmetry = symmetry
+                    }
+            _ -> options.approach
+    }
+
+
+changeInputBoundary : Boundary -> Solver.Options v -> Solver.Options v
+changeInputBoundary boundary options =
+    { options
+    | approach =
+        case options.approach of
+            Overlapping overlappingOpts ->
+                Overlapping
+                    { overlappingOpts
+                    | searchBoundary = boundary
+                    }
+            _ -> options.approach
+    }
+
+
+changeOutputBoundary : Boundary -> Solver.Options v -> Solver.Options v
+changeOutputBoundary boundary options =
+    { options
+    | outputBoundary = boundary
+    }
+
+
+changeOutputSize : v -> Solver.Options v -> Solver.Options v
+changeOutputSize size options =
+    { options
+    | outputSize = size
+    }
+
+
+changeOptions : (Solver.Options Vec2 -> Solver.Options Vec2) -> CurrentExample -> CurrentExample
+changeOptions f current =
+    case current of
+        Textual options source maybeGrid ->
+            Textual (f options) source maybeGrid
+        FromImage options image maybeGrid ->
+            FromImage (f options) image maybeGrid
+        FromTiles options group rules maybeGrid ->
+            FromTiles (f options) group rules maybeGrid
+        _ -> current
 
 
 port runInWorker : Array (Array Int) -> Cmd msg

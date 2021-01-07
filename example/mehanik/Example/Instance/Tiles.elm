@@ -43,10 +43,7 @@ type alias TilesTracingWfc = TracingWfc Vec2 TileKey
 type alias TilesTracingPlane = TracingPlane Vec2 TileKey
 
 
-type alias TilesOptions = Solver.Options Vec2 TileKey
-
-
-quick : TilesOptions -> TileGrid -> TilesExample
+quick : Solver.Options Vec2 -> TileGrid -> TilesExample
 quick options tileGrid =
     Example.make
         (\advanceMode ->
@@ -61,7 +58,7 @@ quick options tileGrid =
         (tileGrid |> TilesPlane.make)
 
 
-tiles : TilesOptions -> (TileGrid -> TilesWfc)
+tiles : Solver.Options Vec2 -> (TileGrid -> TilesWfc)
 tiles options =
     makeFn
         (Convert
@@ -73,7 +70,7 @@ tiles options =
         (FlatSolver.init options)
 
 
-tilesAdvancing  : TilesOptions -> (TileGrid -> TilesWfc)
+tilesAdvancing  : Solver.Options Vec2 -> (TileGrid -> TilesWfc)
 tilesAdvancing options =
     makeAdvancingFn
         (Convert
@@ -85,7 +82,7 @@ tilesAdvancing options =
         (FlatSolver.init options)
 
 
-tilesTracing : TilesOptions -> (TileGrid -> TilesTracingWfc)
+tilesTracing : Solver.Options Vec2 -> (TileGrid -> TilesTracingWfc)
 tilesTracing options =
     \input ->
         makeAdvancingFn

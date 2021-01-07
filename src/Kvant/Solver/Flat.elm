@@ -14,7 +14,7 @@ import Kvant.Solver as S exposing (init)
 import Kvant.Neighbours as Dir exposing (Direction(..), move)
 
 
-init : Options Vec2 a -> Plane Vec2 a -> Solver Vec2 a
+init : Options Vec2 -> Plane Vec2 a -> Solver Vec2 a
 init options (Plane size _ as source)  =
     S.init
         (case options.approach of

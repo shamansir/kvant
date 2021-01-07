@@ -23,12 +23,10 @@ type alias TextTracingWfc = TracingWfc Vec2 Char
 
 type alias TextTracingPlane = TracingPlane Vec2 Char
 
-type alias TextOptions = Solver.Options Vec2 Char
-
 type alias TextExample = Example Vec2 BoundedString Char
 
 
-quick : TextOptions -> BoundedString -> TextExample
+quick : Solver.Options Vec2 -> BoundedString -> TextExample
 quick options ((size, src) as boundedSrc) =
     Example.make
         (\advanceMode ->
@@ -43,7 +41,7 @@ quick options ((size, src) as boundedSrc) =
         (TextPlane.make size src)
 
 
-text : TextOptions -> (BoundedString -> TextWfc)
+text : Solver.Options Vec2 -> (BoundedString -> TextWfc)
 text options =
     makeFn
         (Convert
@@ -55,7 +53,7 @@ text options =
         (FlatSolver.init options)
 
 
-textAdvancing  : TextOptions -> (BoundedString -> TextWfc)
+textAdvancing  : Solver.Options Vec2 -> (BoundedString -> TextWfc)
 textAdvancing options =
     makeAdvancingFn
         (Convert
@@ -67,7 +65,7 @@ textAdvancing options =
         (FlatSolver.init options)
 
 
-textTracing : TextOptions -> (BoundedString -> TextTracingWfc)
+textTracing : Solver.Options Vec2 -> (BoundedString -> TextTracingWfc)
 textTracing options =
     \(size, input) ->
         makeAdvancingFn

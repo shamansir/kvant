@@ -23,8 +23,8 @@ import Kvant.Neighbours exposing (Neighbours)
 import Kvant.Neighbours as Dir exposing (Direction(..))
 
 
-type alias Options v a =
-    { approach : Approach v a
+type alias Options v =
+    { approach : Approach v
     , outputBoundary : Boundary
     , outputSize : v
     }
@@ -34,7 +34,7 @@ type alias Pattern v a = Plane v a
 type alias Wave v = Plane v (Matches PatternId)
 
 
-type Approach v a
+type Approach v
     = Overlapping
         { patternSize : N v
         , searchBoundary : Boundary
