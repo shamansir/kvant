@@ -74,7 +74,8 @@ type alias Model =
 
 type Status
     = None
-    | Solving
+    | WaitingRunResponse
+    | WaitingTracingResponse
     | Tracing
 
 
@@ -277,7 +278,7 @@ update msg model =
                 Textual options source _ ->
                     (
                         { model
-                        | status = Solving
+                        | status = WaitingRunResponse
                         }
                     , source
                         |> boundedStringToGrid
@@ -290,7 +291,7 @@ update msg model =
                 FromImage options source _ ->
                     (
                         { model
-                        | status = Solving
+                        | status = WaitingRunResponse
                         }
                     , source
                         |> ImageC.toArray2d
@@ -301,7 +302,7 @@ update msg model =
                 FromTiles options group rules _ ->
                     (
                         { model
-                        | status = Solving
+                        | status = WaitingRunResponse
                         }
                     , case rules of
                         FromGrid tileSet grid ->
@@ -320,7 +321,7 @@ update msg model =
                 Textual options source _ ->
                     (
                         { model
-                        | status = Tracing
+                        | status = WaitingTracingResponse
                         }
                     , source
                         |> boundedStringToGrid
@@ -333,7 +334,7 @@ update msg model =
                 FromImage options source _ ->
                     (
                         { model
-                        | status = Tracing
+                        | status = WaitingTracingResponse
                         }
                     , source
                         |> ImageC.toArray2d
@@ -344,7 +345,7 @@ update msg model =
                 FromTiles options group rules _ ->
                     (
                         { model
-                        | status = Tracing
+                        | status = WaitingTracingResponse
                         }
                     , case rules of
                         FromGrid tileSet grid ->
@@ -357,7 +358,7 @@ update msg model =
         Step ->
             (
                 { model
-                | status = Tracing
+                | status = WaitingTracingResponse
                 }
             , stepInWorker ()
             )
@@ -365,7 +366,7 @@ update msg model =
         StepBack ->
             (
                 { model
-                | status = Tracing
+                | status = WaitingTracingResponse
                 }
             , stepBackInWorker ()
             )
@@ -471,7 +472,11 @@ update msg model =
             (
                 { model
                 | status =
-                    if model.status /= Solving then model.status else None
+                    case model.status of
+                        None -> None
+                        WaitingRunResponse -> None
+                        WaitingTracingResponse -> Tracing
+                        Tracing -> Tracing
                 , example
                     = case model.example of
 
@@ -635,7 +640,9 @@ view model =
                                 "▶️"
                                 Run
                             , fancyButton
-                                (model.status /= Solving)
+                                (model.status /= WaitingRunResponse
+                                    && model.status /= WaitingTracingResponse
+                                )
                                 "⏭️"
                                 (case model.status of
                                     Tracing -> Step
@@ -647,7 +654,7 @@ view model =
                                 "⏮️"
                                 StepBack
                             , fancyButton
-                                (model.status /= None)
+                                (model.status == Tracing)
                                 "⏹️"
                                 Stop
                             ]
