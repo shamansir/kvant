@@ -1,6 +1,7 @@
 module Example.Instance.Tiles.Rules exposing (..)
 
 import Dict exposing (Dict)
+import Set exposing (Set)
 import Array
 import Xml.Decode as D exposing (..)
 
@@ -17,12 +18,16 @@ type alias AliasToName = Dict String String
 decoder : Decoder TilingRules
 decoder =
     (path [ "tiles", "tile" ] <| list tilesSpecDecoder)
-    |> D.map Dict.fromList
+    |> D.map
+        (\tiles ->
+            ( buildTileset <| Set.fromList <| List.map Tuple.first <| tiles
+            , Dict.fromList <| List.map (\(name, alias) -> (alias, name)) <| tiles )
+        )
     |> D.andThen
-        (\aliasToName ->
+        (\( tileSet, aliasToName ) ->
             (path [ "grid" ] <| single <| tilesGridDecoder aliasToName)
                 |> D.map (Array.fromList >> Array.map Array.fromList)
-                |> D.map FromGrid
+                |> D.map (FromGrid tileSet)
         )
 
 
@@ -31,8 +36,8 @@ tilesSpecDecoder : Decoder ( String, String )
 tilesSpecDecoder =
     D.map2
         Tuple.pair
-        (stringAttr "alias")
         (stringAttr "name")
+        (stringAttr "alias")
 
 
 tilesGridDecoder : AliasToName -> Decoder (List (List String))

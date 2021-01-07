@@ -7,6 +7,7 @@ import Color
 import Image
 import Image exposing (Image, Pixel)
 import Image.Color as ImageC exposing (fromList2d)
+import Bitwise
 
 import Kvant.Vec2 exposing (..)
 import Kvant.Plane exposing (..)
@@ -86,11 +87,11 @@ merge colors =
 
 
 colorToPixel : Color -> Pixel
-colorToPixel _ = 120 -- FIXME:
+colorToPixel = colorToInt32
 
 
 pixelToColor : Pixel -> Color
-pixelToColor _ = Color.black -- FIXME:
+pixelToColor = int32ToColor
 
 
 toGrid : ImagePlane -> List (List Color)
@@ -121,3 +122,63 @@ toImage = toGrid >> ImageC.fromList2d
 
 toPixels : PixelsPlane -> Pixels
 toPixels = toGrid >> List.map (Array.fromList) >> Array.fromList
+
+
+int32ToColor : Int -> Color  -- Copied from Image.Color
+int32ToColor int =
+    let
+        a =
+            int
+                |> Bitwise.and 0xFF
+                |> toFloat
+
+        b =
+            int
+                |> Bitwise.shiftRightBy 8
+                |> Bitwise.and 0xFF
+                |> toFloat
+
+        g =
+            int
+                |> Bitwise.shiftRightBy 16
+                |> Bitwise.and 0xFF
+                |> toFloat
+
+        r =
+            int
+                |> Bitwise.shiftRightZfBy 24
+                |> Bitwise.and 0xFF
+                |> toFloat
+    in
+    Color.rgba (r / 255) (g / 255) (b / 255) (a / 255)
+
+
+colorToInt32 : Color -> Int -- Copied from Image.Color
+colorToInt32 color =
+    let
+        record =
+            Color.toRgba color
+
+        byte1 =
+            (record.alpha * 255)
+                |> round
+
+        byte2 =
+            (record.blue * 255)
+                |> round
+                |> Bitwise.shiftLeftBy 8
+
+        byte3 =
+            (record.green * 255)
+                |> round
+                |> Bitwise.shiftLeftBy 16
+
+        byte4 =
+            (record.red * 255)
+                |> round
+                |> Bitwise.shiftLeftBy 24
+    in
+    Bitwise.or byte1 byte2
+        |> Bitwise.or byte3
+        |> Bitwise.or byte4
+        |> Bitwise.shiftRightZfBy 0

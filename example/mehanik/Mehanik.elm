@@ -338,9 +338,9 @@ update msg model =
                         | status = Solving
                         }
                     , case rules of
-                        FromGrid grid ->
+                        FromGrid tileSet grid ->
                             grid
-                                |> Array.map (Array.map (always 12)) -- FIXME
+                                |> Array.map (Array.map <| toIndexInSet tileSet)
                                 |> runInWorker
                         FromRules _ -> Cmd.none
                     )
@@ -446,7 +446,8 @@ update msg model =
                 { model
                 | example
                     = case model.example of
-                        NotSelected -> model.example
+                        NotSelected ->
+                            model.example
                         Textual options source _ ->
                             Textual options source
                                 <| (grid
@@ -463,13 +464,15 @@ update msg model =
                                                 >> ImagePlane.merge)
                                     |> ImageC.fromArray2d
                                     |> Just)
-                        FromTiles options group rules _ ->
+                        FromTiles options group (FromGrid tileSet _ as rules) _ ->
                             FromTiles options group rules
                                 <| (grid
                                     |> Array.map
                                         (Array.map
-                                            <| Array.map <| always "none") -- FIXME
+                                            <| Array.map <| fromIndexInSet tileSet)
                                     |> Just)
+                        FromTiles options group (FromRules _ as rules) _ -> -- FIXME: TODO
+                            model.example
                 }
             , Cmd.none
             )
@@ -512,7 +515,7 @@ view model =
                                     <| List.map (toTileUrl format group)
                                     <| tiles
                                 , case rules of
-                                    FromGrid grid ->
+                                    FromGrid _ grid ->
                                         div
                                             [ style "transform" "scale(0.6)"
                                             , style "transform-origin" "0 0"
