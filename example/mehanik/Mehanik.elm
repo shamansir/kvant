@@ -642,10 +642,13 @@ view model =
         checkbox isChecked label msg =
             span
                 []
-                [ input
+                [input
                     [ type_ "radio"
                     , onClick msg
                     , checked isChecked
+                    , disabled <| case model.status of
+                        None -> False
+                        _ -> True
                     , style "border"
                         <| if isChecked
                             then "1px solid aqua"
@@ -661,7 +664,7 @@ view model =
                 , Html.text label
                 ]
 
-        controlPanel =
+        controlPanel title items =
             div [ style "display" "flex"
                 , style "padding" "5px"
                 , style "margin" "5px"
@@ -669,14 +672,90 @@ view model =
                 , style "border-radius" "3px"
                 , style "width" "fit-content"
                 ]
+                (
+                    span
+                        [ style "font-size" "10px"
+                        , style "color" "white"
+                        , style "background" "gray"
+                        , style "padding" "3px"
+                        , style "border-radius" "3px"
+                        , style "max-height" "1em"
+                        ]
+                        [ Html.text title ]
+                    :: items
+                )
 
         controls options  =
             case options.approach of
-                Overlapping { patternSize } ->
+                Overlapping { patternSize, searchBoundary, symmetry } ->
 
                     div
                         []
-                        [ controlPanel
+                        [ controlPanel "Pattern size"
+                            [ checkbox
+                                (case patternSize of N (n, _) -> n == 2)
+                                "2x"
+                                <| ChangeN <| N (2, 2)
+                            , checkbox
+                                (case patternSize of N (n, _) -> n == 3)
+                                 "3x"
+                                <| ChangeN <| N (3, 3)
+                            ]
+                        , controlPanel "Input"
+                            [ checkbox
+                                (case searchBoundary of
+                                    Periodic -> True
+                                    Bounded -> False)
+                                "Periodic"
+                                UsePeriodicInput
+                            , checkbox
+                                (case searchBoundary of
+                                    Periodic -> False
+                                    Bounded -> True)
+                                "Bounded"
+                                UseBoundedInput
+                            ]
+                        , controlPanel "Symmetry"
+                            [ checkbox
+                                (case symmetry of
+                                    NoSymmetry -> True
+                                    _ -> False)
+                                "None"
+                                <| ChangeSymmetry NoSymmetry
+                            , checkbox
+                                (case symmetry of
+                                    FlipOnly -> True
+                                    _ -> False)
+                                "Only flip"
+                                <| ChangeSymmetry FlipOnly
+                            , checkbox
+                                (case symmetry of
+                                    RotateOnly -> True
+                                    _ -> False)
+                                "Only rotate"
+                                <| ChangeSymmetry RotateOnly
+                            , checkbox
+                                (case symmetry of
+                                    FlipAndRotate -> True
+                                    _ -> False)
+                                "Flip and rotate"
+                                <| ChangeSymmetry FlipAndRotate
+                            ]
+                        , controlPanel "Output"
+                            [ checkbox
+                                (case searchBoundary of
+                                    Periodic -> True
+                                    Bounded -> False)
+                                "Periodic"
+                                UsePeriodicOutput
+                            , checkbox
+                                (case searchBoundary of
+                                    Periodic -> False
+                                    Bounded -> True)
+                                "Bounded"
+                                UseBoundedOutput
+                            ]
+                        , controlPanel "" -- "Run/Trace"
                             [ fancyButton
                                 (model.status == None)
                                 "▶️"
@@ -700,16 +779,6 @@ view model =
                                 "⏹️"
                                 Stop
                             ]
-
-                        , controlPanel
-                            [ checkbox
-                                (case patternSize of N (n, _) -> n == 2) "2x"
-                                <| ChangeN <| N (2, 2)
-                            , checkbox
-                                (case patternSize of N (n, _) -> n == 3) "3x"
-                                <| ChangeN <| N (3, 3)
-                            ]
-
                         ]
                 _ -> div [] []
 
