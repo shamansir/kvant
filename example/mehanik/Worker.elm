@@ -39,7 +39,8 @@ type Msg
     | Trace Options Source
     | TraceWith Options Source Random.Seed
     | Step
-    | StepBack Random.Seed
+    | StepBack
+    | StepBackWith Random.Seed
     | Stop
 
 
@@ -118,7 +119,12 @@ update msg model =
                     --             H.push ( lastStep, TracingStep lastTracingStep )
                 _ -> ( model, Cmd.none )
 
-        StepBack newSeed ->
+        StepBack ->
+            ( model
+            , makeSeedAnd StepBackWith
+            )
+
+        StepBackWith newSeed ->
             {-
             ( case model.status of
                     Solving ( prevResult, prevTracingResult) history ->
@@ -182,7 +188,10 @@ subscriptions : Model -> Sub Msg
 subscriptions model =
     Sub.batch
         [ run <| \{options, source} -> Run options source
+        , trace <| \{options, source} -> Trace options source
         , step <| always Step
+        , back <| always StepBack
+        , stop <| always Stop
         ]
 
 
@@ -206,9 +215,13 @@ makeSeedAnd makeMsg =
 
 port run : ({ options : Options, source : Source } -> msg) -> Sub msg
 
+port stop : (() -> msg) -> Sub msg
+
 port trace : ({ options : Options, source : Source } -> msg) -> Sub msg
 
 port step : (() -> msg) -> Sub msg
+
+port back : (() -> msg) -> Sub msg
 
 port onResult : RunResult -> Cmd msg
 

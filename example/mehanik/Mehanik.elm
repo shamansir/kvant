@@ -268,48 +268,12 @@ update msg model =
         NoOp ->
             ( model, Cmd.none )
 
-        {- ToExample exampleMsg ->
-            case model.example of
-                -- FIXME: fix repitition
-                Textual options example ->
-                    let
-                        ( newExampleModel, commands ) =
-                            Example.update exampleMsg example
-                    in
-                        (
-                            { model
-                            | example = Textual options newExampleModel
-                            }
-                        , commands |> Cmd.map ToExample
-                        )
-                FromImage options image example ->
-                    let
-                        ( newExampleModel, commands ) =
-                            Example.update exampleMsg example
-                    in
-                        (
-                            { model
-                            | example = FromImage options image newExampleModel
-                            }
-                        , commands |> Cmd.map ToExample
-                        )
-                FromTiles options group example ->
-                    let
-                        ( newExampleModel, commands ) =
-                            Example.update exampleMsg example
-                    in
-                        (
-                            { model
-                            | example = FromTiles options group newExampleModel
-                            }
-                        , commands |> Cmd.map ToExample
-                        )
-                _ -> ( model, Cmd.none ) -}
-
         Run ->
             case model.example of
+
                 NotSelected ->
                     ( model, Cmd.none )
+
                 Textual options source _ ->
                     (
                         { model
@@ -322,6 +286,7 @@ update msg model =
                         |> Array.fromList
                         |> runInWorker
                     )
+
                 FromImage options source _ ->
                     (
                         { model
@@ -332,6 +297,7 @@ update msg model =
                         |> Array.map (Array.map colorToPixel)
                         |> runInWorker
                     )
+
                 FromTiles options group rules _ ->
                     (
                         { model
@@ -345,22 +311,82 @@ update msg model =
                         FromRules _ -> Cmd.none
                     )
 
-
         Trace ->
-            -- FIXME: TODO
-            ( model, Cmd.none )
+            case model.example of
+
+                NotSelected ->
+                    ( model, Cmd.none )
+
+                Textual options source _ ->
+                    (
+                        { model
+                        | status = Tracing
+                        }
+                    , source
+                        |> boundedStringToGrid
+                        |> List.map (List.map Char.toCode)
+                        |> List.map Array.fromList
+                        |> Array.fromList
+                        |> traceInWorker
+                    )
+
+                FromImage options source _ ->
+                    (
+                        { model
+                        | status = Tracing
+                        }
+                    , source
+                        |> ImageC.toArray2d
+                        |> Array.map (Array.map colorToPixel)
+                        |> traceInWorker
+                    )
+
+                FromTiles options group rules _ ->
+                    (
+                        { model
+                        | status = Tracing
+                        }
+                    , case rules of
+                        FromGrid tileSet grid ->
+                            grid
+                                |> Array.map (Array.map <| toIndexInSet tileSet)
+                                |> traceInWorker
+                        FromRules _ -> Cmd.none
+                    )
 
         Step ->
-            -- FIXME: TODO
-            ( model, Cmd.none )
+            (
+                { model
+                | status = Tracing
+                }
+            , stepInWorker ()
+            )
 
         StepBack ->
-            -- FIXME: TODO
-            ( model, Cmd.none )
+            (
+                { model
+                | status = Tracing
+                }
+            , stepBackInWorker ()
+            )
 
         Stop ->
-            -- FIXME: TODO
-            ( model, Cmd.none )
+            (
+                { model
+                | status = None
+                , example =
+                    case model.example of
+                        NotSelected ->
+                            model.example
+                        Textual options source _ ->
+                            Textual options source Nothing
+                        FromImage options source _ ->
+                            FromImage options source Nothing
+                        FromTiles options group rules _ ->
+                            FromTiles options group rules Nothing
+                }
+            , stopWorker ()
+            )
 
         SwitchToTextExample source ->
             (
@@ -444,16 +470,21 @@ update msg model =
         GotResult grid ->
             (
                 { model
-                | example
+                | status =
+                    if model.status /= Solving then model.status else None
+                , example
                     = case model.example of
+
                         NotSelected ->
                             model.example
+
                         Textual options source _ ->
                             Textual options source
                                 <| (grid
                                     |> Array.map
                                         (Array.map <| Array.map Char.fromCode)
                                     |> Just)
+
                         FromImage options source _ ->
                             FromImage options source
                                 <| (grid
@@ -464,6 +495,7 @@ update msg model =
                                                 >> ImagePlane.merge)
                                     |> ImageC.fromArray2d
                                     |> Just)
+
                         FromTiles options group (FromGrid tileSet _ as rules) _ ->
                             FromTiles options group rules
                                 <| (grid
@@ -471,8 +503,10 @@ update msg model =
                                         (Array.map
                                             <| Array.map <| fromIndexInSet tileSet)
                                     |> Just)
+
                         FromTiles options group (FromRules _ as rules) _ -> -- FIXME: TODO
                             model.example
+
                 }
             , Cmd.none
             )
@@ -487,24 +521,29 @@ view model =
 
         viewExample example =
             case example of
+
                 Textual _ source maybeGrid ->
                     div
                         []
                         [ Example.preview TextRenderer.make source
+                        , hr [] []
                         , maybeGrid
                             |> Maybe.map
                                 (viewGrid <| Array.toList >> TextPlane.merge >> TextRenderer.char)
                             |> Maybe.withDefault (div [] [])
                         ]
+
                 FromImage _ source maybeImage ->
                     div
                         []
                         [ Example.preview ImageRenderer.make source
+                        , hr [] []
                         , maybeImage
                             |> Maybe.map ImageRenderer.drawImage
                             |> Maybe.withDefault (div [] [])
                         ]
                     --Example.view ImageRenderer.make exampleModel
+
                 FromTiles _ group rules maybeGrid ->
                     case tiledExamples |> Dict.get group of
                         Just ( tiles, format ) ->
@@ -514,6 +553,7 @@ view model =
                                     <| List.map TilesRenderer.tile
                                     <| List.map (toTileUrl format group)
                                     <| tiles
+                                , hr [] []
                                 , case rules of
                                     FromGrid _ grid ->
                                         div
@@ -534,6 +574,7 @@ view model =
                                             ]
                                     _ -> div [] []
                                 ]
+
                         Nothing -> div [] []
                 NotSelected -> Html.text "Not Selected"
                 -- WaitingForImage url -> Html.text <| "Waiting for image " ++ url ++ " to load"
@@ -836,5 +877,12 @@ changeN n options =
 
 port runInWorker : Array (Array Int) -> Cmd msg
 
+port traceInWorker : Array (Array Int) -> Cmd msg
+
+port stepInWorker : () -> Cmd msg
+
+port stepBackInWorker : () -> Cmd msg
+
+port stopWorker : () -> Cmd msg
 
 port gotWorkerResult : (Array (Array (Array Int)) -> msg) -> Sub msg

@@ -18,18 +18,32 @@
     var mehanik = Elm.Mehanik.init({
         node: document.getElementById('mehanik')
     });
+
     var jsWorker = new Worker('./worker-runner.js');
-    console.log(jsWorker);
+
     mehanik.ports.runInWorker.subscribe((grid) => {
         jsWorker.postMessage({ 'cmd': 'run', 'grid': grid });
+    });
+    mehanik.ports.traceInWorker.subscribe((grid) => {
+        jsWorker.postMessage({ 'cmd': 'trace', 'grid': grid });
+    });
+    mehanik.ports.stepInWorker.subscribe((_) => {
+        jsWorker.postMessage({ 'cmd': 'step' });
+    });
+    mehanik.ports.stepBackInWorker.subscribe((_) => {
+        jsWorker.postMessage({ 'cmd': 'back' });
+    });
+    mehanik.ports.stopWorker.subscribe((_) => {
+        jsWorker.postMessage({ 'cmd': 'stop' });
     });
     jsWorker.postMessage({'cmd': 'start'});
 
     jsWorker.addEventListener('message', (e) => {
         const data = e.data;
-        console.log(data);
         switch (data.cmd) {
             case 'result':
+                mehanik.ports.gotWorkerResult.send(data.grid);
+            case 'step':
                 mehanik.ports.gotWorkerResult.send(data.grid);
             default: return;
         }
