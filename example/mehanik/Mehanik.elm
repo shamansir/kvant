@@ -45,7 +45,10 @@ import Example.Instance.Tiles.Render as TilesRenderer exposing (grid)
 import Example.Instance.Text.Plane exposing (TextPlane)
 import Example.Instance.Text.Plane as TextPlane exposing
     (make, boundedStringToGrid, toBoundedStringFromGrid, merge)
+import Example.Instance.Image.Plane as ImagePlane exposing
+    (colorToPixel, pixelToColor, merge)
 import Example.Instance.Tiles.Plane exposing (TileKey)
+import Example.Instance.Tiles.Plane as TilesPlane exposing (merge)
 import Example.Instance.Tiles.Rules as Rules
 
 
@@ -62,10 +65,17 @@ import List.Extra exposing (group)
 
 
 type alias Model =
-    { example : CurrentExample
+    { status : Status
+    , example : CurrentExample
     , images : Dict ImageAlias (Result Http.Error Image)
     , rules : Dict TileGroup (Result String TilingRules)
     }
+
+
+type Status
+    = None
+    | Solving
+    | Tracing
 
 
 type CurrentExample
@@ -94,6 +104,7 @@ type Msg
     | SwitchToImageExample Image
     | SwitchToTiledExample TileGroup
     | Run
+    | Trace
     | Step
     | StepBack
     | Stop
@@ -204,7 +215,8 @@ tiledExamples =
 
 init : Model
 init =
-    { example = NotSelected
+    { status = None
+    , example = NotSelected
     , images = Dict.empty
     , rules = Dict.empty
     }
@@ -294,27 +306,78 @@ update msg model =
                         )
                 _ -> ( model, Cmd.none ) -}
 
+        Run ->
+            case model.example of
+                NotSelected ->
+                    ( model, Cmd.none )
+                Textual options source _ ->
+                    (
+                        { model
+                        | status = Solving
+                        }
+                    , source
+                        |> boundedStringToGrid
+                        |> List.map (List.map Char.toCode)
+                        |> List.map Array.fromList
+                        |> Array.fromList
+                        |> runInWorker
+                    )
+                FromImage options source _ ->
+                    (
+                        { model
+                        | status = Solving
+                        }
+                    , source
+                        |> ImageC.toArray2d
+                        |> Array.map (Array.map colorToPixel)
+                        |> runInWorker
+                    )
+                FromTiles options group rules _ ->
+                    (
+                        { model
+                        | status = Solving
+                        }
+                    , case rules of
+                        FromGrid grid ->
+                            grid
+                                |> Array.map (Array.map (always 12)) -- FIXME
+                                |> runInWorker
+                        FromRules _ -> Cmd.none
+                    )
+
+
+        Trace ->
+            -- FIXME: TODO
+            ( model, Cmd.none )
+
+        Step ->
+            -- FIXME: TODO
+            ( model, Cmd.none )
+
+        StepBack ->
+            -- FIXME: TODO
+            ( model, Cmd.none )
+
+        Stop ->
+            -- FIXME: TODO
+            ( model, Cmd.none )
+
         SwitchToTextExample source ->
             (
                 { model
-                | example = Textual defaultTextOptions source
+                | example = Textual defaultTextOptions source Nothing
 
                     {- Textual defaultTextOptions
                         <| TextExample.quick defaultTextOptions ( size, source )
                     -}
                 }
-            , ( size, source )
-                |> boundedStringToGrid
-                |> List.map (List.map Char.toCode)
-                |> List.map Array.fromList
-                |> Array.fromList
-                |> runInWorker
+            , Cmd.none
             )
 
         SwitchToImageExample image ->
             (
                 { model
-                | example = FromImage defaultImageOptions image
+                | example = FromImage defaultImageOptions image Nothing
                 }
             , Cmd.none
             )
@@ -325,7 +388,7 @@ update msg model =
                 | example =
                     case model.rules |> Dict.get group of
                         Just (Ok rules) ->
-                            FromTiles defaultTilesOptions group rules
+                            FromTiles defaultTilesOptions group rules Nothing
                         _ ->
                             model.example
                 }
@@ -382,12 +445,31 @@ update msg model =
             (
                 { model
                 | example
-                    = grid
-                        |> Array.map
-                            (Array.map <| Array.toList >> List.map Char.fromCode >> TextPlane.merge)
-                        |> toBoundedStringFromGrid
-                        |> TextExample.quick defaultTextOptions
-                        |> Textual defaultTextOptions
+                    = case model.example of
+                        NotSelected -> model.example
+                        Textual options source _ ->
+                            Textual options source
+                                <| (grid
+                                    |> Array.map
+                                        (Array.map <| Array.map Char.fromCode)
+                                    |> Just)
+                        FromImage options source _ ->
+                            FromImage options source
+                                <| (grid
+                                    |> Array.map
+                                        (Array.map
+                                            <| Array.map pixelToColor
+                                                >> Array.toList
+                                                >> ImagePlane.merge)
+                                    |> ImageC.fromArray2d
+                                    |> Just)
+                        FromTiles options group rules _ ->
+                            FromTiles options group rules
+                                <| (grid
+                                    |> Array.map
+                                        (Array.map
+                                            <| Array.map <| always "none") -- FIXME
+                                    |> Just)
                 }
             , Cmd.none
             )
@@ -404,14 +486,23 @@ view model =
             case example of
                 Textual _ source maybeGrid ->
                     div
+                        []
                         [ Example.preview TextRenderer.make source
                         , maybeGrid
-                            |> Maybe.map (viewGrid <| TextPlane.merge >> TextRenderer.char)
+                            |> Maybe.map
+                                (viewGrid <| Array.toList >> TextPlane.merge >> TextRenderer.char)
                             |> Maybe.withDefault (div [] [])
                         ]
-                FromImage _ image exampleModel ->
-                    Example.view ImageRenderer.make exampleModel
-                FromTiles _ group exampleModel ->
+                FromImage _ source maybeImage ->
+                    div
+                        []
+                        [ Example.preview ImageRenderer.make source
+                        , maybeImage
+                            |> Maybe.map ImageRenderer.drawImage
+                            |> Maybe.withDefault (div [] [])
+                        ]
+                    --Example.view ImageRenderer.make exampleModel
+                FromTiles _ group rules maybeGrid ->
                     case tiledExamples |> Dict.get group of
                         Just ( tiles, format ) ->
                             div []
@@ -420,20 +511,23 @@ view model =
                                     <| List.map TilesRenderer.tile
                                     <| List.map (toTileUrl format group)
                                     <| tiles
-                                , case model.rules |> Dict.get group of
-                                    Just (Ok (FromGrid grid)) ->
+                                , case rules of
+                                    FromGrid grid ->
                                         div
                                             [ style "transform" "scale(0.6)"
                                             , style "transform-origin" "0 0"
                                             ]
-                                            [ Example.view
+                                            [ Example.preview
                                                 (TilesRenderer.make <| toTileUrl format group)
-                                                exampleModel
-                                            {- grid
-                                                    |> Array.map (Array.toList)
-                                                    |> Array.toList
-                                                    |> TilesRenderer.grid
-                                                        (toTileUrl format group >> TilesRenderer.tile) -}
+                                                grid
+                                            , maybeGrid
+                                                |> Maybe.map
+                                                    (TilesRenderer.grid1
+                                                        <| Array.toList
+                                                            >> TilesPlane.merge
+                                                            >> toTileUrl format group
+                                                            >> TilesRenderer.tile)
+                                                |> Maybe.withDefault (div [] [])
                                             ]
                                     _ -> div [] []
                                 ]
@@ -492,28 +586,25 @@ view model =
                         []
                         [ controlPanel
                             [ fancyButton
-                                (not <| isSolving model.example)
+                                (model.status == None)
                                 "▶️"
-                                Example.TriggerRunning
-                                |> Html.map ToExample
+                                Run
                             , fancyButton
-                                True
+                                (model.status /= Solving)
                                 "⏭️"
-                                (if not <| isSolving model.example
-                                    then Example.TriggerTracing
-                                    else Example.NextStep
+                                (case model.status of
+                                    Tracing -> Step
+                                    None -> Trace
+                                    _ -> NoOp
                                 )
-                                |> Html.map ToExample
                             , fancyButton
-                                (isSolving model.example)
+                                (model.status == Tracing)
                                 "⏮️"
-                                Example.TriggerPreviousStep
-                                |> Html.map ToExample
+                                StepBack
                             , fancyButton
-                                (isSolving model.example)
+                                (model.status /= None)
                                 "⏹️"
-                                Example.Stop
-                                |> Html.map ToExample
+                                Stop
                             ]
 
                         , controlPanel
@@ -570,9 +661,9 @@ view model =
                     (textExamples
                     |> List.map (Tuple.pair (4, 4))
                     |> List.map
-                        (\(size, str) ->
-                            exampleFrame (SwitchToTextExample size str)
-                                [ Example.preview TextRenderer.make (size, str)
+                        (\boundedStr ->
+                            exampleFrame (SwitchToTextExample boundedStr)
+                                [ Example.preview TextRenderer.make boundedStr
                                 ]
                         )
                     )
@@ -613,9 +704,9 @@ view model =
                 [ onInput selectionToMsg ]
                 makeOptions -}
             , case model.example of
-                Textual options _ -> controls options
+                Textual options _ _ -> controls options
                 FromImage options _ _ -> controls options
-                FromTiles options _ _ -> controls options
+                FromTiles options _ _ _-> controls options
                 NotSelected -> Html.text ""
             , viewExample model.example
             ]

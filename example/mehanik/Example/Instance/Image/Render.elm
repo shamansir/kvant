@@ -1,9 +1,10 @@
 module Example.Instance.Image.Render exposing (..)
 
 
-import Array
+import Array exposing (Array)
 import Color exposing (Color)
 import Image exposing (Image, dimensions)
+import Image as Image exposing (fromList2d)
 import Image.Color as ImageC exposing (fromList2d)
 
 import Html exposing (..)
@@ -13,6 +14,7 @@ import Kvant.Vec2 exposing (..)
 import Kvant.Plane.Flat as Plane exposing (unpack)
 
 import Example.Render as Render exposing (..)
+import Example.Instance.Image.Plane exposing (merge, pixelToColor)
 
 
 
@@ -43,6 +45,14 @@ make =
     , tracingPlane = always <| div [] []
     , tracingCell = always <| div [] []
     }
+
+
+drawFromGrid : Array (Array (Array Int)) -> Html msg
+drawFromGrid grid =
+    grid
+        |> Array.map (Array.map (Array.toList >> List.map pixelToColor >> merge))
+        |> ImageC.fromArray2d
+        |> drawImage
 
 
 drawImage : Image -> Html msg

@@ -48,4 +48,4 @@ toGrid plane =
 
 
 merge : List TileKey -> TileKey
-merge = always noTile -- FIXME
+merge = List.head >> Maybe.withDefault noTile

@@ -5,7 +5,7 @@ import Array exposing (Array)
 import Color exposing (Color)
 import Color
 import Image
-import Image exposing (Image)
+import Image exposing (Image, Pixel)
 import Image.Color as ImageC exposing (fromList2d)
 
 import Kvant.Vec2 exposing (..)
@@ -83,6 +83,14 @@ merge colors =
                 mixHsla
                 (List.head colors |> Maybe.withDefault transparent)
                 (List.tail colors |> Maybe.withDefault [])
+
+
+colorToPixel : Color -> Pixel
+colorToPixel _ = 120 -- FIXME:
+
+
+pixelToColor : Pixel -> Color
+pixelToColor _ = Color.black -- FIXME:
 
 
 toGrid : ImagePlane -> List (List Color)
