@@ -7,12 +7,7 @@ module Kvant.Core exposing
     , noConvert
     )
 
-
 import Random
-import Image exposing (Image)
-import Image as Image exposing (..)
-import Color exposing (Color)
-
 
 import Kvant.Vec2 exposing (..)
 import Kvant.Plane exposing (Plane)

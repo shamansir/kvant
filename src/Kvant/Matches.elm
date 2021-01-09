@@ -13,7 +13,7 @@ module Kvant.Matches exposing
     )
 
 
-import List.Extra as List exposing (unique)
+import Set exposing (Set)
 
 
 type MoreThanOne a = MoreThanOne (List a)
@@ -115,10 +115,10 @@ and matchesA matchesB =
 
 or : Matches comparable -> Matches comparable -> Matches comparable
 or matchesA matchesB =
-    List.append
-        (matchesA |> toList)
-        (matchesB |> toList)
-        |> List.unique
+    Set.union
+        (matchesA |> toList |> Set.fromList)
+        (matchesB |> toList |> Set.fromList)
+        |> Set.toList
         |> fromList
 
 

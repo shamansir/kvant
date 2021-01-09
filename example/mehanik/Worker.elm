@@ -44,7 +44,7 @@ type Msg
     | Stop
 
 
-defaultOptions : Solver.Options Vec2 Int
+defaultOptions : Solver.Options Vec2
 defaultOptions =
     { approach =
         Overlapping
