@@ -6,7 +6,7 @@ import Kvant.Vec2 exposing (Vec2)
 
 import Kvant.Core as C exposing (..)
 import Kvant.Solver exposing (Solver)
-import Kvant.Solver as Solver exposing (Options)
+import Kvant.Solver.Options as Solver exposing (Options)
 
 import Kvant.Plane exposing (Plane)
 import Kvant.Plane as Plane exposing (empty)

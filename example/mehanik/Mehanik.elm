@@ -55,8 +55,9 @@ import Kvant.Plane exposing (Plane, N(..))
 import Kvant.Plane.Flat as Plane exposing (Boundary(..), Symmetry(..))
 import Kvant.Plane.Flat exposing (flip, rotate)
 import Kvant.Plane.Impl.Tracing exposing (TracingPlane)
-import Kvant.Solver exposing (Approach(..))
-import Kvant.Solver as Solver exposing (Step, Options)
+import Kvant.Solver.Options exposing (Approach(..))
+import Kvant.Solver.Options as Solver exposing (Options)
+import Kvant.Solver as Solver exposing (Step)
 import Kvant.Solver.History as H exposing (..)
 import List.Extra exposing (group)
 
@@ -233,7 +234,7 @@ init =
 defaultTextOptions =
     { approach =
         Overlapping
-            { searchBoundary = Bounded -- Periodic
+            { inputBoundary = Bounded -- Periodic
             , patternSize = N ( 2, 2 )
             , symmetry = FlipAndRotate
             }
@@ -245,7 +246,7 @@ defaultTextOptions =
 defaultImageOptions =
     { approach =
         Overlapping
-            { searchBoundary = Bounded -- Periodic
+            { inputBoundary = Bounded -- Periodic
             , patternSize = N ( 2, 2 )
             , symmetry = FlipAndRotate
             }
@@ -257,7 +258,7 @@ defaultImageOptions =
 defaultTilesOptions =
     { approach =
         Overlapping
-            { searchBoundary = Bounded -- Periodic
+            { inputBoundary = Bounded -- Periodic
             , patternSize = N ( 2, 2 )
             , symmetry = NoSymmetry
             }
@@ -687,7 +688,7 @@ view model =
 
         controls options  =
             case options.approach of
-                Overlapping { patternSize, searchBoundary, symmetry } ->
+                Overlapping { patternSize, inputBoundary, symmetry } ->
 
                     div
                         []
@@ -703,13 +704,13 @@ view model =
                             ]
                         , controlPanel "Input"
                             [ checkbox
-                                (case searchBoundary of
+                                (case inputBoundary of
                                     Periodic -> True
                                     Bounded -> False)
                                 "Periodic"
                                 UsePeriodicInput
                             , checkbox
-                                (case searchBoundary of
+                                (case inputBoundary of
                                     Periodic -> False
                                     Bounded -> True)
                                 "Bounded"
@@ -743,13 +744,13 @@ view model =
                             ]
                         , controlPanel "Output"
                             [ checkbox
-                                (case searchBoundary of
+                                (case options.outputBoundary of
                                     Periodic -> True
                                     Bounded -> False)
                                 "Periodic"
                                 UsePeriodicOutput
                             , checkbox
-                                (case searchBoundary of
+                                (case options.outputBoundary of
                                     Periodic -> False
                                     Bounded -> True)
                                 "Bounded"
@@ -1015,7 +1016,7 @@ changeInputBoundary boundary options =
             Overlapping overlappingOpts ->
                 Overlapping
                     { overlappingOpts
-                    | searchBoundary = boundary
+                    | inputBoundary = boundary
                     }
             _ -> options.approach
     }

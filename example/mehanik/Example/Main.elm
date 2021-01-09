@@ -19,7 +19,8 @@ import Kvant.Plane exposing (Plane, N)
 import Kvant.Plane.Flat exposing (Boundary)
 import Kvant.Plane.Impl.Tracing exposing (TracingPlane)
 import Kvant.Solver exposing (Step)
-import Kvant.Solver as Solver exposing (Options)
+import Kvant.Solver as Solver exposing (changeSeedTo)
+import Kvant.Solver.Options as Solver exposing (Options)
 import Kvant.Solver.History as H exposing (History)
 
 

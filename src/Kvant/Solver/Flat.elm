@@ -11,6 +11,7 @@ import Kvant.Vec2 exposing (..)
 import Kvant.Matches exposing (..)
 import Kvant.Solver exposing (..)
 import Kvant.Solver as S exposing (init)
+import Kvant.Solver.Options exposing (..)
 import Kvant.Neighbours as Dir exposing (Direction(..), move)
 
 
@@ -18,10 +19,10 @@ init : Options Vec2 -> Plane Vec2 a -> Solver Vec2 a
 init options (Plane size _ as source)  =
     S.init
         (case options.approach of
-            Overlapping { searchBoundary, patternSize } ->
+            Overlapping { inputBoundary, patternSize } ->
                 -- FIXME: use symmetry as well
                 (findUniquePatterns
-                        searchBoundary
+                        inputBoundary
                         patternSize
                         source)
             Tiled ->

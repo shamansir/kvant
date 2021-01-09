@@ -3,7 +3,7 @@ module Example.Example exposing (..)
 
 import Kvant.Core exposing (Wfc, TracingWfc)
 import Kvant.Plane exposing (Plane)
-import Kvant.Solver as Solver exposing (Options)
+import Kvant.Solver.Options as Solver exposing (Options)
 import Example.Advance exposing (..)
 
 

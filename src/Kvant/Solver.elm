@@ -21,27 +21,11 @@ import Kvant.Plane.Offset as OffsetPlane exposing (get)
 import Kvant.Neighbours as Neighbours exposing (..)
 import Kvant.Neighbours exposing (Neighbours)
 import Kvant.Neighbours as Dir exposing (Direction(..))
-
-
-type alias Options v =
-    { approach : Approach v
-    , outputBoundary : Boundary
-    , outputSize : v
-    }
+import Kvant.Solver.Options exposing (..)
 
 
 type alias Pattern v a = Plane v a
 type alias Wave v = Plane v (Matches PatternId)
-
-
-type Approach v
-    = Overlapping
-        { patternSize : N v
-        , searchBoundary : Boundary
-        , symmetry : Symmetry -- FIXME: use in search
-        -- TODO: ground : Int
-        }
-    | Tiled
 
 
 -- type alias Rules v a = { }
