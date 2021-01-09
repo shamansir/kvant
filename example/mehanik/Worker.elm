@@ -4,6 +4,8 @@ import Random
 import Task
 import Time
 import Array exposing (Array)
+import Json.Decode as D
+import Json.Encode as E
 
 import Kvant.Vec2 exposing (Vec2)
 import Kvant.Core exposing (Wfc, TracingWfc)
@@ -11,6 +13,8 @@ import Kvant.Core as Wfc exposing (make, makeAdvancing, noConvert)
 import Kvant.Solver as Solver exposing (..)
 import Kvant.Solver.Flat as FlatSolver exposing (init)
 import Kvant.Solver.History exposing (..)
+import Kvant.Solver.Options as Solver exposing (..)
+import Kvant.Solver.Options as Options exposing (decode)
 import Kvant.Plane exposing (N(..), Plane)
 import Kvant.Plane.Flat as Plane exposing (..)
 
@@ -21,10 +25,9 @@ type alias StepResult = Array (Array (Array Int))
 type alias RunResult = StepResult
 
 
-type alias Options = -- TODO
-    {
-
-    }
+{- type Proceed
+    = Manually
+    | AutoUntil Int -}
 
 
 type Model
@@ -34,10 +37,10 @@ type Model
 
 
 type Msg
-    = Run Options Source
-    | RunWith Options Source Random.Seed
-    | Trace Options Source
-    | TraceWith Options Source Random.Seed
+    = Run (Solver.Options Vec2) Source
+    | RunWith (Solver.Options Vec2) Source Random.Seed
+    | Trace (Solver.Options Vec2) Source
+    | TraceWith (Solver.Options Vec2) Source Random.Seed
     | Step
     | StepBack
     | StepBackWith Random.Seed
@@ -49,7 +52,7 @@ defaultOptions =
     { approach =
         Overlapping
             { patternSize = N (2, 2)
-            , searchBoundary = Bounded
+            , inputBoundary = Bounded
             , symmetry = NoSymmetry
             }
     , outputBoundary = Bounded
@@ -187,8 +190,15 @@ update msg model =
 subscriptions : Model -> Sub Msg
 subscriptions model =
     Sub.batch
-        [ run <| \{options, source} -> Run options source
-        , trace <| \{options, source} -> Trace options source
+        [ run <| \{options, source} ->
+            case options |> D.decodeValue Solver.decode of
+                Ok decodedOptions -> Run decodedOptions source
+                Err _ -> Run defaultOptions source
+
+        , trace <| \{options, source} ->
+            case options |> D.decodeValue Solver.decode of
+                Ok decodedOptions -> Trace decodedOptions source
+                Err _ -> Trace defaultOptions source
         , step <| always Step
         , back <| always StepBack
         , stop <| always Stop
@@ -213,11 +223,11 @@ makeSeedAnd makeMsg =
         Time.now
 
 
-port run : ({ options : Options, source : Source } -> msg) -> Sub msg
+port run : ({ options : E.Value, source : Source } -> msg) -> Sub msg
 
 port stop : (() -> msg) -> Sub msg
 
-port trace : ({ options : Options, source : Source } -> msg) -> Sub msg
+port trace : ({ options : E.Value, source : Source } -> msg) -> Sub msg
 
 port step : (() -> msg) -> Sub msg
 

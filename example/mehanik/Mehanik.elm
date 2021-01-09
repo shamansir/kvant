@@ -15,6 +15,7 @@ import Array as A exposing (map)
 import Bytes.Decode as Decode exposing (..)
 import Bytes.Decode as Bytes exposing (Decoder)
 import Bytes exposing (Bytes)
+import Json.Encode as E
 
 import Color exposing (Color)
 import Image exposing (Image)
@@ -57,6 +58,7 @@ import Kvant.Plane.Flat exposing (flip, rotate)
 import Kvant.Plane.Impl.Tracing exposing (TracingPlane)
 import Kvant.Solver.Options exposing (Approach(..))
 import Kvant.Solver.Options as Solver exposing (Options)
+import Kvant.Solver.Options as Options exposing (encode)
 import Kvant.Solver as Solver exposing (Step)
 import Kvant.Solver.History as H exposing (..)
 import List.Extra exposing (group)
@@ -288,12 +290,16 @@ update msg model =
                         { model
                         | status = WaitingRunResponse
                         }
-                    , source
-                        |> boundedStringToGrid
-                        |> List.map (List.map Char.toCode)
-                        |> List.map Array.fromList
-                        |> Array.fromList
-                        |> runInWorker
+                    , runInWorker
+                        { options =
+                            Options.encode options
+                        , source =
+                            source
+                                |> boundedStringToGrid
+                                |> List.map (List.map Char.toCode)
+                                |> List.map Array.fromList
+                                |> Array.fromList
+                        }
                     )
 
                 FromImage options source _ ->
@@ -301,10 +307,14 @@ update msg model =
                         { model
                         | status = WaitingRunResponse
                         }
-                    , source
-                        |> ImageC.toArray2d
-                        |> Array.map (Array.map colorToPixel)
-                        |> runInWorker
+                    , runInWorker
+                        { options =
+                            Options.encode options
+                        , source =
+                            source
+                                |> ImageC.toArray2d
+                                |> Array.map (Array.map colorToPixel)
+                        }
                     )
 
                 FromTiles options group rules _ ->
@@ -314,9 +324,13 @@ update msg model =
                         }
                     , case rules of
                         FromGrid tileSet grid ->
-                            grid
-                                |> Array.map (Array.map <| toIndexInSet tileSet)
-                                |> runInWorker
+                            runInWorker
+                                { options =
+                                    Options.encode options
+                                , source =
+                                    grid
+                                        |> Array.map (Array.map <| toIndexInSet tileSet)
+                                }
                         FromRules _ -> Cmd.none
                     )
 
@@ -331,12 +345,17 @@ update msg model =
                         { model
                         | status = WaitingTracingResponse
                         }
-                    , source
-                        |> boundedStringToGrid
-                        |> List.map (List.map Char.toCode)
-                        |> List.map Array.fromList
-                        |> Array.fromList
-                        |> traceInWorker
+                    ,
+                        traceInWorker
+                            { options =
+                                Options.encode options
+                            , source =
+                                source
+                                    |> boundedStringToGrid
+                                    |> List.map (List.map Char.toCode)
+                                    |> List.map Array.fromList
+                                    |> Array.fromList
+                            }
                     )
 
                 FromImage options source _ ->
@@ -344,10 +363,14 @@ update msg model =
                         { model
                         | status = WaitingTracingResponse
                         }
-                    , source
-                        |> ImageC.toArray2d
-                        |> Array.map (Array.map colorToPixel)
-                        |> traceInWorker
+                    , traceInWorker
+                        { options =
+                            Options.encode options
+                        , source =
+                            source
+                                |> ImageC.toArray2d
+                                |> Array.map (Array.map colorToPixel)
+                        }
                     )
 
                 FromTiles options group rules _ ->
@@ -357,9 +380,13 @@ update msg model =
                         }
                     , case rules of
                         FromGrid tileSet grid ->
-                            grid
-                                |> Array.map (Array.map <| toIndexInSet tileSet)
-                                |> traceInWorker
+                            runInWorker
+                                { options =
+                                    Options.encode options
+                                , source =
+                                    grid
+                                        |> Array.map (Array.map <| toIndexInSet tileSet)
+                                }
                         FromRules _ -> Cmd.none
                     )
 
@@ -1048,9 +1075,9 @@ changeOptions f current =
         _ -> current
 
 
-port runInWorker : Array (Array Int) -> Cmd msg
+port runInWorker : { options : E.Value, source : Array (Array Int) } -> Cmd msg
 
-port traceInWorker : Array (Array Int) -> Cmd msg
+port traceInWorker : { options : E.Value, source : Array (Array Int) } -> Cmd msg
 
 port stepInWorker : () -> Cmd msg
 

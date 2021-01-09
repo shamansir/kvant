@@ -2,24 +2,24 @@ importScripts('./worker.js');
 
 const app = Elm.Worker.init();
 
-app.ports.onResult.subscribe((resultGrid) => {
-    console.log('onResult', resultGrid);
-    self.postMessage({ cmd: 'result', grid: resultGrid });
+app.ports.onResult.subscribe((resultWave) => {
+    console.log('onResult', resultWave);
+    self.postMessage({ cmd: 'result', wave: resultWave });
 });
 
-app.ports.onStep.subscribe((stepGrid) => {
-    console.log('onStep', stepGrid);
-    self.postMessage({ cmd: 'step', grid: stepGrid });
+app.ports.onStep.subscribe((stepWave) => {
+    console.log('onStep', stepWave);
+    self.postMessage({ cmd: 'step', wave: stepWave });
 });
 
 self.addEventListener('message', function(e) {
     var data = e.data;
     switch (data.cmd) {
         case 'run':
-            app.ports.run.send({ options: {}, source : data.grid });
+            app.ports.run.send({ options: data.options, source : data.source });
             break;
         case 'trace':
-            app.ports.trace.send({ options: {}, source : data.grid });
+            app.ports.trace.send({ options: data.options, source : data.source });
             break;
         case 'step':
             app.ports.step.send(null);

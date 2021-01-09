@@ -21,11 +21,11 @@
 
     var jsWorker = new Worker('./worker-runner.js');
 
-    mehanik.ports.runInWorker.subscribe((grid) => {
-        jsWorker.postMessage({ 'cmd': 'run', 'grid': grid });
+    mehanik.ports.runInWorker.subscribe(({options, source }) => {
+        jsWorker.postMessage({ 'cmd': 'run', 'source': source, 'options': options });
     });
-    mehanik.ports.traceInWorker.subscribe((grid) => {
-        jsWorker.postMessage({ 'cmd': 'trace', 'grid': grid });
+    mehanik.ports.traceInWorker.subscribe(({options, source }) => {
+        jsWorker.postMessage({ 'cmd': 'trace', 'source': source, 'options': options });
     });
     mehanik.ports.stepInWorker.subscribe((_) => {
         jsWorker.postMessage({ 'cmd': 'step' });
@@ -42,9 +42,9 @@
         const data = e.data;
         switch (data.cmd) {
             case 'result':
-                mehanik.ports.gotWorkerResult.send(data.grid);
+                mehanik.ports.gotWorkerResult.send(data.wave);
             case 'step':
-                mehanik.ports.gotWorkerResult.send(data.grid);
+                mehanik.ports.gotWorkerResult.send(data.wave);
             default: return;
         }
     });
