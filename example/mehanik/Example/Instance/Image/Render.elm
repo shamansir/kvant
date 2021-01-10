@@ -42,8 +42,6 @@ make =
         --     |> ImageC.fromArray2d
         --     |> drawImage
         --     |> always
-    , tracingPlane = always <| div [] []
-    , tracingCell = always <| div [] []
     }
 
 

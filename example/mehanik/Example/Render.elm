@@ -18,6 +18,4 @@ import Kvant.Matches as Matches exposing (..)
 type alias Renderer v fmt a target =
     { source : fmt -> target
     , plane : Plane v a -> target
-    , tracingPlane : TracingPlane v a -> target
-    , tracingCell : TracingCell a -> target
     }

@@ -26,20 +26,13 @@ import Html.Attributes exposing (..)
 import Html.Attributes as H exposing (min, max)
 import Html.Events exposing (..)
 
-import Example.Instance exposing (Instance(..))
 import Example.Advance exposing (..)
 
-import Example.Main exposing (..)
-import Example.Main as Example exposing (..)
-import Example.Msg as Example exposing (Msg)
-import Example.Render as Render exposing (..)
 
-import Example.Instance.Text as TextExample exposing (..)
-import Example.Instance.Image as ImageExample exposing (..)
-import Example.Instance.Tiles as TilesExample exposing (..)
 import Example.Instance.Text.Render as TextRenderer exposing (make, grid1)
 import Example.Instance.Image.Render as ImageRenderer exposing (make)
 import Example.Instance.Tiles.Render as TilesRenderer exposing (grid)
+import Example.Instance.Tiles exposing (TilingRules(..), toIndexInSet, fromIndexInSet)
 import Example.Instance.Text.Plane exposing (TextPlane)
 import Example.Instance.Text.Plane as TextPlane exposing
     (make, boundedStringToGrid, toBoundedStringFromGrid, merge)
@@ -48,6 +41,7 @@ import Example.Instance.Image.Plane as ImagePlane exposing
 import Example.Instance.Tiles.Plane exposing (TileKey)
 import Example.Instance.Tiles.Plane as TilesPlane exposing (merge)
 import Example.Instance.Tiles.Rules as Rules
+import Example.Render exposing (Renderer)
 
 
 import Kvant.Core as Wfc
@@ -600,16 +594,13 @@ view : Model -> Html Msg
 view model =
     let
 
-        viewImageExample =
-            Example.view ImageRenderer.make -->> Html.map ToExample
-
         viewExample example =
             case example of
 
                 Textual _ source maybeGrid ->
                     div
                         []
-                        [ Example.preview TextRenderer.make source
+                        [ viewSource TextRenderer.make source
                         , hr [] []
                         , maybeGrid
                             |> Maybe.map
@@ -620,7 +611,7 @@ view model =
                 FromImage _ source maybeImage ->
                     div
                         []
-                        [ Example.preview ImageRenderer.make source
+                        [ viewSource ImageRenderer.make source
                         , hr [] []
                         , maybeImage
                             |> Maybe.map ImageRenderer.drawImage
@@ -644,7 +635,7 @@ view model =
                                             [ style "transform" "scale(0.6)"
                                             , style "transform-origin" "0 0"
                                             ]
-                                            [ Example.preview
+                                            [ viewSource
                                                 (TilesRenderer.make <| toTileUrl format group)
                                                 grid
                                             , maybeGrid
@@ -895,7 +886,7 @@ view model =
                     |> List.map
                         (\boundedStr ->
                             exampleFrame (SwitchToTextExample boundedStr)
-                                [ Example.preview TextRenderer.make boundedStr
+                                [ viewSource TextRenderer.make boundedStr
                                 ]
                         )
                     )
@@ -967,6 +958,14 @@ main =
 
 mapGrid : (a -> b) -> Grid a -> Grid b
 mapGrid f = Array.map <| Array.map <| Array.map f
+
+
+viewSource
+    :  Renderer v fmt a (Html msg)
+    -> fmt
+    -> Html msg -- Example.Msg
+viewSource renderer source =
+    renderer.source source
 
 
 viewGrid : (Array a -> Html msg) -> Array (Array (Array a)) -> Html msg

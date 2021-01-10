@@ -21,8 +21,6 @@ import Kvant.Solver.Options exposing (Approach(..))
 import Kvant.Solver.Options as Solver exposing (Options)
 import Kvant.Solver.Flat as FlatSolver exposing (init)
 
-import Example.Example exposing (Example)
-import Example.Example as Example exposing (make)
 import Example.Advance exposing (Status(..), AdvanceMode(..))
 import Example.Instance.Tiles.Plane exposing (TileKey, TileGrid, noTile)
 import Example.Instance.Tiles.Plane as TilesPlane exposing (make)
@@ -33,72 +31,7 @@ type TilingRules
     | FromRules ()
 
 
-type alias TilesExample = Example Vec2 TileGrid TileKey
-
-
 type alias TileSet = ( Int -> Maybe TileKey, TileKey -> Maybe Int )
-
-
-type alias TilesWfc = Wfc Vec2 TileGrid TileKey
-type alias TilesTracingWfc = TracingWfc Vec2 TileKey
-type alias TilesTracingPlane = TracingPlane Vec2 TileKey
-
-
-quick : Solver.Options Vec2 -> TileGrid -> TilesExample
-quick options tileGrid =
-    Example.make
-        (\advanceMode ->
-            ( case advanceMode of
-                AtOnce -> tiles options tileGrid
-                StepByStep -> tilesAdvancing options tileGrid
-            , tilesTracing options tileGrid
-            )
-        )
-        options
-        tileGrid
-        (tileGrid |> TilesPlane.make)
-
-
-tiles : Solver.Options Vec2 -> (TileGrid -> TilesWfc)
-tiles options =
-    makeFn
-        (Convert
-            { fromInput = TilesPlane.make
-            , toElement = \_ _ -> "none"
-            , toOutput = TilesPlane.toGrid >> List.map (Array.fromList) >> Array.fromList
-            }
-        )
-        (FlatSolver.init options)
-
-
-tilesAdvancing  : Solver.Options Vec2 -> (TileGrid -> TilesWfc)
-tilesAdvancing options =
-    makeAdvancingFn
-        (Convert
-            { fromInput = TilesPlane.make
-            , toElement = \_ _ -> "none"
-            , toOutput = TilesPlane.toGrid >> List.map (Array.fromList) >> Array.fromList
-            }
-        )
-        (FlatSolver.init options)
-
-
-tilesTracing : Solver.Options Vec2 -> (TileGrid -> TilesTracingWfc)
-tilesTracing options =
-    \input ->
-        makeAdvancingFn
-            (Convert
-                { fromInput = identity
-                , toElement = Tuple.pair
-                , toOutput = identity
-                }
-            )
-            (\_ ->
-                input
-                    |> TilesPlane.make
-                    |> FlatSolver.init options
-            )
-            (Plane.empty options.outputSize)
 
 
 buildTileset : Set TileKey -> TileSet

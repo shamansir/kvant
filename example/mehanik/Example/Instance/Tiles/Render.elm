@@ -22,8 +22,6 @@ make toPath =
         Plane.unpack
             >> List.map (List.map <| Maybe.withDefault noTile)
             >> grid (tile1 toPath)
-    , tracingPlane = always <| div [] []
-    , tracingCell = always <| div [] []
     }
 
 

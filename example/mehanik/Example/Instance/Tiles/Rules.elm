@@ -8,7 +8,6 @@ import Xml.Decode as D exposing (..)
 
 import Example.Instance.Tiles exposing (..)
 
-
 type alias AliasToName = Dict String String
 
 

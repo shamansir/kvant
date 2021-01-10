@@ -33,8 +33,6 @@ make =
         Plane.unpack
             >> List.map (List.map <| Maybe.withDefault '?')
             >> grid char
-    , tracingPlane = always <| div [] []
-    , tracingCell = always <| div [] []
     }
 
 
