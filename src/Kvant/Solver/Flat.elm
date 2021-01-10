@@ -6,7 +6,7 @@ import Dict
 
 
 import Kvant.Plane exposing (..)
-import Kvant.Plane.Flat exposing (Boundary, Symmetry, findAllSubsAlt, findOccurrence, findMatches)
+import Kvant.Plane.Flat exposing (Boundary, Symmetry, findSubsAlt, findOccurrence, findMatches)
 import Kvant.Vec2 exposing (..)
 import Kvant.Matches exposing (..)
 import Kvant.Solver exposing (..)
@@ -19,9 +19,9 @@ init : Options Vec2 -> Plane Vec2 a -> Solver Vec2 a
 init options (Plane size _ as source)  =
     S.init
         (case options.approach of
-            Overlapping { inputBoundary, patternSize } ->
-                -- FIXME: use symmetry as well
+            Overlapping { inputBoundary, patternSize, symmetry } ->
                 (findUniquePatterns
+                        symmetry
                         inputBoundary
                         patternSize
                         source)
@@ -50,13 +50,14 @@ walker ( w, h ) =
 
 
 findUniquePatterns
-    :  Boundary
+    :  Symmetry
+    -> Boundary
     -> N Vec2
     -> Plane Vec2 a
     -> UniquePatterns Vec2 a
-findUniquePatterns boundary ofSize inPlane =
+findUniquePatterns symmetry boundary ofSize inPlane =
     let
-        allSubplanes = findAllSubsAlt boundary ofSize inPlane
+        allSubplanes = findSubsAlt symmetry boundary ofSize inPlane
         uniquePatterns = findOccurrence allSubplanes
         uniquePatternsDict =
             uniquePatterns

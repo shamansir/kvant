@@ -81,7 +81,7 @@ update msg model =
             let
                 solution =
                     Wfc.make Wfc.noConvert
-                            (FlatSolver.init defaultOptions <| Plane.fromArrayGrid source)
+                            (FlatSolver.init options <| Plane.fromArrayGrid source)
                         |> Wfc.run seed
                         |> fromPlane
             in
@@ -97,7 +97,7 @@ update msg model =
         TraceWith options source seed ->
             let
                 tracingWfc = Wfc.makeAdvancing Wfc.noConvert
-                    (FlatSolver.init defaultOptions <| Plane.fromArrayGrid source)
+                    (FlatSolver.init options <| Plane.fromArrayGrid source)
                 ( nextStep, traceResult ) =
                     tracingWfc
                         |> Wfc.firstStep seed

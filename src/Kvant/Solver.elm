@@ -14,7 +14,7 @@ import Kvant.Occurrence as Occurrence
 import Kvant.Plane exposing (Plane(..), N(..))
 import Kvant.Plane as Plane exposing (map)
 import Kvant.Plane.Flat as Plane
-    exposing ( Boundary, Symmetry, foldl, coords, equal, sub, findMatches, findAllSubs, findAllSubsAlt, findOccurrence )
+    exposing ( Boundary, Symmetry, foldl, coords, equal, sub, findMatches, findSubs, findSubsAlt, findOccurrence )
 import Kvant.Plane as CPlane exposing (fromDict, toDict)
 import Kvant.Plane.Offset exposing (OffsetPlane(..), toOffset)
 import Kvant.Plane.Offset as OffsetPlane exposing (get)

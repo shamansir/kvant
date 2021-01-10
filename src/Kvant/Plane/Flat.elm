@@ -192,6 +192,15 @@ allViews plane =
     ]
 
 
+views : Symmetry -> Plane Vec2 a -> List (Plane Vec2 a)
+views symmetry source =
+    source |> case Debug.log "symmetry" symmetry of
+        NoSymmetry -> List.singleton
+        FlipOnly -> bothFlips
+        RotateOnly -> allRotations
+        FlipAndRotate -> allViews
+
+
 isAmong : List (Plane Vec2 a) -> Plane Vec2 a -> Bool
 isAmong planes subject =
     planes
@@ -218,10 +227,11 @@ memberAt planes subject =
            Nothing
 
 
-findAllSubs : Boundary -> N Vec2 -> Plane Vec2 a -> List (Plane Vec2 a)
-findAllSubs boundary ofSize inPlane =
+findSubs : Symmetry -> Boundary -> N Vec2 -> Plane Vec2 a -> List (Plane Vec2 a)
+findSubs symmetry boundary ofSize inPlane =
     inPlane
-        |> allViews -- first rotate and then search for subs or search for subs and rotate them?
+        |> views symmetry
+        -- first rotate and then search for subs or search for subs and rotate them?
         |> List.concatMap
             (\view ->
                 coordsFlat view
@@ -234,8 +244,8 @@ findAllSubs boundary ofSize inPlane =
             )
 
 
-findAllSubsAlt : Boundary -> N Vec2 -> Plane Vec2 a -> List (Plane Vec2 a)
-findAllSubsAlt method ofSize inPlane =
+findSubsAlt : Symmetry -> Boundary -> N Vec2 -> Plane Vec2 a -> List (Plane Vec2 a)
+findSubsAlt symmetry method ofSize inPlane =
     inPlane
         |> coordsFlat
         |> (case method of
@@ -244,7 +254,7 @@ findAllSubsAlt method ofSize inPlane =
                 Bounded ->
                     List.map (\coord -> subAt coord ofSize inPlane)
                     >> List.filterMap identity)
-        |> List.concatMap allViews
+        |> List.concatMap (views symmetry)
 
 
 findOccurrence : List (Plane Vec2 a) -> List ((Occurrence, Maybe Frequency), Plane Vec2 a)
