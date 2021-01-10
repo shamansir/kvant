@@ -118,7 +118,8 @@ type Msg
     -- change options
     | ChangeN (N Vec2)
     | ChangeSymmetry Symmetry
-    | ChangeOutputSize Vec2
+    | ChangeOutputWidth Int
+    | ChangeOutputHeight Int
     | UsePeriodicInput
     | UseBoundedInput
     | UsePeriodicOutput
@@ -473,10 +474,18 @@ update msg model =
             , Cmd.none
             )
 
-        ChangeOutputSize size ->
+        ChangeOutputWidth w ->
             (
                 { model
-                | example = changeOptions (changeOutputSize size) model.example
+                | example = changeOptions (changeOutputSize <| \(_, h) -> (w, h)) model.example
+                }
+            , Cmd.none
+            )
+
+        ChangeOutputHeight h ->
+            (
+                { model
+                | example = changeOptions (changeOutputSize <| \(w, _) -> (w, h)) model.example
                 }
             , Cmd.none
             )
@@ -783,6 +792,38 @@ view model =
                                 "Bounded"
                                 UseBoundedOutput
                             ]
+                        , controlPanel "Output size"
+                            [ span
+                                []
+                                [ Html.text
+                                    <| "Width ("
+                                        ++ (String.fromInt <| Tuple.first <| options.outputSize)
+                                        ++ ")"]
+                            , input
+                                [ type_ "range"
+                                , H.min "8"
+                                , H.max "96"
+                                , value <| String.fromInt <| Tuple.first <| options.outputSize
+                                , onInput
+                                    <| String.toInt >> Maybe.withDefault 8 >> ChangeOutputWidth
+                                ]
+                                []
+                            , span
+                                []
+                                [ Html.text
+                                    <| "Height ("
+                                        ++ (String.fromInt <| Tuple.second <| options.outputSize)
+                                        ++ ")"]
+                            , input
+                                [ type_ "range"
+                                , H.min "8"
+                                , H.max "96"
+                                , value <| String.fromInt <| Tuple.second <| options.outputSize
+                                , onInput <|
+                                    String.toInt >> Maybe.withDefault 8 >> ChangeOutputHeight
+                                ]
+                                []
+                            ]
                         , controlPanel "" -- "Run/Trace"
                             [ fancyButton
                                 (model.status == None)
@@ -1056,10 +1097,10 @@ changeOutputBoundary boundary options =
     }
 
 
-changeOutputSize : v -> Solver.Options v -> Solver.Options v
-changeOutputSize size options =
+changeOutputSize : (v -> v) -> Solver.Options v -> Solver.Options v
+changeOutputSize f options =
     { options
-    | outputSize = size
+    | outputSize = f options.outputSize
     }
 
 
