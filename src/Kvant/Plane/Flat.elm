@@ -9,7 +9,6 @@ import Kvant.Vec2 exposing (..)
 import Kvant.Occurrence exposing (Occurrence, Frequency, frequencyFromFloat)
 import Kvant.Occurrence as Occurrence
 import Kvant.Plane exposing (..)
-import Kvant.Plane.Offset exposing (..)
 import List.Zipper exposing (from)
 
 
@@ -37,6 +36,7 @@ type Flip
     | Vertical
 
 
+{-
 foldMap : (Cell Vec2 a -> b) -> Plane Vec2 a -> List (List b)
 foldMap f (Plane _ planeF as plane) =
     coords plane
@@ -428,3 +428,4 @@ fromArrayGrid grid =
                     |> Array.get y
                     |> Maybe.andThen (Array.get x)
 
+-}

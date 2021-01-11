@@ -3,6 +3,7 @@ module Kvant.Vec2 exposing (..)
 import Array exposing (Array)
 import Array as Array exposing (..)
 
+
 type alias Vec2 = (Int, Int)
 
 
@@ -10,8 +11,8 @@ swap : Vec2 -> Vec2
 swap (x, y) = (y, x)
 
 
-above : Vec2 -> List (List Vec2)
-above (width, height) =
+coords : Vec2 -> List (List Vec2)
+coords (width, height) =
     rect { from = (0, 0), to = (width - 1, height - 1) }
 
 
@@ -23,7 +24,8 @@ rect { from, to } =
     in
         List.range fromY toY
             |> List.map (\y ->
-                List.range fromX toX |> List.map (Tuple.pair y >> swap))
+                List.range fromX toX
+                    |> List.map (Tuple.pair y >> swap))
 
 
 loadSize : Array (Array a) -> Maybe Vec2

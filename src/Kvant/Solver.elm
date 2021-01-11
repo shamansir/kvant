@@ -11,152 +11,115 @@ import Kvant.Matches exposing (Matches)
 import Kvant.Matches as Matches exposing (..)
 import Kvant.Occurrence exposing (Occurrence, Frequency, frequencyToFloat)
 import Kvant.Occurrence as Occurrence
-import Kvant.Plane exposing (Plane(..), N(..))
+import Kvant.Plane exposing (Plane(..))
 import Kvant.Plane as Plane exposing (map)
-import Kvant.Plane.Flat as Plane
-    exposing ( Boundary, Symmetry, foldl, coords, equal, sub, findMatches, findSubs, findSubsAlt, findOccurrence )
-import Kvant.Plane as CPlane exposing (fromDict, toDict)
-import Kvant.Plane.Offset exposing (OffsetPlane(..), toOffset)
-import Kvant.Plane.Offset as OffsetPlane exposing (get)
+{- import Kvant.Plane.Flat as Plane
+    exposing ( Boundary, Symmetry, foldl, coords, equal, sub, findMatches, findSubs, findSubsAlt, findOccurrence ) -}
+-- import Kvant.Plane as CPlane exposing (fromDict, toDict)
+-- import Kvant.Plane.Offset exposing (OffsetPlane(..), toOffset)
+-- import Kvant.Plane.Offset as OffsetPlane exposing (get)
 import Kvant.Neighbours as Neighbours exposing (..)
 import Kvant.Neighbours exposing (Neighbours)
 import Kvant.Neighbours as Dir exposing (Direction(..))
 import Kvant.Solver.Options exposing (..)
 
 
-type alias Pattern v a = Plane v a
-type alias Wave v = Plane v (Matches PatternId)
+-- value can be pixel, color, tile, character, whatever, but `Key` is the integer ID of it
+type alias Key = Int
+type alias Pattern = Plane Key
+type alias Wave = Plane (Matches PatternId)
 
 
 -- type alias Rules v a = { }
 
 
-type Step v
-    = Step Int Random.Seed (StepStatus v)
+type Step
+    = Step Int Random.Seed StepStatus
 
 
-type FocusState v
+type StepStatus
+    = Initial Options
+    | InProgress FocusState Wave
+    | Solved Wave
+    | Terminated -- terminated by contradiction
+    | ReachedLimit Int
+
+
+type FocusState
     = NotFocused
-    | FocusedAt v
+    | FocusedAt Vec2
 
 
 type MaximumSteps = MaximumSteps Int
 
 
-type StepStatus v
-    = Initial
-    | InProgress (FocusState v) (Wave v)
-    | Solved (Wave v)
-    | Terminated -- terminated by contradiction
-    | ReachedLimit Int
-
-
 type alias PatternId = Int
 
 
-type alias PatternWithStats v a =
-    { pattern : Pattern v a
+type alias PatternWithStats =
+    { pattern : Pattern
     , frequency : ( Occurrence, Maybe Frequency )
-    -- TODO: change `matches` to Neighbours
-    , matches : OffsetPlane v (List PatternId)
+    , matches : Plane (List PatternId)
+    --, rotations : Dict Rotation PatternId
     }
 
 
-type alias UniquePatterns v a =
-    Dict
-        PatternId
-        (PatternWithStats v a)
-
-
-type alias Walker v =
-    { first : v
-    , next : v -> Direction -> v -- FIXME: swap arguments, return Maybe (?), change Direction to `v`
-    , random : Random.Generator v
-    , all : () -> List v
-    , fits : v -> Bool
-    -- TODO: v -> comparable
-    }
+type alias UniquePatterns =
+    Dict PatternId PatternWithStats
 
 
 -- type alias FindMatches v a =
 --     Wave v -> v -> Direction -> Matches a
 
 
-type Observation v
+type Observation
     = Unknown
     | Collapsed
     | Contradiction
-    | Focus v PatternId
+    | Focus Vec2 PatternId
 
 
-type Solver v a =
-    Solver
-        { source : Plane v a
-        , walker : Walker v
-        , outputSize : v
-        , outputBoundary : Boundary -- FIXME: use in solving
-        , patterns : UniquePatterns v a
-            -- FIXME: could be either:
-            --        UniquePatterns, pixel by pixel,
-            --        or Tiles which are just IDs themselves;
-            --        also, could be a function like: Wave v -> v -> Direction -> Matches a
-        }
+preprocess : Plane Key -> UniquePatterns
+preprocess _ = Dict.empty -- FIXME
 
 
-firstStep : Random.Seed -> Step v
+firstStep : Random.Seed -> Step
 firstStep seed =
     Step 0 seed Initial
 
 
-init
-    :  UniquePatterns v a
-    -> v
-    -> Boundary
-    -> Walker v
-    -> Plane v a
-    -> Solver v a
-init patterns outputSize outputBoundary walker source =
-    Solver
-        { source = source
-        , walker = walker
-        , patterns = patterns
-        , outputSize = outputSize
-        , outputBoundary = outputBoundary
-        }
-
-
-solve : Solver v a -> Step v -> Step v
-solve solver fromStep =
+solve : UniquePatterns -> Step -> Step
+solve patterns fromStep =
     let
-        succeedingStep = advance solver fromStep
+        succeedingStep = advance patterns fromStep
     in case getStatus succeedingStep of
         Solved _ -> succeedingStep
         Terminated -> succeedingStep
-        _ -> solve solver succeedingStep
+        _ -> solve patterns succeedingStep
 
 
-solveUntil : MaximumSteps -> Solver v a -> Step v -> Step v
-solveUntil (MaximumSteps maxSteps) solver fromStep =
+solveUntil : MaximumSteps -> UniquePatterns -> Step -> Step
+solveUntil (MaximumSteps maxSteps) patterns fromStep =
     let
-        succeedingStep = advance solver fromStep
+        succeedingStep = advance patterns fromStep
     in case getStatus succeedingStep of
         Solved _ -> succeedingStep
         Terminated -> succeedingStep
         _ ->
             if not (succeedingStep |> exceeds maxSteps)
-                then succeedingStep |> solve solver
+                then succeedingStep |> solve patterns
                 else succeedingStep |> (updateStatus <| ReachedLimit maxSteps)
 
 
-advance : Solver v a -> Step v -> Step v
-advance (Solver { source, patterns, walker, outputSize } as solver) step =
+advance : UniquePatterns -> Step -> Step
+advance patterns step =
     case getStatus step of
-        Initial ->
+        Initial { outputSize } ->
             initWave patterns outputSize
                 |> InProgress NotFocused
                 |> nextStep (getSeed step) step
         InProgress _ wave ->
-            case observe (getSeed step) walker patterns wave of
+            case observe (getSeed step) patterns wave of
                 ( Collapsed, oSeed ) ->
                     nextStep oSeed step <| Solved wave
                 ( Contradiction, oSeed ) ->
@@ -165,7 +128,7 @@ advance (Solver { source, patterns, walker, outputSize } as solver) step =
                     nextStep oSeed step <| Terminated
                 ( Focus position pattern, oSeed ) ->
                     case wave
-                            |> propagate patterns walker position pattern of
+                            |> propagate patterns position pattern of
                         newWave ->
                             nextStep oSeed step <| InProgress (FocusedAt position) newWave
         _ -> step
@@ -173,11 +136,10 @@ advance (Solver { source, patterns, walker, outputSize } as solver) step =
 
 observe
     :  Random.Seed
-    -> Walker v
-    -> UniquePatterns v a
-    -> Wave v
-    -> ( Observation v, Random.Seed )
-observe seed walker uniquePatterns wave =
+    -> UniquePatterns
+    -> Wave
+    -> ( Observation, Random.Seed )
+observe seed uniquePatterns wave =
     if wave |> hasAContradiction walker then
         ( Contradiction, seed )
     else if wave |> isWaveCollapsed walker then
@@ -379,39 +341,31 @@ getMatchesOf walker uniquePatterns dir pattern =
         |> Maybe.map Matches.fromList
 
 
- -- FIXME: Maybe Bool
-hasAContradiction : Walker v -> Wave v -> Bool
-hasAContradiction { all } (Plane _ waveF) =
-    List.foldl
-        (\coord wasAContradiction ->
-            wasAContradiction ||
-                (waveF coord
-                    |> Maybe.map Matches.isNone
-                    |> Maybe.withDefault True)
-        )
-        False
-        ( all () )
+hasAContradiction : Wave -> Bool
+hasAContradiction wave =
+    Plane.all
+        >> List.foldl
+            (\matches wasAContradiction ->
+                wasAContradiction || Matches.isNone matches
+            )
+            False
 
 
- -- FIXME: Maybe Bool
-isWaveCollapsed : Walker v -> Wave v -> Bool
-isWaveCollapsed { all } (Plane _ waveF) =
-    List.foldl
-        (\coord wasCollapsed ->
-            wasCollapsed &&
-                (waveF coord
-                    |> Maybe.map (\matches -> Matches.count matches == 1)
-                    |> Maybe.withDefault False)
-        )
-        True
-        ( all () )
+isWaveCollapsed : Wave -> Bool
+isWaveCollapsed =
+    Plane.all
+        >> List.foldl
+            (\matches wasCollapsed ->
+                wasCollapsed && (Matches.count matches == 1)
+            )
+            True
 
 
-loadFrequencies : UniquePatterns v a -> Dict PatternId (Maybe Frequency)
+loadFrequencies : UniquePatterns -> Dict PatternId (Maybe Frequency)
 loadFrequencies = Dict.map <| always <| (.frequency >> Tuple.second)
 
 
-initWave : UniquePatterns v a -> v -> Wave v
+initWave : UniquePatterns -> Vec2 -> Wave
 initWave uniquePatterns size =
     -- Dict.keys uniquePatterns >> Matches.fromList >> Plane.filled
     Plane.filled size <| Matches.fromList <| Debug.log "patternCount" <| Dict.keys uniquePatterns
@@ -446,43 +400,31 @@ apply f (Solver { patterns, walker, source, outputSize }) (Step _ _ status) =
             ReachedLimit _ -> Plane.empty outputSize
 
 
-getSource : Solver v a -> Plane v a
-getSource (Solver { source }) = source
-
-
-getUniquePatterns : Solver v a -> UniquePatterns v a
-getUniquePatterns (Solver { patterns }) = patterns
-
-
-getWalker : Solver v a -> Walker v
-getWalker (Solver { walker }) = walker
-
-
-getSeed : Step v -> Random.Seed
+getSeed : Step -> Random.Seed
 getSeed (Step _ seed _) = seed
 
 
-changeSeedTo : Random.Seed -> Step v -> Step v
+changeSeedTo : Random.Seed -> Step -> Step
 changeSeedTo newSeed (Step n seed step) = Step n newSeed step
 
 
-getStatus : Step v -> StepStatus v
+getStatus : Step -> StepStatus
 getStatus (Step _ _ status) = status
 
 
-getCount : Step v -> Int
+getCount : Step -> Int
 getCount (Step n _ _) = n
 
 
-nextStep : Random.Seed -> Step v -> StepStatus v -> Step v
+nextStep : Random.Seed -> Step -> StepStatus -> Step
 nextStep seed (Step n _ _) status = Step (n + 1) seed status
 
 
-updateStatus : StepStatus v -> Step v -> Step v
+updateStatus : StepStatus -> Step -> Step
 updateStatus status (Step n seed _) = Step n seed status
 
 
-exceeds : Int -> Step v -> Bool
+exceeds : Int -> Step -> Bool
 exceeds count (Step stepN _ _) = count <= stepN
 
 

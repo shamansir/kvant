@@ -266,3 +266,30 @@ toString itemToString =
 
 
 -- decode : D.Decoder a -> D.Decoder (Neighbours a)
+
+
+toDirection : Vec2 -> Direction
+toDirection (x, y) =
+    if (x < 0) && (y < 0) then NE
+    else if (x == 0) && (y < 0) then N
+    else if (x > 0) && (y < 0) then NW
+    else if (x < 0) && (y == 0) then E
+    else if (x == 0) && (y == 0) then X
+    else if (x > 0) && (y == 0) then W
+    else if (x < 0) && (y > 0) then SE
+    else if (x == 0) && (y > 0) then S
+    else SW
+
+
+fromDirection : Direction -> Vec2
+fromDirection direction =
+    case direction of
+        NE -> ( -1, -1 )
+        N  -> (  0, -1 )
+        NW -> (  1, -1 )
+        E  -> ( -1,  0 )
+        X  -> (  0,  0 )
+        W  -> (  1,  0 )
+        SE -> ( -1,  1 )
+        S  -> (  0,  1 )
+        SW -> (  1,  1 )
