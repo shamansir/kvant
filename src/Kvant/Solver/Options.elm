@@ -2,7 +2,7 @@ module Kvant.Solver.Options exposing (..)
 
 
 import Kvant.Vec2 exposing (Vec2)
-import Kvant.Plane exposing (Plane(..), N(..))
+import Kvant.Plane exposing (Plane(..))
 import Kvant.Plane.Flat as Plane
     exposing ( Boundary(..), Symmetry(..) )
 
@@ -13,16 +13,16 @@ import Json.Encode as E
 -- import Xml.Decode as Xml
 
 
-type alias Options v =
-    { approach : Approach v
+type alias Options =
+    { approach : Approach
     , outputBoundary : Boundary
-    , outputSize : v
+    , outputSize : Vec2
     }
 
 
-type Approach v
+type Approach
     = Overlapping
-        { patternSize : N v -- FIXME: use just square patterns
+        { patternSize : Vec2 -- FIXME: use just square patterns
         , inputBoundary : Boundary
         , symmetry : Symmetry -- FIXME: use in search
         -- TODO: ground : Int
@@ -30,7 +30,7 @@ type Approach v
     | Tiled
 
 
-decode : D.Decoder (Options Vec2)
+decode : D.Decoder Options
 decode =
     D.map4
 
@@ -52,7 +52,7 @@ decode =
                                         , symmetry = symmetry
                                         }
                                 )
-                                (D.field "patternSize" <| D.map (\n -> N (n, n)) <| D.int)
+                                (D.field "patternSize" <| D.map (\n -> (n, n)) <| D.int)
                                 (D.field "inputBoundary" D.string
                                     |> D.andThen
                                         (\boundary ->
@@ -93,7 +93,7 @@ decode =
         (D.field "outputHeight" D.int)
 
 
-encode : Options Vec2 -> E.Value
+encode : Options -> E.Value
 encode opts =
     E.object <|
         [
@@ -131,7 +131,7 @@ encode opts =
                     ( "patternSize"
                     , E.int <|
                         case oopts.patternSize of
-                            N ( n, _ ) -> n
+                            ( n, _ ) -> n
                     )
                 ,
 
