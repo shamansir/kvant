@@ -34,14 +34,14 @@ empty : Vec2 -> Plane a
 empty size_ = Plane ( (0, 0), size_ ) Array.empty
 
 
-fits : Plane a -> Vec2 -> Bool
-fits (Plane ( ( ox, oy ), ( w, h ) ) _) (x, y) =
+fits : Vec2 -> Plane a -> Bool
+fits (x, y) (Plane ( ( ox, oy ), ( w, h ) ) _) =
     (x >= ox) && (y >= oy) && (x < ox + w) && (y < oy + h)
 
 
 get : Vec2 -> Plane a -> Maybe a
 get (x, y) (Plane _ grid as plane) =
-    if fits plane (x, y)
+    if plane |> fits (x, y)
         then grid
             |> Array.get y
             |> Maybe.andThen (Array.get x)
