@@ -35,7 +35,7 @@ type alias Wave = Plane (Matches PatternId)
 
 
 type Step
-    = Step Int Random.Seed Options StepStatus
+    = Step Int Random.Seed Options StepStatus -- Replace Options only by OutputSize and nothing else
 
 
 type StepStatus
@@ -172,6 +172,7 @@ observe seed uniquePatterns wave =
                     )
                 |> Maybe.withDefault ( Contradiction, cSeed )
 
+
 propagate
     :  UniquePatterns
     -> Vec2
@@ -263,24 +264,22 @@ findLowestEntropy
     :  Random.Seed
     -> UniquePatterns
     -> Wave
-    -> ( Maybe v, Random.Seed )
-findLowestEntropy seed uniquePatterns (Plane _ waveF) =
+    -> ( Maybe Vec2, Random.Seed )
+findLowestEntropy seed uniquePatterns =
     let
         withEntropy prevSeed matches f =
             matches
                 |> entropyOf prevSeed uniquePatterns
                 |> Tuple.mapFirst (Maybe.andThen f)
-        foldingF curCoord ( maybePrevLowest, prevSeed ) =
-            case ( waveF curCoord, maybePrevLowest ) of
-                ( Nothing, _ ) ->
-                    ( maybePrevLowest, prevSeed )
-                ( Just matches, Nothing ) ->
+        foldingF ( curCoord, matches ) ( maybePrevLowest, prevSeed ) =
+            case maybePrevLowest of
+                Nothing ->
                     withEntropy prevSeed matches
                         <| \curEntropy ->
                             if curEntropy > 0
                             then Just ( curCoord, curEntropy )
                             else maybePrevLowest
-                ( Just matches, Just ( _, prevMinEntropy ) ) ->
+                Just ( _, prevMinEntropy ) ->
                     withEntropy prevSeed matches
                         <| \curEntropy ->
                             if curEntropy > 0 && curEntropy < prevMinEntropy
@@ -288,7 +287,7 @@ findLowestEntropy seed uniquePatterns (Plane _ waveF) =
                             else maybePrevLowest
     in
 
-        Plane.all
+        Plane.allWithCoords
             >> List.foldl
                 foldingF
                 ( Nothing, seed )
@@ -335,7 +334,7 @@ getMatchesOf uniquePatterns dir pattern =
 
 
 hasAContradiction : Wave -> Bool
-hasAContradiction wave =
+hasAContradiction =
     Plane.all
         >> List.foldl
             (\matches wasAContradiction ->
@@ -365,20 +364,20 @@ initWave uniquePatterns size =
 
 
 apply
-    :  (Matches PatternId -> List a -> x)
+    :  (Matches PatternId -> List Key -> x)
     -> UniquePatterns
     -> Step
     -> Plane x
 apply f patterns (Step _ _ { outputSize } status) =
     let
-        loadValues : Matches PatternId -> List a
+        loadValues : Matches PatternId -> List Key
         loadValues matches =
             matches
                 |> Matches.toList
                 |> List.map (\patternId ->
                     patterns
                         |> Dict.get patternId
-                        |> Maybe.andThen (\p -> Plane.get (0, 0) p.pattern)
+                        |> Maybe.andThen (.pattern >> Plane.get (0, 0))
                     )
                 |> List.filterMap identity
                 -- if pattern wasn't found or contains no value at this point, it is skipped
