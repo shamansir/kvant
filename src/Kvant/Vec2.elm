@@ -1,5 +1,7 @@
 module Kvant.Vec2 exposing (..)
 
+
+import Random
 import Array exposing (Array)
 import Array as Array exposing (..)
 
@@ -34,3 +36,11 @@ loadSize grid =
         |> Maybe.map (Array.length)
         |> Maybe.map (Tuple.pair <| Array.length grid)
         |> Maybe.map swap
+
+
+random : Vec2 -> Random.Generator Vec2
+random ( limitX, limitY ) =
+    Random.map2
+        Tuple.pair
+        (Random.int 0 limitX)
+        (Random.int 0 limitY)
