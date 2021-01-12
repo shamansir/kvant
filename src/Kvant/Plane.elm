@@ -15,13 +15,13 @@ type Plane a = Plane ( Vec2, Vec2 ) (Array (Array a))
 
 
 map : (a -> b) -> Plane a -> Plane b
-map f (Plane size  grid) =
-    Plane size <| Array.map (Array.map f) <| grid
+map f (Plane rect grid) =
+    Plane rect <| Array.map (Array.map f) <| grid
 
 
 positionedMap : (Vec2 -> a -> b) -> Plane a -> Plane b
-positionedMap f (Plane size grid) =
-    Plane size <|
+positionedMap f (Plane rect grid) =
+    Plane rect <|
         (grid
             |> Array.indexedMap
                 (\y row ->
@@ -31,17 +31,21 @@ positionedMap f (Plane size grid) =
 
 
 empty : Vec2 -> Plane a
-empty size = Plane ( (0, 0), size ) Array.empty
+empty size_ = Plane ( (0, 0), size_ ) Array.empty
+
+
+fits : Plane a -> Vec2 -> Bool
+fits (Plane ( ( ox, oy ), ( w, h ) ) _) (x, y) =
+    (x >= ox) && (y >= oy) && (x < ox + w) && (y < oy + h)
 
 
 get : Vec2 -> Plane a -> Maybe a
-get (x, y) (Plane ( ( ox, oy ), (w, h) ) grid) =
-    if x >= ox + w || y >= oy + h then Nothing
-    else if x < ox || y < oy then Nothing
-    else
-        grid
+get (x, y) (Plane _ grid as plane) =
+    if fits plane (x, y)
+        then grid
             |> Array.get y
             |> Maybe.andThen (Array.get x)
+    else Nothing
 
 
 set : Vec2 -> a -> Plane a -> Plane a
@@ -58,12 +62,12 @@ set (x, y) value (Plane ( ( ox, oy ), (w, h) ) grid) =
                     Nothing -> grid
 
 
-getOrigin : Plane a -> Vec2
-getOrigin (Plane ( origin, _ ) _) = origin
+origin : Plane a -> Vec2
+origin (Plane ( o, _ ) _) = o
 
 
-getSize : Plane a -> Vec2
-getSize (Plane ( _, size ) _) = size
+size : Plane a -> Vec2
+size (Plane ( _, s ) _) = s
 
 
 filled : Vec2 -> a -> Plane a
@@ -97,14 +101,14 @@ setAll values start =
 
 
 fromList : Vec2 -> List (Vec2, a) -> Plane (Maybe a)
-fromList size list =
-    filled size Nothing
+fromList size_ list =
+    filled size_ Nothing
         |> setAll (list |> List.map (Tuple.mapSecond Just))
 
 
 coords : Plane a -> List (List Vec2)
-coords (Plane ( origin, size ) _) =
-    Vec2.rect { from = origin, to = size }
+coords (Plane ( origin_, size_ ) _) =
+    Vec2.rect { from = origin_, to = size_ }
 
 
 all : Plane a -> List a

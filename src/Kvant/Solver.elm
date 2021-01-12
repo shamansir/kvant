@@ -7,6 +7,7 @@ import Dict exposing (Dict)
 import Random
 
 import Kvant.Vec2 exposing (..)
+import Kvant.Vec2 as Vec2 exposing (random)
 import Kvant.Matches exposing (Matches)
 import Kvant.Matches as Matches exposing (..)
 import Kvant.Occurrence exposing (Occurrence, Frequency, frequencyToFloat)
@@ -34,11 +35,11 @@ type alias Wave = Plane (Matches PatternId)
 
 
 type Step
-    = Step Int Random.Seed StepStatus
+    = Step Int Random.Seed Options StepStatus
 
 
 type StepStatus
-    = Initial Options
+    = Initial
     | InProgress FocusState Wave
     | Solved Wave
     | Terminated -- terminated by contradiction
@@ -83,9 +84,9 @@ preprocess : Plane Key -> UniquePatterns
 preprocess _ = Dict.empty -- FIXME
 
 
-firstStep : Random.Seed -> Step
-firstStep seed =
-    Step 0 seed Initial
+firstStep : Options -> Random.Seed -> Step
+firstStep options seed =
+    Step 0 seed options Initial
 
 
 solve : UniquePatterns -> Step -> Step
@@ -112,9 +113,9 @@ solveUntil (MaximumSteps maxSteps) patterns fromStep =
 
 
 advance : UniquePatterns -> Step -> Step
-advance patterns step =
+advance patterns (Step _ _ { outputSize } _ as step) =
     case getStatus step of
-        Initial { outputSize } ->
+        Initial ->
             initWave patterns outputSize
                 |> InProgress NotFocused
                 |> nextStep (getSeed step) step
@@ -140,19 +141,19 @@ observe
     -> Wave
     -> ( Observation, Random.Seed )
 observe seed uniquePatterns wave =
-    if wave |> hasAContradiction walker then
+    if wave |> hasAContradiction then
         ( Contradiction, seed )
-    else if wave |> isWaveCollapsed walker then
+    else if wave |> isCollapsed then
         ( Collapsed, seed )
     else
         let
             ( result, eSeed ) =
-                wave |> findLowestEntropy seed uniquePatterns walker
+                wave |> findLowestEntropy seed uniquePatterns
             ( coord, cSeed ) =
                 case result of
                     Just c -> ( c, eSeed )
                     Nothing ->
-                        Random.step walker.random eSeed
+                        Random.step (Vec2.random <| Plane.size wave) eSeed
         in
             Plane.get coord wave
                 |> Maybe.andThen
@@ -172,15 +173,14 @@ observe seed uniquePatterns wave =
                 |> Maybe.withDefault ( Contradiction, cSeed )
 
 propagate
-    :  UniquePatterns v a
-    -> Walker v
-    -> v
+    :  UniquePatterns
+    -> Vec2
     -> PatternId
-    -> Wave v
-    -> Wave v
-propagate uniquePatterns walker focus pattern wave =
+    -> Wave
+    -> Wave
+propagate uniquePatterns focus pattern wave =
     let
-        probe : v -> Matches PatternId -> Wave v -> Wave v
+        probe : Vec2 -> Matches PatternId -> Wave -> Wave
         probe atPos newMatches prevWave =
             let
                 curMatches =
@@ -191,10 +191,10 @@ propagate uniquePatterns walker focus pattern wave =
                     Neighbours.cross
                         |> List.foldl
                             (\dir w ->
-                                case walker.next atPos dir of
+                                case dir |> Dir.move atPos of
                                     moved ->
                                         -- FIXME: support unbounded planes
-                                        if not <| walker.fits moved then w
+                                        if not <| Plane.fits moved w then w
                                         else
                                             let
                                                 curMatchesAtDir =
@@ -203,7 +203,7 @@ propagate uniquePatterns walker focus pattern wave =
                                                         |> Maybe.withDefault Matches.none
                                                 newMatchesAtDir =
                                                     newMatches
-                                                        |> matchesAtDir walker uniquePatterns dir
+                                                        |> matchesAtDir uniquePatterns dir
                                                         |> Matches.and curMatchesAtDir
                                             in
 
@@ -226,7 +226,7 @@ noiseCoefficient : Float
 noiseCoefficient = 0.1
 
 
-entropyOf : Random.Seed -> UniquePatterns v a -> Matches PatternId -> ( Maybe Float, Random.Seed )
+entropyOf : Random.Seed -> UniquePatterns -> Matches PatternId -> ( Maybe Float, Random.Seed )
 entropyOf seed uniquePatterns matches =
     case Matches.count matches of
         0 -> ( Nothing, seed ) -- contradiction
@@ -261,11 +261,10 @@ entropyOf seed uniquePatterns matches =
 
 findLowestEntropy
     :  Random.Seed
-    -> UniquePatterns v a
-    -> Walker v
-    -> Wave v
+    -> UniquePatterns
+    -> Wave
     -> ( Maybe v, Random.Seed )
-findLowestEntropy seed uniquePatterns { all } (Plane _ waveF) =
+findLowestEntropy seed uniquePatterns (Plane _ waveF) =
     let
         withEntropy prevSeed matches f =
             matches
@@ -288,18 +287,16 @@ findLowestEntropy seed uniquePatterns { all } (Plane _ waveF) =
                             then Just ( curCoord, curEntropy )
                             else maybePrevLowest
     in
-        List.foldl
-            foldingF
-            ( Nothing, seed )
-            ( all () )
-            |> Tuple.mapFirst (Maybe.map Tuple.first)
-                -- FIXME: if Walker will be the part of every Plane
-                -- , then we won't need to pass it inside and just use
-                -- Walker's folding mechanics
+
+        Plane.all
+            >> List.foldl
+                foldingF
+                ( Nothing, seed )
+            >> Tuple.mapFirst (Maybe.map Tuple.first)
 
 
  -- TODO: produce several IDs?
-randomPattern : UniquePatterns v a -> PatternId -> List PatternId -> Random.Generator PatternId
+randomPattern : UniquePatterns -> PatternId -> List PatternId -> Random.Generator PatternId
 randomPattern uniquePatterns first others =
     let
         packWithFrequency : PatternId -> ( Float, PatternId )
@@ -317,26 +314,22 @@ randomPattern uniquePatterns first others =
             (others |> List.map packWithFrequency)
 
 
-matchesAtDir : Walker v -> UniquePatterns v a -> Direction -> Matches PatternId -> Matches PatternId
-matchesAtDir walker uniquePatterns dir matchesAtFocus =
+matchesAtDir : UniquePatterns -> Direction -> Matches PatternId -> Matches PatternId
+matchesAtDir uniquePatterns dir matchesAtFocus =
     matchesAtFocus
         |> Matches.toList
-        |> List.map (getMatchesOf walker uniquePatterns dir)
+        |> List.map (getMatchesOf uniquePatterns dir)
         |> List.map (Maybe.withDefault Matches.none)
         |> Matches.union
 
 
-getMatchesOf : Walker v -> UniquePatterns v a -> Direction -> PatternId -> Maybe (Matches PatternId)
-getMatchesOf walker uniquePatterns dir pattern =
+getMatchesOf : UniquePatterns -> Direction -> PatternId -> Maybe (Matches PatternId)
+getMatchesOf uniquePatterns dir pattern =
     uniquePatterns
         |> Dict.get pattern
         |> Maybe.andThen
             (\{ matches } ->
-                let
-                    movedPos = walker.next walker.first dir
-                in
-                    matches
-                        |> OffsetPlane.get (movedPos |> toOffset)
+                matches |> Plane.get (Dir.offsetFor dir)
             )
         |> Maybe.map Matches.fromList
 
@@ -351,8 +344,8 @@ hasAContradiction wave =
             False
 
 
-isWaveCollapsed : Wave -> Bool
-isWaveCollapsed =
+isCollapsed : Wave -> Bool
+isCollapsed =
     Plane.all
         >> List.foldl
             (\matches wasCollapsed ->
@@ -373,10 +366,10 @@ initWave uniquePatterns size =
 
 apply
     :  (Matches PatternId -> List a -> x)
-    -> Solver v a
-    -> Step v
-    -> Plane v x
-apply f (Solver { patterns, walker, source, outputSize }) (Step _ _ status) =
+    -> UniquePatterns
+    -> Step
+    -> Plane x
+apply f patterns (Step _ _ { outputSize } status) =
     let
         loadValues : Matches PatternId -> List a
         loadValues matches =
@@ -385,11 +378,11 @@ apply f (Solver { patterns, walker, source, outputSize }) (Step _ _ status) =
                 |> List.map (\patternId ->
                     patterns
                         |> Dict.get patternId
-                        |> Maybe.andThen (\p -> Plane.get walker.first p.pattern)
+                        |> Maybe.andThen (\p -> Plane.get (0, 0) p.pattern)
                     )
                 |> List.filterMap identity
                 -- if pattern wasn't found or contains no value at this point, it is skipped
-        fromWave : Wave v -> Plane v x
+        fromWave : Wave -> Plane x
         fromWave wave = wave |> Plane.map (\matches -> f matches <| loadValues matches)
     in
         fromWave <| case status of
@@ -401,31 +394,31 @@ apply f (Solver { patterns, walker, source, outputSize }) (Step _ _ status) =
 
 
 getSeed : Step -> Random.Seed
-getSeed (Step _ seed _) = seed
+getSeed (Step _ seed _ _) = seed
 
 
 changeSeedTo : Random.Seed -> Step -> Step
-changeSeedTo newSeed (Step n seed step) = Step n newSeed step
+changeSeedTo newSeed (Step n seed opts step) = Step n newSeed opts step
 
 
 getStatus : Step -> StepStatus
-getStatus (Step _ _ status) = status
+getStatus (Step _ _ _ status) = status
 
 
 getCount : Step -> Int
-getCount (Step n _ _) = n
+getCount (Step n _ _ _) = n
 
 
 nextStep : Random.Seed -> Step -> StepStatus -> Step
-nextStep seed (Step n _ _) status = Step (n + 1) seed status
+nextStep seed (Step n _ options _) status = Step (n + 1) seed options status
 
 
 updateStatus : StepStatus -> Step -> Step
-updateStatus status (Step n seed _) = Step n seed status
+updateStatus status (Step n seed opts _) = Step n seed opts status
 
 
 exceeds : Int -> Step -> Bool
-exceeds count (Step stepN _ _) = count <= stepN
+exceeds count (Step stepN _ _ _) = count <= stepN
 
 
 {-
