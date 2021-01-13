@@ -12,7 +12,7 @@ import Kvant.Neighbours as Neighbours exposing (..)
 import Kvant.Occurrence exposing (Occurrence, Frequency)
 import Kvant.Occurrence as Occurrence exposing (times, toInt)
 
-type Plane a = Plane ( Vec2, Vec2 ) (Array (Array (Maybe a)))
+type Plane a = Plane Vec2 (Array (Array (Maybe a)))
 
 
 type Boundary
@@ -59,12 +59,12 @@ positionedMap f (Plane rect grid) =
 
 
 empty : Vec2 -> Plane a
-empty size_ = Plane ( (0, 0), size_ ) Array.empty
+empty size_ = Plane size_ Array.empty
 
 
 fits : Vec2 -> Plane a -> Bool
-fits (x, y) (Plane ( ( ox, oy ), ( w, h ) ) _) =
-    (x >= ox) && (y >= oy) && (x < ox + w) && (y < oy + h)
+fits (x, y) (Plane ( w, h ) _) =
+    (x >= 0) && (y >= 0) && (x < w) && (y < h)
 
 
 get : Vec2 -> Plane a -> Maybe a
@@ -77,11 +77,25 @@ get (x, y) (Plane _ grid as plane) =
     else Nothing
 
 
+getPeriodic : Vec2 -> Plane a -> Maybe a
+getPeriodic (x, y) (Plane ( width, height ) _ as plane) =
+    let
+        modX = modBy width x
+        modY = modBy height y
+    in
+        plane |>
+            get
+                ( if x >= 0 then modX else width - modX
+                , if y >= 0 then modY else height - modY
+                )
+
+
+
 set : Vec2 -> a -> Plane a -> Plane a
-set (x, y) value (Plane ( ( ox, oy ), (w, h) ) grid) =
-    Plane ( ( ox, oy ), (w, h) )
-        <| if x >= ox + w || y >= oy + h then grid
-           else if x < ox || y < oy then grid
+set (x, y) value (Plane ( w, h ) grid) =
+    Plane (w, h)
+        <| if x >= w || y >= h then grid
+           else if x < 0 || y < 0 then grid
            else
                 let
                     maybeRow = grid |> Array.get y
@@ -91,17 +105,13 @@ set (x, y) value (Plane ( ( ox, oy ), (w, h) ) grid) =
                     Nothing -> grid
 
 
-origin : Plane a -> Vec2
-origin (Plane ( o, _ ) _) = o
-
-
 size : Plane a -> Vec2
-size (Plane ( _, s ) _) = s
+size (Plane s _) = s
 
 
 filled : Vec2 -> a -> Plane a
 filled (w, h) v =
-    Plane ( ( 0, 0 ), (w, h) )
+    Plane (w, h)
         <| Array.repeat h
         <| Array.repeat w (Just v)
 
@@ -112,8 +122,7 @@ equal = equalBy (==)
 
 equalBy : (a -> a -> Bool) -> Plane a -> Plane a -> Bool
 equalBy compare planeA planeB =
-    if size planeA /= size planeB
-        || origin planeA /= origin planeB then False
+    if size planeA /= size planeB then False
     else -- could be faster to use Array.foldl
         let
             valuesA = toList planeA
@@ -128,8 +137,6 @@ equalBy compare planeA planeB =
                     (toList planeB)
                     |> List.foldl (&&) True
             else False
-
-
 
 
 
@@ -160,20 +167,19 @@ setAll values_ start =
         values_
 
 
-fromList : Vec2 -> List (Vec2, a) -> Plane (Maybe a)
+fromList : Vec2 -> List (Vec2, a) -> Plane a
 fromList size_ list =
-    filled size_ Nothing
-        |> setAll (list |> List.map (Tuple.mapSecond Just))
+    empty size_ |> setAll list
 
 
 coords : Plane a -> List Vec2
-coords =
-    coords2d >> List.concat
+coords (Plane size_ _) =
+    Vec2.rectFlat { from = (0, 0), to = size_ }
 
 
 coords2d : Plane a -> List (List Vec2)
-coords2d (Plane ( origin_, size_ ) _) =
-    Vec2.rect { from = origin_, to = size_ }
+coords2d (Plane size_ _) =
+    Vec2.rect { from = (0, 0), to = size_ }
 
 
 values : Plane a -> List a
@@ -186,12 +192,12 @@ values (Plane _ grid) =
 
 
 toList : Plane a -> List (Vec2, a) -- toList
-toList (Plane ( (ox, oy), _ ) grid) =
+toList (Plane _ grid) =
     grid
         |> Array.indexedMap
             (\y row ->
                 row
-                    |> Array.indexedMap (\x v -> ( ( ox + x, oy + y ), v ) )
+                    |> Array.indexedMap (\x v -> ( ( x, y ), v ) )
                     |> Array.toList
             )
         |> Array.toList
@@ -225,7 +231,7 @@ transform f plane =
 
 
 flipBy : Flip -> Plane a -> Plane a
-flipBy how (Plane (_, (width, height)) _ as plane) =
+flipBy how (Plane (width, height) _ as plane) =
     plane |>
         transform
             (case how of
@@ -242,7 +248,7 @@ flip = flipBy Vertical
 
 
 rotateTo : Orientation -> Plane a -> Plane a
-rotateTo orientation (Plane ( _, (width, height) ) _ as plane) =
+rotateTo orientation (Plane (width, height) _ as plane) =
     plane |>
         transform
             (case orientation of
@@ -252,36 +258,30 @@ rotateTo orientation (Plane ( _, (width, height) ) _ as plane) =
                 East -> \(x, y) -> (y, width - 1 - x))
 
 
-subPlane : Vec2 -> Plane a -> Maybe (Plane a)
+subPlane : Vec2 -> Plane a -> Plane a
 subPlane = subPlaneAt (0, 0)
 
 
-subPlaneAt : Vec2 -> Vec2 -> Plane a -> Maybe (Plane a)
-subPlaneAt (shiftX, shiftY) (nX, nY) (Plane (offset, (srcWidth, srcHeight)) planeF) =
-    if (shiftX + nX <= srcWidth) && (shiftY + nY <= srcHeight) then
-        Just (Plane (offset, (nX, nY)) -- FIXME: ensure offset
-            <| \(x, y) ->
-                if (x < nX) && (y < nY) then
-                    planeF (x + shiftX, y + shiftY)
-                else
-                    Nothing
+subPlaneAt : Vec2 -> Vec2 -> Plane a -> Plane a
+subPlaneAt (shiftX, shiftY) (nX, nY) plane =
+    Vec2.rectFlat { from = (shiftX, shiftY), to = ( nX, nY ) }
+        |> List.map (\(x, y) ->
+                get (x, y) plane
+                    |> Maybe.map (Tuple.pair ( x - shiftX, y - shiftY ))
             )
-    else Nothing
+        |> List.filterMap identity
+        |> fromList ( nX, nY )
 
 
 periodicSubPlaneAt : Vec2 -> Vec2 -> Plane a -> Plane a
-periodicSubPlaneAt (shiftX, shiftY) (nX, nY) (Plane ( offset, (srcWidth, srcHeight) ) planeF) =
-    let
-        periodicCoord (x, y) =
-            ( if shiftX + x >= 0
-                then shiftX + x |> modBy srcWidth
-                else srcWidth - (abs (shiftX + x) |> modBy srcWidth)
-            , if shiftY + y >= 0
-                then shiftY + y |> modBy srcHeight
-                else srcHeight - (abs (shiftY + y) |> modBy srcHeight)
+periodicSubPlaneAt (shiftX, shiftY) (nX, nY) plane =
+    Vec2.rectFlat { from = (shiftX, shiftY), to = ( nX, nY ) }
+        |> List.map (\(x, y) ->
+                getPeriodic (x, y) plane
+                    |> Maybe.map (Tuple.pair ( x - shiftX, y - shiftY ))
             )
-    in
-        Plane (nX, nY) (planeF << periodicCoord)
+        |> List.filterMap identity
+        |> fromList ( nX, nY )
 
 
 allRotations : Plane a -> List (Plane a)
@@ -374,12 +374,13 @@ subPlanesBy
 subPlanesBy compare symmetry method ofSize inPlane =
     inPlane
         |> coords
-        |> (case method of
+        |> (
+            case method of
                 Periodic ->
                     List.map (\coord -> periodicSubPlaneAt coord ofSize inPlane)
                 Bounded ->
                     List.map (\coord -> subPlaneAt coord ofSize inPlane)
-                    >> List.filterMap identity)
+           )
         |> List.concatMap (views symmetry)
 
 
