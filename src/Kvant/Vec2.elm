@@ -18,6 +18,10 @@ coords (width, height) =
     rect { from = (0, 0), to = (width - 1, height - 1) }
 
 
+coordsFlat : Vec2 -> List Vec2
+coordsFlat = coords >> List.concat
+
+
 rect : { from: Vec2, to : Vec2 } -> List (List Vec2)
 rect { from, to } =
     let
@@ -28,6 +32,10 @@ rect { from, to } =
             |> List.map (\y ->
                 List.range fromX toX
                     |> List.map (Tuple.pair y >> swap))
+
+
+rectFlat : { from: Vec2, to : Vec2 } -> List Vec2
+rectFlat = rect >> List.concat
 
 
 loadSize : Array (Array a) -> Maybe Vec2
