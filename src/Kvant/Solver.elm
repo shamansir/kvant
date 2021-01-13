@@ -12,7 +12,7 @@ import Kvant.Matches exposing (Matches)
 import Kvant.Matches as Matches exposing (..)
 import Kvant.Occurrence exposing (Occurrence, Frequency, frequencyToFloat)
 import Kvant.Occurrence as Occurrence
-import Kvant.Plane exposing (Plane(..))
+import Kvant.Plane exposing (Plane(..), Boundary, Symmetry)
 import Kvant.Plane as Plane exposing (map)
 {- import Kvant.Plane.Flat as Plane
     exposing ( Boundary, Symmetry, foldl, coords, equal, sub, findMatches, findSubs, findSubsAlt, findOccurrence ) -}
@@ -80,13 +80,39 @@ type Observation
     | Focus Vec2 PatternId
 
 
-preprocess : Plane Key -> UniquePatterns
-preprocess _ = Dict.empty -- FIXME
-
-
 firstStep : Options -> Random.Seed -> Step
 firstStep options seed =
     Step 0 seed options Initial
+
+
+preprocess
+    :  Symmetry
+    -> Boundary
+    -> Vec2
+    -> Plane Key
+    -> UniquePatterns
+preprocess symmetry boundary ofSize inPlane =
+    let
+        allSubplanes = findSubsAlt symmetry boundary ofSize inPlane
+        uniquePatterns = findOccurrence allSubplanes
+        uniquePatternsDict =
+            uniquePatterns
+                |> List.indexedMap Tuple.pair
+                |> Dict.fromList
+        onlyPatternsDict =
+            uniquePatternsDict
+                |> Dict.map (always Tuple.second)
+    in
+        uniquePatternsDict
+                |> Dict.map (\_ ( frequency, pattern ) ->
+                        { frequency = frequency
+                        , pattern = pattern
+                        , matches =
+                            findMatches
+                                onlyPatternsDict
+                                pattern
+                        }
+                    )
 
 
 solve : UniquePatterns -> Step -> Step
