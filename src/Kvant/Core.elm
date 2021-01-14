@@ -1,101 +1,62 @@
 module Kvant.Core exposing
-    ( Wfc, TracingWfc
+    ( Wfc
     , firstStep
     , run, step, stepAtOnce
-    , Converter(..), make, makeAdvancing
-    , makeFn, makeAdvancingFn
-    , noConvert
+    , make, makeAdvancing
     )
 
 import Random
 
+import Dict
+
 import Kvant.Vec2 exposing (..)
-import Kvant.Plane exposing (Plane)
+import Kvant.Plane exposing (Plane, Size)
 import Kvant.Plane as Plane exposing (empty)
-import Kvant.Solver exposing (Solver)
-import Kvant.Solver as Solver exposing (Step(..), getSource)
-import Kvant.Solver.Flat as FlatSolver exposing (init)
+import Kvant.Solver as Solver exposing (Step(..), Solution)
+import Kvant.Solver.Options as Solver exposing (Options, Approach(..))
+import Kvant.Patterns as Patterns exposing (Key)
 import Kvant.Matches exposing (..)
-
-import Kvant.Plane.Impl.Tracing exposing (TracingPlane, TracingCell)
-
-
-type Wfc v fmt a =
-    -- FIXME: get rid of `fmt` —> Conversion should be performed outside
-    -- FIXME: `a` should be `comparable`
-    -- FIXME: `a` is not used!
-    Wfc ( Solver.Step v -> ( Solver.Step v, fmt ) )
-
-type alias TracingWfc v a = Wfc v (TracingPlane v a) a
+import Kvant.Patterns exposing (UniquePatterns)
 
 
--- type Instance
---     = Text (String -> TextWfc) (Step Vec2)
---     | TextTracing (String -> TextTracingWfc) (Step Vec2)
+type alias Key = Int
 
 
-type Converter v a x fmt =
-    Convert
-        { fromInput : fmt -> Plane v x
-        , toElement : Matches Solver.PatternId -> List a -> x
-        , toOutput : Plane v x -> fmt
-        }
+type Wfc =
+    -- may be `Plane (List Key)` is not needed, just extract it from the wave
+    Wfc Size ( Solver.Step -> ( Solver.Step, Solution ) )
 
 
-noConvert : Converter v a (List a) (Plane v (List a))
-noConvert =
-    Convert
-        { fromInput = identity
-        , toElement = always identity
-        , toOutput = identity
-        }
-
-
-make : Converter v a x fmt -> Solver v a -> Wfc v fmt a
-make (Convert convert) solver =
-    Wfc <|
+makeWith : (UniquePatterns -> Step -> Step) -> Solver.Options -> Plane Patterns.Key -> Wfc
+makeWith doStep options source =
+    let
+        uniquePatterns =
+            case options.approach of
+                Overlapping o ->
+                    source
+                        |> Patterns.preprocess o.symmetry o.boundary o.patternSize
+                Tiled ->
+                    Dict.empty
+    in
+    Wfc options.outputSize <|
         \nextStep ->
             let
-                lastStep = Solver.solve solver nextStep
+                lastStep = doStep uniquePatterns nextStep
             in
                 ( lastStep
-                , lastStep
-                    |> Solver.apply convert.toElement solver
-                    |> convert.toOutput
+                , lastStep |> Solver.produce uniquePatterns
                 )
 
 
-makeAdvancing : Converter v a x fmt -> Solver v a -> Wfc v fmt a
-makeAdvancing (Convert convert) solver =
-    Wfc <|
-        \nextStep ->
-            let
-                lastStep = Solver.advance solver nextStep
-            in
-                ( lastStep
-                , lastStep
-                    |> Solver.apply convert.toElement solver
-                    |> convert.toOutput
-                )
+make : Solver.Options -> Plane Patterns.Key -> Wfc
+make = makeWith Solver.solve
 
 
-makeFn : Converter v a x fmt -> (Plane v x -> Solver v a) -> (fmt -> Wfc v fmt a)
-makeFn (Convert convert as cnv) initSolver input =
-    input
-        |> convert.fromInput
-        |> initSolver
-        |> make cnv
+makeAdvancing : Solver.Options -> Plane Patterns.Key -> Wfc
+makeAdvancing = makeWith Solver.advance
 
 
-makeAdvancingFn : Converter v a x fmt -> (Plane v x -> Solver v a) -> (fmt -> Wfc v fmt a)
-makeAdvancingFn (Convert convert as cnv) initSolver input =
-    input
-        |> convert.fromInput
-        |> initSolver
-        |> makeAdvancing cnv
-
-
-run : Random.Seed -> Wfc v fmt a -> fmt
+run : Random.Seed -> Wfc -> Solution
 run seed wfc =
     -- FIXME: we do two steps actually, because with the first step the `Solver` inits the wave
     --        (see `Initial` status) and proceeds with solving only after that
@@ -103,11 +64,11 @@ run seed wfc =
         |> Tuple.second
 
 
-step : Step v -> Wfc v fmt a -> ( Step v, fmt )
-step stepToPerform (Wfc wfc) = wfc stepToPerform
+step : Step -> Wfc -> ( Step, Solution )
+step stepToPerform (Wfc _ wfc) = wfc stepToPerform
 
 
-stepAtOnce : List (Step v) -> Wfc v fmt a -> Maybe ( Step v, fmt )
+stepAtOnce : List Step -> Wfc -> Maybe ( Step, Solution )
 stepAtOnce steps wfc =
     steps
         |> List.foldl
@@ -117,5 +78,6 @@ stepAtOnce steps wfc =
             Nothing
 
 
-firstStep : Random.Seed -> Wfc v fmt a -> ( Step v, fmt )
-firstStep = step << Solver.firstStep
+firstStep : Random.Seed -> Wfc -> ( Step, Solution )
+firstStep seed (Wfc size _ as wfc) =
+    step (Solver.firstStep size seed) wfc

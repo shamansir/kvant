@@ -13,7 +13,51 @@ type alias PatternId = Int
 
 -- value can be pixel, color, tile, character, whatever, but `Key` is the integer ID of it
 type alias Key = Int
+
+
 type alias Pattern = Plane Key
+
+
+type alias PatternWithStats =
+    { pattern : Pattern
+    , frequency : ( Occurrence, Maybe Frequency )
+    , matches : Dict Offset (List PatternId)
+    --, rotations : Dict Rotation PatternId
+    }
+
+
+type alias UniquePatterns =
+    Dict PatternId PatternWithStats
+
+
+preprocess
+    :  Symmetry
+    -> Boundary
+    -> Size
+    -> Plane Key
+    -> UniquePatterns
+preprocess symmetry boundary ofSize inPlane =
+    let
+        allSubplanes = subPlanes symmetry boundary ofSize inPlane
+        uniquePatterns = evaluateOccurrence allSubplanes
+        uniquePatternsDict =
+            uniquePatterns
+                |> List.indexedMap Tuple.pair
+                |> Dict.fromList
+        onlyPatternsDict =
+            uniquePatternsDict
+                |> Dict.map (always Tuple.second)
+    in
+        uniquePatternsDict
+                |> Dict.map (\_ ( frequency, pattern ) ->
+                        { frequency = frequency
+                        , pattern = pattern
+                        , matches =
+                            findMatches
+                                onlyPatternsDict
+                                pattern
+                        }
+                    )
 
 
 
@@ -128,7 +172,7 @@ overlappingCoords (Offset (offX, offY)) (Plane (width, height) _ as plane) =
             [] -}
 
 
-overlappingCoords : Vec2 -> Vec2 -> List (Vec2)
+overlappingCoords : Offset -> Size -> List Vec2
 overlappingCoords ( offX, offY ) ( width, height ) =
     Vec2.coordsFlat ( width, height )
         |> List.foldr
@@ -157,7 +201,7 @@ matchesAt offset patterns (Plane size _ as pattern) =
             []
 
 
-offsetsFor : Vec2 -> List Vec2
+offsetsFor : Size -> List Offset
 offsetsFor ( width, height ) =
     Vec2.rectFlat
         { from = ( -1 * (width - 1),  -1 * (height - 1) )
@@ -165,10 +209,10 @@ offsetsFor ( width, height ) =
         }
 
 
-findMatches : Dict PatternId Pattern -> Pattern -> Dict Vec2 (List PatternId)
+findMatches : Dict PatternId Pattern -> Pattern -> Dict Offset (List PatternId)
 findMatches patterns (Plane size _ as pattern) =
     offsetsFor size
-        |> List.map (\offset -> ( offset, matchesAt offset patterns pattern ))
+        |> List.map (\offset -> ( offset, pattern |> matchesAt offset patterns ))
         |> Dict.fromList
 
 

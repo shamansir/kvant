@@ -9,7 +9,17 @@ import Kvant.Vec2 exposing (Vec2)
 import Kvant.Vec2 as Vec2 exposing (rect)
 import Html exposing (b)
 
-type Plane a = Plane Vec2 (Array (Array (Maybe a)))
+
+type alias Coord = Vec2
+
+
+type alias Size = Vec2
+
+
+type alias Offset = Vec2
+
+
+type Plane a = Plane Size (Array (Array (Maybe a)))
 
 
 type Boundary
@@ -42,7 +52,7 @@ map f (Plane rect grid) =
     Plane rect <| Array.map (Array.map (Maybe.map f)) <| grid
 
 
-positionedMap : (Vec2 -> a -> b) -> Plane a -> Plane b
+positionedMap : (Coord -> a -> b) -> Plane a -> Plane b
 positionedMap f (Plane rect grid) =
     Plane rect <|
         (grid
@@ -55,16 +65,16 @@ positionedMap f (Plane rect grid) =
         )
 
 
-empty : Vec2 -> Plane a
+empty : Size -> Plane a
 empty size_ = Plane size_ Array.empty
 
 
-fits : Vec2 -> Plane a -> Bool
+fits : Coord -> Plane a -> Bool
 fits (x, y) (Plane ( w, h ) _) =
     (x >= 0) && (y >= 0) && (x < w) && (y < h)
 
 
-get : Vec2 -> Plane a -> Maybe a
+get : Coord -> Plane a -> Maybe a
 get (x, y) (Plane _ grid as plane) =
     if plane |> fits (x, y)
         then grid
@@ -74,7 +84,7 @@ get (x, y) (Plane _ grid as plane) =
     else Nothing
 
 
-getPeriodic : Vec2 -> Plane a -> Maybe a
+getPeriodic : Coord -> Plane a -> Maybe a
 getPeriodic (x, y) (Plane ( width, height ) _ as plane) =
     let
         modX = modBy width x
@@ -88,7 +98,7 @@ getPeriodic (x, y) (Plane ( width, height ) _ as plane) =
 
 
 
-set : Vec2 -> a -> Plane a -> Plane a
+set : Coord -> a -> Plane a -> Plane a
 set (x, y) value (Plane ( w, h ) grid) =
     Plane (w, h)
         <| if x >= w || y >= h then grid
@@ -102,7 +112,7 @@ set (x, y) value (Plane ( w, h ) grid) =
                     Nothing -> grid
 
 
-size : Plane a -> Vec2
+size : Plane a -> Size
 size (Plane s _) = s
 
 
@@ -110,7 +120,7 @@ foldl : (a -> b -> b) -> b -> Plane a -> b
 foldl f def = values >> List.foldl f def
 
 
-filled : Vec2 -> a -> Plane a
+filled : Size -> a -> Plane a
 filled (w, h) v =
     Plane (w, h)
         <| Array.repeat h
@@ -141,11 +151,11 @@ equalBy compare planeA planeB =
 
 
 
-equalAt : List Vec2 -> Plane comparable -> Plane comparable -> Bool
+equalAt : List Coord -> Plane comparable -> Plane comparable -> Bool
 equalAt = equalAtBy (==)
 
 
-equalAtBy : (a -> a -> Bool) -> List Vec2 -> Plane a -> Plane a -> Bool
+equalAtBy : (a -> a -> Bool) -> List Coord -> Plane a -> Plane a -> Bool
 equalAtBy compareF atCoords planeA planeB =
     atCoords
         |> List.foldl
@@ -160,7 +170,7 @@ equalAtBy compareF atCoords planeA planeB =
             True
 
 
-setAll : List (Vec2, a) -> Plane a -> Plane a
+setAll : List (Coord, a) -> Plane a -> Plane a
 setAll values_ start =
     List.foldl
         (\(v, a) plane -> plane |> set v a)
@@ -168,17 +178,17 @@ setAll values_ start =
         values_
 
 
-fromList : Vec2 -> List (Vec2, a) -> Plane a
+fromList : Size -> List (Coord, a) -> Plane a
 fromList size_ list =
     empty size_ |> setAll list
 
 
-coords : Plane a -> List Vec2
+coords : Plane a -> List Coord
 coords (Plane size_ _) =
     Vec2.rectFlat { from = (0, 0), to = size_ }
 
 
-coords2d : Plane a -> List (List Vec2)
+coords2d : Plane a -> List (List Coord)
 coords2d (Plane size_ _) =
     Vec2.rect { from = (0, 0), to = size_ }
 
@@ -192,7 +202,7 @@ values (Plane _ grid) =
         |> List.filterMap identity
 
 
-toList : Plane a -> List (Vec2, a) -- toList
+toList : Plane a -> List (Coord, a)
 toList (Plane _ grid) =
     grid
         |> Array.indexedMap
@@ -224,7 +234,7 @@ toList2d (Plane ( (ox, oy), _ ) grid) = -- zip all + coords ?
         |> Array.toList -}
 
 
-shift : Vec2 -> Plane a -> Plane a
+shift : Offset -> Plane a -> Plane a
 shift (offX, offY) (Plane (width, height) _ as plane) =
     toList plane
         |> List.map
@@ -244,7 +254,7 @@ shift (offX, offY) (Plane (width, height) _ as plane) =
         |> fromList (width - abs offX, height - abs offY)
 
 
-transform : (Vec2 -> Vec2) -> Plane a -> Plane a
+transform : (Coord -> Coord) -> Plane a -> Plane a
 transform f plane =
     (toList plane
         |> List.map (Tuple.mapFirst f)
@@ -279,11 +289,11 @@ rotateTo orientation (Plane (width, height) _ as plane) =
                 East -> \(x, y) -> (y, width - 1 - x))
 
 
-subPlane : Vec2 -> Plane a -> Plane a
+subPlane : Size -> Plane a -> Plane a
 subPlane = subPlaneAt (0, 0)
 
 
-subPlaneAt : Vec2 -> Vec2 -> Plane a -> Plane a
+subPlaneAt : Offset -> Size -> Plane a -> Plane a
 subPlaneAt (shiftX, shiftY) (nX, nY) plane =
     Vec2.rectFlat { from = (shiftX, shiftY), to = ( nX, nY ) }
         |> List.map (\(x, y) ->
@@ -294,7 +304,7 @@ subPlaneAt (shiftX, shiftY) (nX, nY) plane =
         |> fromList ( nX, nY )
 
 
-periodicSubPlaneAt : Vec2 -> Vec2 -> Plane a -> Plane a
+periodicSubPlaneAt : Offset -> Vec2 -> Plane a -> Plane a
 periodicSubPlaneAt (shiftX, shiftY) (nX, nY) plane =
     Vec2.rectFlat { from = (shiftX, shiftY), to = ( nX, nY ) }
         |> List.map (\(x, y) ->
@@ -365,7 +375,7 @@ findSubPlanes symmetry boundary ofSize inPlane =
 subPlanes
     :  Symmetry
     -> Boundary
-    -> Vec2
+    -> Size
     -> Plane comparable
     -> List (Plane comparable)
 subPlanes
@@ -376,7 +386,7 @@ subPlanesBy
     :  (a -> a -> Bool)
     -> Symmetry
     -> Boundary
-    -> Vec2
+    -> Size
     -> Plane a
     -> List (Plane a)
 subPlanesBy compare symmetry method ofSize inPlane =
