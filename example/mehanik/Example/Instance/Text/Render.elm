@@ -7,7 +7,7 @@ import Html exposing (..)
 import Html.Attributes exposing (..)
 
 import Kvant.Vec2 exposing (..)
-import Kvant.Plane.Flat as Plane exposing (unpack)
+import Kvant.Plane as Plane exposing (toList2d)
 
 import Example.Render as Render exposing (..)
 
@@ -26,14 +26,13 @@ spec =
     } -}
 
 
-make : Renderer Vec2 BoundedString Char (Html msg)
+make : Renderer BoundedString Char (Html msg)
 make =
-    { source = boundedStringToGrid >> grid char
-    , plane =
-        Plane.unpack
-            >> List.map (List.map <| Maybe.withDefault '?')
-            >> grid char
-    }
+    ( boundedStringToGrid >> grid char
+    , Plane.toList2d
+        >> List.map (List.map <| Maybe.withDefault '?')
+        >> grid char
+    )
 
 
 char : Char -> Html msg

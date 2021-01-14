@@ -5,10 +5,9 @@ import Array exposing (Array)
 
 import Kvant.Vec2 as V2 exposing (..)
 import Kvant.Plane exposing (..)
-import Kvant.Plane.Flat exposing (..)
 
 
-type alias TextPlane = Plane Vec2 Char
+type alias TextPlane = Plane Char
 
 
 type alias BoundedString = (Vec2, String)
@@ -17,24 +16,30 @@ type alias BoundedString = (Vec2, String)
 make : Vec2 -> String -> TextPlane
 make ( width, height ) src =
     let
-        charArray = String.toList src |> Array.fromList
+        charList =
+            String.toList src
+                |> List.indexedMap
+                    (\index char ->
+                        (
+                            ( index // width
+                            , index |> modBy width
+                            )
+                        , char
+                        )
+                    )
+
     in
-        Plane
+        fromList
             ( width, height )
-            (\(x, y) ->
-                if (x < width) && (y < height) then
-                    charArray |>
-                        Array.get (y * height + x)
-                else Nothing
-            )
+            charList
 
 
 toString : TextPlane -> String
-toString plane =
-    unpack plane
-        |> List.concat
-        |> List.filterMap identity
-        |> String.fromList
+toString =
+    toList2d
+        >> List.concat
+        >> List.filterMap identity
+        >> String.fromList
 
 
 toBoundedString : TextPlane -> BoundedString

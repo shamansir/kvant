@@ -66,7 +66,8 @@ positionedMap f (Plane rect grid) =
 
 
 empty : Size -> Plane a
-empty size_ = Plane size_ Array.empty
+empty size_ =
+    Plane size_ Array.empty
 
 
 fits : Coord -> Plane a -> Bool
@@ -183,6 +184,11 @@ fromList size_ list =
     empty size_ |> setAll list
 
 
+fromArray2d : Size -> Array (Array a) -> Plane a
+fromArray2d size_ =
+    Array.map (Array.map Just) >> Plane size_
+
+
 coords : Plane a -> List Coord
 coords (Plane size_ _) =
     Vec2.rectFlat { from = (0, 0), to = size_ }
@@ -191,6 +197,11 @@ coords (Plane size_ _) =
 coords2d : Plane a -> List (List Coord)
 coords2d (Plane size_ _) =
     Vec2.rect { from = (0, 0), to = size_ }
+
+
+coordsArray2d : Plane a -> Array (Array Coord)
+coordsArray2d =
+    coords2d >> List.map Array.fromList >> Array.fromList
 
 
 values : Plane a -> List a
@@ -219,6 +230,14 @@ toList (Plane _ grid) =
                     Just val -> Just (coord, val)
                     Nothing -> Nothing
             )
+
+toList2d : Plane a -> List (List (Maybe a))
+toList2d (Plane _ grid) =
+    grid |> Array.map Array.toList |> Array.toList
+
+
+toArray2d : Plane a -> Array (Array (Maybe a))
+toArray2d (Plane _ grid) = grid
 
 
 {-

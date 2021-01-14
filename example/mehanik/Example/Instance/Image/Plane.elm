@@ -11,13 +11,12 @@ import Bitwise
 
 import Kvant.Vec2 exposing (..)
 import Kvant.Plane exposing (..)
-import Kvant.Plane.Flat exposing (..)
 
 
 type alias Pixels = Array (Array Color)
 
-type alias ImagePlane = Plane Vec2 Color
-type alias PixelsPlane = Plane Vec2 Color
+type alias ImagePlane = Plane Color
+type alias PixelsPlane = Plane Color
 
 
 transparent : Color
@@ -33,15 +32,9 @@ make pixels =
 
 makeInBounds : Vec2 -> Pixels -> ImagePlane
 makeInBounds ( width, height ) pixels =
-    Plane
+    fromArray2d
         ( width, height )
-        (\(x, y) ->
-            if (x < width) && (y < height) then
-                pixels
-                    |> Array.get y
-                    |> Maybe.andThen (Array.get x)
-            else Nothing
-        )
+        pixels
 
 
 mixHsla : Color -> Color -> Color
@@ -95,9 +88,9 @@ pixelToColor = int32ToColor
 
 
 toGrid : ImagePlane -> List (List Color)
-toGrid plane =
-    unpack plane
-        |> List.map (List.map <| Maybe.withDefault transparent)
+toGrid =
+    toList2d
+        >> List.map (List.map <| Maybe.withDefault transparent)
 
 
 toArrayGrid : ImagePlane -> Pixels

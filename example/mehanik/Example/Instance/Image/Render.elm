@@ -11,7 +11,7 @@ import Html exposing (..)
 import Html.Attributes exposing (..)
 
 import Kvant.Vec2 exposing (..)
-import Kvant.Plane.Flat as Plane exposing (unpack)
+import Kvant.Plane as Plane exposing (coords2d)
 
 import Example.Render as Render exposing (..)
 import Example.Instance.Image.Plane exposing (merge, pixelToColor)
@@ -30,11 +30,10 @@ spec =
     } -}
 
 
-make : Renderer Vec2 Image Color (Html msg)
+make : Renderer Image Color (Html msg)
 make =
-    { source = drawImage
-    , plane =
-        Plane.unpack
+    ( drawImage
+    , Plane.toList2d
             >> List.map (List.map <| Maybe.withDefault Color.purple)
             >> ImageC.fromList2d
             >> drawImage
@@ -42,7 +41,7 @@ make =
         --     |> ImageC.fromArray2d
         --     |> drawImage
         --     |> always
-    }
+    )
 
 
 drawFromGrid : Array (Array (Array Int)) -> Html msg

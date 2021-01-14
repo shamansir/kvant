@@ -7,16 +7,15 @@ import Array exposing (Array)
 import Json.Decode as D
 import Json.Encode as E
 
-import Kvant.Vec2 exposing (Vec2)
-import Kvant.Core exposing (Wfc, TracingWfc)
-import Kvant.Core as Wfc exposing (make, makeAdvancing, noConvert)
+import Kvant.Vec2 exposing (Vec2, loadSize)
+import Kvant.Core exposing (Wfc)
+import Kvant.Core as Wfc exposing (make, makeAdvancing)
 import Kvant.Solver as Solver exposing (..)
-import Kvant.Solver.Flat as FlatSolver exposing (init)
 import Kvant.Solver.History exposing (..)
 import Kvant.Solver.Options as Solver exposing (..)
 import Kvant.Solver.Options as Options exposing (decode)
-import Kvant.Plane exposing (N(..), Plane)
-import Kvant.Plane.Flat as Plane exposing (..)
+import Kvant.Patterns as P exposing (Key)
+import Kvant.Plane exposing (..)
 
 
 type alias Source = Array (Array Int)
@@ -33,25 +32,25 @@ type alias RunResult = StepResult
 type Model
     = Empty
     | Solution StepResult
-    | Tracing ( Wfc.Wfc Vec2 (Plane Vec2 (List Int)) Int ) ( Solver.Step Vec2 ) -- ( History Vec2 )
+    | Tracing Wfc Solver.Step -- ( History Vec2 )
 
 
 type Msg
-    = Run (Solver.Options Vec2) Source
-    | RunWith (Solver.Options Vec2) Source Random.Seed
-    | Trace (Solver.Options Vec2) Source
-    | TraceWith (Solver.Options Vec2) Source Random.Seed
+    = Run Solver.Options Source
+    | RunWith Solver.Options Source Random.Seed
+    | Trace Solver.Options Source
+    | TraceWith Solver.Options Source Random.Seed
     | Step
     | StepBack
     | StepBackWith Random.Seed
     | Stop
 
 
-defaultOptions : Solver.Options Vec2
+defaultOptions : Solver.Options
 defaultOptions =
     { approach =
         Overlapping
-            { patternSize = N (2, 2)
+            { patternSize = (2, 2)
             , inputBoundary = Bounded
             , symmetry = NoSymmetry
             }
@@ -61,12 +60,10 @@ defaultOptions =
 
 
 -- TODO: remove
-fromPlane : Plane Vec2 (List Int) -> Array (Array (Array Int))
+fromPlane : Plane (List Int) -> Array (Array (Array Int))
 fromPlane =
-    Plane.unpack
-        >> List.map (List.map <| Array.fromList << Maybe.withDefault [])
-        >> List.map Array.fromList
-        >> Array.fromList
+    toArray2d
+        >> Array.map (Array.map (Maybe.withDefault [] >> Array.fromList))
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -79,9 +76,12 @@ update msg model =
 
         RunWith options source seed ->
             let
+                sourcePlane =
+                    source
+                        |> fromArray2d
+                            (loadSize source |> Maybe.withDefault (0, 0))
                 solution =
-                    Wfc.make Wfc.noConvert
-                            (FlatSolver.init options <| Plane.fromArrayGrid source)
+                    Wfc.make options sourcePlane
                         |> Wfc.run seed
                         |> fromPlane
             in
@@ -96,8 +96,12 @@ update msg model =
 
         TraceWith options source seed ->
             let
-                tracingWfc = Wfc.makeAdvancing Wfc.noConvert
-                    (FlatSolver.init options <| Plane.fromArrayGrid source)
+                sourcePlane =
+                    source
+                        |> fromArray2d
+                            (loadSize source |> Maybe.withDefault (0, 0))
+                tracingWfc =
+                    Wfc.makeAdvancing options sourcePlane
                 ( nextStep, traceResult ) =
                     tracingWfc
                         |> Wfc.firstStep seed
