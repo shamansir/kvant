@@ -34,7 +34,7 @@ makeWith doStep options source =
             case options.approach of
                 Overlapping o ->
                     source
-                        |> Patterns.preprocess o.symmetry o.boundary o.patternSize
+                        |> Patterns.preprocess o.symmetry o.inputBoundary o.patternSize
                 Tiled ->
                     Dict.empty
     in

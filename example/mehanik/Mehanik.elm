@@ -43,13 +43,11 @@ import Example.Instance.Tiles.Plane as TilesPlane exposing (merge)
 import Example.Instance.Tiles.Rules as Rules
 import Example.Render exposing (Renderer)
 
-
 import Kvant.Core as Wfc
 import Kvant.Vec2 exposing (..)
-import Kvant.Plane exposing (Plane, N(..))
-import Kvant.Plane.Flat as Plane exposing (Boundary(..), Symmetry(..))
-import Kvant.Plane.Flat exposing (flip, rotate)
-import Kvant.Plane.Impl.Tracing exposing (TracingPlane)
+import Kvant.Plane exposing (Plane, Size)
+import Kvant.Plane as Plane exposing (Boundary(..), Symmetry(..))
+import Kvant.Plane exposing (flip, rotate)
 import Kvant.Solver.Options exposing (Approach(..))
 import Kvant.Solver.Options as Solver exposing (Options)
 import Kvant.Solver.Options as Options exposing (encode)
@@ -75,9 +73,9 @@ type Status
 
 type CurrentExample
     = NotSelected
-    | Textual (Solver.Options Vec2) ( Vec2, String ) ( Maybe (Grid Char) )
-    | FromImage (Solver.Options Vec2) Image (Maybe Image)
-    | FromTiles (Solver.Options Vec2) TileGroup TilingRules ( Maybe (Grid TileKey) )
+    | Textual Solver.Options ( Vec2, String ) ( Maybe (Grid Char) )
+    | FromImage Solver.Options Image (Maybe Image)
+    | FromTiles Solver.Options TileGroup TilingRules ( Maybe (Grid TileKey) )
 
 
 type alias Grid a = Array (Array (Array a))
@@ -110,7 +108,7 @@ type Msg
     -- receiving from worker
     | GotResult (Grid Int)
     -- change options
-    | ChangeN (N Vec2)
+    | ChangeN Size
     | ChangeSymmetry Symmetry
     | ChangeOutputWidth Int
     | ChangeOutputHeight Int
@@ -232,7 +230,7 @@ defaultTextOptions =
     { approach =
         Overlapping
             { inputBoundary = Bounded -- Periodic
-            , patternSize = N ( 2, 2 )
+            , patternSize = ( 2, 2 )
             , symmetry = FlipAndRotate
             }
     , outputSize = ( 10, 10 )
@@ -244,7 +242,7 @@ defaultImageOptions =
     { approach =
         Overlapping
             { inputBoundary = Bounded -- Periodic
-            , patternSize = N ( 2, 2 )
+            , patternSize = ( 2, 2 )
             , symmetry = FlipAndRotate
             }
     , outputSize = ( 10, 10 )
@@ -256,7 +254,7 @@ defaultTilesOptions =
     { approach =
         Overlapping
             { inputBoundary = Bounded -- Periodic
-            , patternSize = N ( 2, 2 )
+            , patternSize = ( 2, 2 )
             , symmetry = NoSymmetry
             }
     , outputSize = ( 10, 10 )
@@ -721,13 +719,13 @@ view model =
                         []
                         [ controlPanel "Pattern size"
                             [ checkbox
-                                (case patternSize of N (n, _) -> n == 2)
+                                (case patternSize of (n, _) -> n == 2)
                                 "2x"
-                                <| ChangeN <| N (2, 2)
+                                <| ChangeN (2, 2)
                             , checkbox
-                                (case patternSize of N (n, _) -> n == 3)
+                                (case patternSize of (n, _) -> n == 3)
                                  "3x"
-                                <| ChangeN <| N (3, 3)
+                                <| ChangeN (3, 3)
                             ]
                         , controlPanel "Input"
                             [ checkbox
@@ -961,11 +959,11 @@ mapGrid f = Array.map <| Array.map <| Array.map f
 
 
 viewSource
-    :  Renderer v fmt a (Html msg)
+    :  Renderer fmt a (Html msg)
     -> fmt
     -> Html msg -- Example.Msg
-viewSource renderer source =
-    renderer.source source
+viewSource ( renderSource, _ ) source =
+    renderSource source
 
 
 viewGrid : (Array a -> Html msg) -> Array (Array (Array a)) -> Html msg
@@ -1048,7 +1046,7 @@ errorToString error =
             errorMessage
 
 
-changeN : N Vec2 -> Solver.Options Vec2 -> Solver.Options Vec2
+changeN : Size -> Solver.Options -> Solver.Options
 changeN n options =
     { options
     | approach =
@@ -1061,7 +1059,7 @@ changeN n options =
             _ -> options.approach
     }
 
-changeSymmetry : Symmetry -> Solver.Options v -> Solver.Options v
+changeSymmetry : Symmetry -> Solver.Options -> Solver.Options
 changeSymmetry symmetry options =
     { options
     | approach =
@@ -1075,7 +1073,7 @@ changeSymmetry symmetry options =
     }
 
 
-changeInputBoundary : Boundary -> Solver.Options v -> Solver.Options v
+changeInputBoundary : Boundary -> Solver.Options -> Solver.Options
 changeInputBoundary boundary options =
     { options
     | approach =
@@ -1089,21 +1087,21 @@ changeInputBoundary boundary options =
     }
 
 
-changeOutputBoundary : Boundary -> Solver.Options v -> Solver.Options v
+changeOutputBoundary : Boundary -> Solver.Options -> Solver.Options
 changeOutputBoundary boundary options =
     { options
     | outputBoundary = boundary
     }
 
 
-changeOutputSize : (v -> v) -> Solver.Options v -> Solver.Options v
+changeOutputSize : (Size -> Size) -> Solver.Options -> Solver.Options
 changeOutputSize f options =
     { options
     | outputSize = f options.outputSize
     }
 
 
-changeOptions : (Solver.Options Vec2 -> Solver.Options Vec2) -> CurrentExample -> CurrentExample
+changeOptions : (Solver.Options -> Solver.Options) -> CurrentExample -> CurrentExample
 changeOptions f current =
     case current of
         Textual options source maybeGrid ->

@@ -7,22 +7,20 @@ import Html.Attributes exposing (..)
 
 
 import Kvant.Vec2 exposing (..)
-import Kvant.Plane.Flat as Plane exposing (unpack)
+import Kvant.Plane as Plane exposing (toList2d)
 
 import Example.Render as Render exposing (..)
 
 import Example.Instance.Tiles.Plane exposing (..)
 
 
-make : (TileKey -> String) -> Renderer Vec2 TileGrid TileKey (Html msg)
+make : (TileKey -> String) -> Renderer TileGrid TileKey (Html msg)
 make toPath =
-    { source =
-        Array.toList >> List.map Array.toList >> grid (tile1 toPath)
-    , plane =
-        Plane.unpack
-            >> List.map (List.map <| Maybe.withDefault noTile)
-            >> grid (tile1 toPath)
-    }
+    ( Array.toList >> List.map Array.toList >> grid (tile1 toPath)
+    , Plane.toList2d
+        >> List.map (List.map <| Maybe.withDefault noTile)
+        >> grid (tile1 toPath)
+    )
 
 
 tile : String -> Html msg

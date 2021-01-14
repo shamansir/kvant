@@ -1,9 +1,9 @@
 module Example.Advance exposing (..)
 
 
-import Kvant.Plane.Impl.Tracing exposing (TracingPlane)
 import Kvant.Solver as Solver exposing (..)
 import Kvant.Solver.History as H exposing (History)
+import Kvant.Plane exposing (..)
 
 
 type AdvanceMode
@@ -11,26 +11,26 @@ type AdvanceMode
     | AtOnce
 
 
-type Status v fmt a
+type Status fmt a
     = None
     | Preparation
-    | Solving ( fmt, TracingPlane v a ) (History v)
-    | Solved ( fmt, TracingPlane v a )
+    | Solving ( fmt, Plane a ) History
+    | Solved ( fmt, Plane a)
 
 
 
-type TracingStep v = TracingStep (Solver.Step v)
-type alias History v = H.History (Solver.Step v, TracingStep v)
+type TracingStep = TracingStep Solver.Step
+type alias History = H.History (Solver.Step, TracingStep)
 
 
-doingSomething : Status v fmt a -> Bool
+doingSomething : Status fmt a -> Bool
 doingSomething status =
     case status of
         None -> False
         _ -> True
 
 
-isSolving : Status v fmt a -> Bool
+isSolving : Status fmt a -> Bool
 isSolving status =
     case status of
         None -> False
@@ -45,7 +45,7 @@ isSolving status =
 --        TextExample model -> model
 
 
-getCurrentPlane : Status v fmt a -> Maybe ( fmt, TracingPlane v a )
+getCurrentPlane : Status fmt a -> Maybe ( fmt, Plane a )
 getCurrentPlane status =
     case status of
         Solving plane _ -> Just plane
@@ -53,12 +53,12 @@ getCurrentPlane status =
         _ -> Nothing
 
 
-getHistory : Status v fmt a -> Maybe (History v)
+getHistory : Status fmt a -> Maybe History
 getHistory status =
     case status of
         Solving plane history -> Just history
         _ -> Nothing
 
 
-unpackTracingStep : TracingStep v -> Step v
+unpackTracingStep : TracingStep -> Step
 unpackTracingStep (TracingStep step) = step
