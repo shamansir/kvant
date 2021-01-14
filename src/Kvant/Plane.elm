@@ -7,10 +7,7 @@ import Dict exposing (Dict)
 
 import Kvant.Vec2 exposing (Vec2)
 import Kvant.Vec2 as Vec2 exposing (rect)
-import Kvant.Neighbours exposing (Neighbours)
-import Kvant.Neighbours as Neighbours exposing (..)
-import Kvant.Occurrence exposing (Occurrence, Frequency)
-import Kvant.Occurrence as Occurrence exposing (times, toInt)
+import Html exposing (b)
 
 type Plane a = Plane Vec2 (Array (Array (Maybe a)))
 
@@ -107,6 +104,10 @@ set (x, y) value (Plane ( w, h ) grid) =
 
 size : Plane a -> Vec2
 size (Plane s _) = s
+
+
+foldl : (a -> b -> b) -> b -> Plane a -> b
+foldl f def = values >> List.foldl f def
 
 
 filled : Vec2 -> a -> Plane a
@@ -223,6 +224,26 @@ toList2d (Plane ( (ox, oy), _ ) grid) = -- zip all + coords ?
         |> Array.toList -}
 
 
+shift : Vec2 -> Plane a -> Plane a
+shift (offX, offY) (Plane (width, height) _ as plane) =
+    toList plane
+        |> List.map
+            (\( ( x, y ) , value) ->
+                let
+                    ( newX, newY ) =
+                        ( if offX < 0 then x + offX else x
+                        , if offY < 0 then y + offY else y
+                        )
+                in
+                    if newX >= 0 && newX < (width - abs offX) &&
+                       newY >= 0 && newY < (height - abs offY)
+                        then Just ( ( newX, newY ), value )
+                        else Nothing
+            )
+        |> List.filterMap identity
+        |> fromList (width - abs offX, height - abs offY)
+
+
 transform : (Vec2 -> Vec2) -> Plane a -> Plane a
 transform f plane =
     (toList plane
@@ -322,21 +343,6 @@ views symmetry source =
         FlipAndRotate -> allViews
 
 
-isAmong : List (Plane comparable) -> Plane comparable -> Bool
-isAmong = isAmongBy (==)
-
-
-isAmongBy : (a -> a -> Bool) -> List (Plane a) -> Plane a -> Bool
-isAmongBy compare planes subject =
-    planes
-        |> List.foldl
-                (\other wasBefore ->
-                    wasBefore
-                        || equalBy compare subject other
-                )
-           False
-
-
 {-
 findSubPlanes : Symmetry -> Boundary -> Vec2 -> Plane a -> List (Plane a)
 findSubPlanes symmetry boundary ofSize inPlane =
@@ -354,6 +360,8 @@ findSubPlanes symmetry boundary ofSize inPlane =
                             >> List.filterMap identity
             ) -}
 
+
+-- FIXME: move to separate module (PlaneStats?)
 subPlanes
     :  Symmetry
     -> Boundary
@@ -382,73 +390,6 @@ subPlanesBy compare symmetry method ofSize inPlane =
                     List.map (\coord -> subPlaneAt coord ofSize inPlane)
            )
         |> List.concatMap (views symmetry)
-
-
-evaluateOccurrence
-    :  List (Plane comparable)
-    -> List ((Occurrence, Maybe Frequency), Plane comparable)
-evaluateOccurrence = evaluateOccurrenceBy (==)
-
-
-evaluateOccurrenceBy
-    :  (a -> a -> Bool)
-    -> List (Plane a)
-    -> List ((Occurrence, Maybe Frequency), Plane a)
-evaluateOccurrenceBy compare subPlanes_ =
-    let
-        _ =
-            subPlanes_
-                |> List.map toList
-                |> Debug.log "allPlanes"
-        uniquePatterns =
-            subPlanes_
-                |> List.foldr
-                    (\pattern uniqueOthers ->
-                        if pattern |> isAmongBy compare uniqueOthers
-                            then uniqueOthers
-                            else pattern :: uniqueOthers
-                    )
-                    []
-        withOccurrence =
-             uniquePatterns
-                 |> List.map
-                     (
-                         \subPlane_ ->
-                             ( subPlanes_
-                                 |> List.filter (equalBy compare subPlane_)
-                                 |> List.length
-                                 |> Occurrence.times
-                             , subPlane_
-                             )
-                     )
-                 |> List.sortBy (Tuple.first >> Occurrence.toInt)
-        total =
-             withOccurrence
-                |> List.foldl
-                    (\(occurrence, _) sum ->
-                         sum + Occurrence.toInt occurrence
-                    )
-                    0
-                 |> toFloat
-        _ =
-            withOccurrence
-                |> List.map (Tuple.mapSecond toList)
-                |> Debug.log "withOccurence"
-    in
-        withOccurrence
-            |> List.map
-                (\(occurrence, v) ->
-                    (
-                        ( occurrence
-                        , occurrence
-                            |> Occurrence.toMaybe
-                            |> Maybe.map
-                                (\occurred ->
-                                    Occurrence.frequencyFromFloat <| toFloat occurred / total))
-                    , v
-                    )
-                )
-
 
 
 {- fromDict : Vec2 -> Dict Vec2 a -> Plane (Maybe a)
