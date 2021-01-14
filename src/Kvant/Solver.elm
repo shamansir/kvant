@@ -12,7 +12,7 @@ import Kvant.Matches exposing (Matches)
 import Kvant.Matches as Matches exposing (..)
 import Kvant.Occurrence exposing (Occurrence, Frequency, frequencyToFloat)
 import Kvant.Occurrence as Occurrence
-import Kvant.Plane exposing (Plane(..), Boundary, Symmetry)
+import Kvant.Plane exposing (Plane(..), Boundary, Symmetry, Offset, Coord, Size)
 import Kvant.Plane as Plane exposing (map)
 import Kvant.Patterns exposing (Key, Pattern, PatternId)
 import Kvant.Patterns as Patterns exposing (..)
@@ -30,11 +30,14 @@ import Kvant.Solver.Options exposing (..)
 type alias Wave = Plane (Matches PatternId)
 
 
+type alias Solution = Plane (List Patterns.Key)
+
+
 -- type alias Rules v a = { }
 
 
 type Step
-    = Step Int Random.Seed Options StepStatus -- Replace Options only by OutputSize and nothing else
+    = Step Int Random.Seed Size StepStatus
 
 
 type StepStatus
@@ -47,23 +50,10 @@ type StepStatus
 
 type FocusState
     = NotFocused
-    | FocusedAt Vec2
+    | FocusedAt Coord
 
 
 type MaximumSteps = MaximumSteps Int
-
-
-
-type alias PatternWithStats =
-    { pattern : Pattern
-    , frequency : ( Occurrence, Maybe Frequency )
-    , matches : Plane (List PatternId)
-    --, rotations : Dict Rotation PatternId
-    }
-
-
-type alias UniquePatterns =
-    Dict PatternId PatternWithStats
 
 
 -- type alias FindMatches v a =
@@ -74,42 +64,12 @@ type Observation
     = Unknown
     | Collapsed
     | Contradiction
-    | Focus Vec2 PatternId
+    | Focus Coord PatternId
 
 
-firstStep : Options -> Random.Seed -> Step
-firstStep options seed =
-    Step 0 seed options Initial
-
-
-preprocess
-    :  Symmetry
-    -> Boundary
-    -> Vec2
-    -> Plane Key
-    -> UniquePatterns
-preprocess symmetry boundary ofSize inPlane =
-    let
-        allSubplanes = Plane.subPlanes symmetry boundary ofSize inPlane
-        uniquePatterns = Plane.evaluateOccurrence allSubplanes
-        uniquePatternsDict =
-            uniquePatterns
-                |> List.indexedMap Tuple.pair
-                |> Dict.fromList
-        onlyPatternsDict =
-            uniquePatternsDict
-                |> Dict.map (always Tuple.second)
-    in
-        uniquePatternsDict
-                |> Dict.map (\_ ( frequency, pattern ) ->
-                        { frequency = frequency
-                        , pattern = pattern
-                        , matches =
-                            findMatches
-                                onlyPatternsDict
-                                pattern
-                        }
-                    )
+firstStep : Size -> Random.Seed -> Step
+firstStep size seed =
+    Step 0 seed size Initial
 
 
 solve : UniquePatterns -> Step -> Step
@@ -136,7 +96,7 @@ solveUntil (MaximumSteps maxSteps) patterns fromStep =
 
 
 advance : UniquePatterns -> Step -> Step
-advance patterns (Step _ _ { outputSize } _ as step) =
+advance patterns (Step _ _ outputSize _ as step) =
     case getStatus step of
         Initial ->
             initWave patterns outputSize
@@ -198,13 +158,13 @@ observe seed uniquePatterns wave =
 
 propagate
     :  UniquePatterns
-    -> Vec2
+    -> Coord
     -> PatternId
     -> Wave
     -> Wave
 propagate uniquePatterns focus pattern wave =
     let
-        probe : Vec2 -> Matches PatternId -> Wave -> Wave
+        probe : Coord -> Matches PatternId -> Wave -> Wave
         probe atPos newMatches prevWave =
             let
                 curMatches =
@@ -287,7 +247,7 @@ findLowestEntropy
     :  Random.Seed
     -> UniquePatterns
     -> Wave
-    -> ( Maybe Vec2, Random.Seed )
+    -> ( Maybe Coord, Random.Seed )
 findLowestEntropy seed uniquePatterns =
     let
         withEntropy prevSeed matches f =
@@ -351,7 +311,7 @@ getMatchesOf uniquePatterns dir pattern =
         |> Dict.get pattern
         |> Maybe.andThen
             (\{ matches } ->
-                matches |> Plane.get (Dir.offsetFor dir)
+                matches |> Dict.get (Dir.offsetFor dir)
             )
         |> Maybe.map Matches.fromList
 
@@ -378,18 +338,17 @@ loadFrequencies : UniquePatterns -> Dict PatternId (Maybe Frequency)
 loadFrequencies = Dict.map <| always <| (.frequency >> Tuple.second)
 
 
-initWave : UniquePatterns -> Vec2 -> Wave
+initWave : UniquePatterns -> Size -> Wave
 initWave uniquePatterns size =
     -- Dict.keys uniquePatterns >> Matches.fromList >> Plane.filled
     Plane.filled size <| Matches.fromList <| Debug.log "patternCount" <| Dict.keys uniquePatterns
 
 
-apply
-    :  (Matches PatternId -> List Key -> x)
-    -> UniquePatterns
+produce
+    :  UniquePatterns
     -> Step
-    -> Plane x
-apply f patterns (Step _ _ { outputSize } status) =
+    -> Solution
+produce patterns (Step _ _ outputSize status) =
     let
         loadValues : Matches PatternId -> List Key
         loadValues matches =
@@ -402,8 +361,8 @@ apply f patterns (Step _ _ { outputSize } status) =
                     )
                 |> List.filterMap identity
                 -- if pattern wasn't found or contains no value at this point, it is skipped
-        fromWave : Wave -> Plane x
-        fromWave wave = wave |> Plane.map (\matches -> f matches <| loadValues matches)
+        fromWave : Wave -> Plane (List Patterns.Key)
+        fromWave wave = wave |> Plane.map loadValues
     in
         fromWave <| case status of
             Initial -> initWave patterns outputSize

@@ -2,9 +2,7 @@ module Kvant.Solver.Options exposing (..)
 
 
 import Kvant.Vec2 exposing (Vec2)
-import Kvant.Plane exposing (Plane(..))
-import Kvant.Plane.Flat as Plane
-    exposing ( Boundary(..), Symmetry(..) )
+import Kvant.Plane exposing (Plane(..), Size, Boundary(..), Symmetry(..))
 
 
 import Json.Decode as D
@@ -16,13 +14,13 @@ import Json.Encode as E
 type alias Options =
     { approach : Approach
     , outputBoundary : Boundary
-    , outputSize : Vec2
+    , outputSize : Size
     }
 
 
 type Approach
     = Overlapping
-        { patternSize : Vec2 -- FIXME: use just square patterns
+        { patternSize : Size -- FIXME: use just square patterns
         , inputBoundary : Boundary
         , symmetry : Symmetry -- FIXME: use in search
         -- TODO: ground : Int
