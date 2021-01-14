@@ -14,6 +14,8 @@ import Kvant.Occurrence exposing (Occurrence, Frequency, frequencyToFloat)
 import Kvant.Occurrence as Occurrence
 import Kvant.Plane exposing (Plane(..), Boundary, Symmetry)
 import Kvant.Plane as Plane exposing (map)
+import Kvant.Patterns exposing (Key, Pattern, PatternId)
+import Kvant.Patterns as Patterns exposing (..)
 {- import Kvant.Plane.Flat as Plane
     exposing ( Boundary, Symmetry, foldl, coords, equal, sub, findMatches, findSubs, findSubsAlt, findOccurrence ) -}
 -- import Kvant.Plane as CPlane exposing (fromDict, toDict)
@@ -25,9 +27,6 @@ import Kvant.Neighbours as Dir exposing (Direction(..))
 import Kvant.Solver.Options exposing (..)
 
 
--- value can be pixel, color, tile, character, whatever, but `Key` is the integer ID of it
-type alias Key = Int
-type alias Pattern = Plane Key
 type alias Wave = Plane (Matches PatternId)
 
 
@@ -53,8 +52,6 @@ type FocusState
 
 type MaximumSteps = MaximumSteps Int
 
-
-type alias PatternId = Int
 
 
 type alias PatternWithStats =
@@ -93,8 +90,8 @@ preprocess
     -> UniquePatterns
 preprocess symmetry boundary ofSize inPlane =
     let
-        allSubplanes = findSubsAlt symmetry boundary ofSize inPlane
-        uniquePatterns = findOccurrence allSubplanes
+        allSubplanes = Plane.subPlanes symmetry boundary ofSize inPlane
+        uniquePatterns = Plane.evaluateOccurrence allSubplanes
         uniquePatternsDict =
             uniquePatterns
                 |> List.indexedMap Tuple.pair
@@ -313,7 +310,7 @@ findLowestEntropy seed uniquePatterns =
                             else maybePrevLowest
     in
 
-        Plane.allWithCoords
+        Plane.toList
             >> List.foldl
                 foldingF
                 ( Nothing, seed )
@@ -361,22 +358,20 @@ getMatchesOf uniquePatterns dir pattern =
 
 hasAContradiction : Wave -> Bool
 hasAContradiction =
-    Plane.all
-        >> List.foldl
-            (\matches wasAContradiction ->
-                wasAContradiction || Matches.isNone matches
-            )
-            False
+    Plane.foldl
+        (\matches wasAContradiction ->
+            wasAContradiction || Matches.isNone matches
+        )
+        False
 
 
 isCollapsed : Wave -> Bool
 isCollapsed =
-    Plane.all
-        >> List.foldl
-            (\matches wasCollapsed ->
-                wasCollapsed && (Matches.count matches == 1)
-            )
-            True
+    Plane.foldl
+        (\matches wasCollapsed ->
+            wasCollapsed && (Matches.count matches == 1)
+        )
+        True
 
 
 loadFrequencies : UniquePatterns -> Dict PatternId (Maybe Frequency)

@@ -38,6 +38,11 @@ rectFlat : { from: Vec2, to : Vec2 } -> List Vec2
 rectFlat = rect >> List.concat
 
 
+shift : Vec2 -> Vec2 -> Vec2
+shift ( offX, offY ) ( x, y ) =
+    ( offX + x, offY + y )
+
+
 loadSize : Array (Array a) -> Maybe Vec2
 loadSize grid =
     Array.get 0 grid
