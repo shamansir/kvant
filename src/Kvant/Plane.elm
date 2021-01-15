@@ -66,8 +66,10 @@ positionedMap f (Plane rect grid) =
 
 
 empty : Size -> Plane a
-empty size_ =
-    Plane size_ Array.empty
+empty ( width, height ) =
+    Plane ( width, height )
+        <| Array.repeat height
+        <| Array.repeat width Nothing
 
 
 fits : Coord -> Plane a -> Bool
@@ -260,17 +262,17 @@ shift (offX, offY) (Plane (width, height) _ as plane) =
             (\( ( x, y ) , value) ->
                 let
                     ( newX, newY ) =
-                        ( if offX < 0 then x + offX else x
-                        , if offY < 0 then y + offY else y
+                        ( x + offX
+                        , y + offY
                         )
                 in
-                    if newX >= 0 && newX < (width - abs offX) &&
-                       newY >= 0 && newY < (height - abs offY)
+                    if newX >= 0 && newX < (width + offX) &&
+                       newY >= 0 && newY < (height + offY)
                         then Just ( ( newX, newY ), value )
                         else Nothing
             )
         |> List.filterMap identity
-        |> fromList (width - abs offX, height - abs offY)
+        |> fromList (width + offX, height + offY)
 
 
 transform : (Coord -> Coord) -> Plane a -> Plane a
@@ -308,13 +310,31 @@ rotateTo orientation (Plane (width, height) _ as plane) =
                 East -> \(x, y) -> (y, width - 1 - x))
 
 
+filledWithValues : Plane a -> Bool
+filledWithValues (Plane _ grid) =
+    grid
+        |> Array.map Array.toList
+        |> Array.toList
+        |> List.concat
+        |> List.foldl
+            (\maybeV prev ->
+                prev && case maybeV of
+                    Just v -> True
+                    Nothing -> False
+            )
+            True
+
+
 subPlane : Size -> Plane a -> Plane a
 subPlane = subPlaneAt (0, 0)
 
 
 subPlaneAt : Offset -> Size -> Plane a -> Plane a
 subPlaneAt (shiftX, shiftY) (nX, nY) plane =
-    Vec2.rectFlat { from = (shiftX, shiftY), to = ( nX, nY ) }
+    Vec2.rectFlat
+        { from = (shiftX, shiftY)
+        , to = ( shiftX + nX - 1, shiftY + nY - 1)
+        }
         |> List.map (\(x, y) ->
                 get (x, y) plane
                     |> Maybe.map (Tuple.pair ( x - shiftX, y - shiftY ))
@@ -365,7 +385,7 @@ allViews plane =
 
 views : Symmetry -> Plane a -> List (Plane a)
 views symmetry source =
-    source |> case Debug.log "symmetry" symmetry of
+    source |> case symmetry of
         NoSymmetry -> List.singleton
         FlipOnly -> bothFlips
         RotateOnly -> allRotations
@@ -388,37 +408,6 @@ findSubPlanes symmetry boundary ofSize inPlane =
                             List.map (\coord -> subAt coord ofSize view)
                             >> List.filterMap identity
             ) -}
-
-
--- FIXME: move to separate module (PlaneStats?)
-subPlanes
-    :  Symmetry
-    -> Boundary
-    -> Size
-    -> Plane comparable
-    -> List (Plane comparable)
-subPlanes
-    = subPlanesBy (==)
-
-
-subPlanesBy
-    :  (a -> a -> Bool)
-    -> Symmetry
-    -> Boundary
-    -> Size
-    -> Plane a
-    -> List (Plane a)
-subPlanesBy compare symmetry method ofSize inPlane =
-    inPlane
-        |> coords
-        |> (
-            case method of
-                Periodic ->
-                    List.map (\coord -> periodicSubPlaneAt coord ofSize inPlane)
-                Bounded ->
-                    List.map (\coord -> subPlaneAt coord ofSize inPlane)
-           )
-        |> List.concatMap (views symmetry)
 
 
 {- fromDict : Vec2 -> Dict Vec2 a -> Plane (Maybe a)

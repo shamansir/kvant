@@ -38,7 +38,7 @@ preprocess
     -> UniquePatterns
 preprocess symmetry boundary ofSize inPlane =
     let
-        allSubplanes = subPlanes symmetry boundary ofSize inPlane
+        allSubplanes = subPatterns symmetry boundary ofSize inPlane
         uniquePatterns = evaluateOccurrence allSubplanes
         uniquePatternsDict =
             uniquePatterns
@@ -66,10 +66,6 @@ evaluateOccurrence
     -> List ((Occurrence, Maybe Frequency), Pattern)
 evaluateOccurrence subPlanes_ =
     let
-        _ =
-            subPlanes_
-                |> List.map toList
-                |> Debug.log "allPlanes"
         uniquePatterns =
             subPlanes_
                 |> List.foldr
@@ -103,7 +99,6 @@ evaluateOccurrence subPlanes_ =
         _ =
             withOccurrence
                 |> List.map (Tuple.mapSecond toList)
-                |> Debug.log "withOccurence"
     in
         withOccurrence
             |> List.map
@@ -205,7 +200,7 @@ offsetsFor : Size -> List Offset
 offsetsFor ( width, height ) =
     Vec2.rectFlat
         { from = ( -1 * (width - 1),  -1 * (height - 1) )
-        , to = ( width + 1, height + 1 )
+        , to = ( width - 1, height - 1 )
         }
 
 
@@ -224,4 +219,24 @@ isAmong planes subject =
                     wasBefore || equal subject other
                 )
            False
+
+
+subPatterns
+    :  Symmetry
+    -> Boundary
+    -> Size
+    -> Pattern
+    -> List Pattern
+subPatterns symmetry method ofSize pattern =
+    pattern
+    |> coords
+    |>  (List.map <|
+        case method of
+            Periodic ->
+                \coord -> periodicSubPlaneAt coord ofSize pattern
+            Bounded ->
+                \coord -> subPlaneAt coord ofSize pattern
+        )
+    |> List.filter filledWithValues
+    |> List.concatMap (views symmetry)
 

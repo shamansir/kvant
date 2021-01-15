@@ -33,9 +33,6 @@ type alias Wave = Plane (Matches PatternId)
 type alias Solution = Plane (List Patterns.Key)
 
 
--- type alias Rules v a = { }
-
-
 type Step
     = Step Int Random.Seed Size StepStatus
 
@@ -340,8 +337,7 @@ loadFrequencies = Dict.map <| always <| (.frequency >> Tuple.second)
 
 initWave : UniquePatterns -> Size -> Wave
 initWave uniquePatterns size =
-    -- Dict.keys uniquePatterns >> Matches.fromList >> Plane.filled
-    Plane.filled size <| Matches.fromList <| Debug.log "patternCount" <| Dict.keys uniquePatterns
+    Plane.filled size <| Matches.fromList <| Dict.keys uniquePatterns
 
 
 produce
