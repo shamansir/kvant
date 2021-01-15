@@ -1,30 +1,25 @@
 module Kvant.Solver exposing (..)
 
 
--- import Array exposing (Array)
 import Dict
 import Dict exposing (Dict)
 import Random
 
-import Kvant.Vec2 exposing (..)
 import Kvant.Vec2 as Vec2 exposing (random)
 import Kvant.Matches exposing (Matches)
-import Kvant.Matches as Matches exposing (..)
-import Kvant.Occurrence exposing (Occurrence, Frequency, frequencyToFloat)
-import Kvant.Occurrence as Occurrence
+import Kvant.Matches as Matches exposing
+    ( toList, fromList
+    , run
+    , and, equal, union
+    , none, single, count, isNone
+    )
+import Kvant.Occurrence exposing (Frequency, frequencyToFloat)
 import Kvant.Plane exposing (Plane(..), Boundary, Symmetry, Offset, Coord, Size)
-import Kvant.Plane as Plane exposing (map)
+import Kvant.Plane as Plane exposing (get, set, filled, foldl, toList, fits, size)
 import Kvant.Patterns exposing (Key, Pattern, PatternId)
-import Kvant.Patterns as Patterns exposing (..)
-{- import Kvant.Plane.Flat as Plane
-    exposing ( Boundary, Symmetry, foldl, coords, equal, sub, findMatches, findSubs, findSubsAlt, findOccurrence ) -}
--- import Kvant.Plane as CPlane exposing (fromDict, toDict)
--- import Kvant.Plane.Offset exposing (OffsetPlane(..), toOffset)
--- import Kvant.Plane.Offset as OffsetPlane exposing (get)
-import Kvant.Neighbours as Neighbours exposing (..)
-import Kvant.Neighbours exposing (Neighbours)
+import Kvant.Patterns as Patterns exposing (Key, UniquePatterns)
+import Kvant.Neighbours as Neighbours exposing (cross)
 import Kvant.Neighbours as Dir exposing (Direction(..))
-import Kvant.Solver.Options exposing (..)
 
 
 type alias Wave = Plane (Matches PatternId)
@@ -51,10 +46,6 @@ type FocusState
 
 
 type MaximumSteps = MaximumSteps Int
-
-
--- type alias FindMatches v a =
---     Wave v -> v -> Direction -> Matches a
 
 
 type Observation
@@ -164,22 +155,25 @@ propagate uniquePatterns focus pattern wave =
         probe : Coord -> Matches PatternId -> Wave -> Wave
         probe atPos newMatches prevWave =
             let
+
                 curMatches =
                     prevWave
                         |> Plane.get atPos
                         |> Maybe.withDefault Matches.none
+
                 probeNeighbours withWave =
                     Neighbours.cross
                         |> List.foldl
-                            (\dir w ->
+                            (\dir curWave ->
+
                                 case dir |> Dir.move atPos of
                                     moved ->
                                         -- FIXME: support unbounded planes
-                                        if not <| Plane.fits moved w then w
+                                        if not <| Plane.fits moved curWave then curWave
                                         else
                                             let
                                                 curMatchesAtDir =
-                                                    w
+                                                    curWave
                                                         |> Plane.get moved
                                                         |> Maybe.withDefault Matches.none
                                                 newMatchesAtDir =
@@ -187,10 +181,11 @@ propagate uniquePatterns focus pattern wave =
                                                         |> matchesAtDir uniquePatterns dir
                                                         |> Matches.and curMatchesAtDir
                                             in
+                                                curWave |> probe moved newMatchesAtDir
 
-                                                w |> probe moved newMatchesAtDir
                             )
                             withWave
+
             in
                 if Matches.equal curMatches newMatches
                     then prevWave
@@ -372,16 +367,8 @@ getSeed : Step -> Random.Seed
 getSeed (Step _ seed _ _) = seed
 
 
-changeSeedTo : Random.Seed -> Step -> Step
-changeSeedTo newSeed (Step n seed opts step) = Step n newSeed opts step
-
-
 getStatus : Step -> StepStatus
 getStatus (Step _ _ _ status) = status
-
-
-getCount : Step -> Int
-getCount (Step n _ _ _) = n
 
 
 nextStep : Random.Seed -> Step -> StepStatus -> Step
@@ -394,18 +381,3 @@ updateStatus status (Step n seed opts _) = Step n seed opts status
 
 exceeds : Int -> Step -> Bool
 exceeds count (Step stepN _ _ _) = count <= stepN
-
-
-{-
-neighboursAt : Direction -> List (PatternId, Pattern v a) -> Pattern v a -> List PatternId
-neighboursAt dir from (Pattern size f) =
-    []
-
-
-findNeighbours : List (PatternId, Pattern v a) -> Pattern v a -> Neighbours (List PatternId)
-findNeighbours from pattern =
-    Neighbours
-        (neighboursAt NW from pattern) (neighboursAt N from pattern) (neighboursAt NE from pattern)
-        (neighboursAt W  from pattern)                               (neighboursAt  E from pattern)
-        (neighboursAt SW from pattern) (neighboursAt S from pattern) (neighboursAt SE from pattern)
--}
