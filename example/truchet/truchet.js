@@ -8,6 +8,10 @@ let timer = 0;
 const timerStep = 1;
 const tileVariations = 2;
 
+// change these numbers to change the palette
+const colorRange = 120;
+const colorStep = 40;
+
 // change these numbers to make animation faster or slower
 const stepAmount = 30;
 const waitAmount = 20;
@@ -87,7 +91,7 @@ function Tile() {
             let incr = this.needMorph ? 1 / stepAmount * t : 0;
             let col = this.values[0] < this.values[1] ? currentNoise + incr : currentNoise - incr;
 
-            stroke(50 * col + 120, 255, 255);
+            stroke(colorStep * col + colorRange, 255, 255);
 
             if (this.angles[0] === 0 ) {
                 arc(-this.r / 2, -this.r / 2, this.r, this.r, 0, PI / 2);
