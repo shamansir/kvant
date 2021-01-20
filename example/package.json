@@ -8,11 +8,11 @@
     "start": "concurrently \"npm:start:worker\" \"npm:start:mehanik\"",
     "start:worker": "elm-live ./mehanik/Worker.elm --no-server -- --output=./worker.js",
     "start:mehanik": "elm-live ./mehanik/Mehanik.elm --open --start-page ./index.html --port 2000 -- --output=./mehanik.js",
-    "start:truchet": "elm-live ./truchet/KvantProxy.elm --open --start-page ./truchet/index.html --port 2000 -- --output=./truchet/kvant-proxy.js",
+    "start:truchet": "elm-live ./KvantProxy.elm --open --start-page ./truchet/index.html --port 2000 -- --output=./kvant-proxy.js",
     "build": "npm run build:worker && npm run build:mehanik",
     "build:mehanik": "elm make ./mehanik/Mehanik.elm -- output=./mehanink.js",
     "build:worker": "elm make ./mehanik/Worker.elm -- output=./worker.js",
-    "build:truchet": "elm make ./truchet/KvantProxy.elm --output=./truchet/kvant-proxy.js",
+    "build:truchet": "elm make ./KvantProxy.elm --output=./kvant-proxy.js",
     "serve": "node server.js"
   },
   "repository": {
