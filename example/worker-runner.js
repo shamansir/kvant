@@ -12,6 +12,11 @@ app.ports.onStep.subscribe((stepWave) => {
     self.postMessage({ cmd: 'step', wave: stepWave });
 });
 
+app.ports.onPatterns.subscribe((patterns) => {
+    console.log('onPatterns', patterns);
+    self.postMessage({ cmd: 'patterns', patterns: patterns });
+});
+
 self.addEventListener('message', function(e) {
     var data = e.data;
     switch (data.cmd) {
@@ -29,6 +34,12 @@ self.addEventListener('message', function(e) {
             break;
         case 'stop':
             app.ports.stop.send(null);
+            break;
+        case 'preprocess':
+            app.ports.preprocess.send({ options: data.options, source : data.source });
+            break;
+        case 'matches':
+            app.ports.matchesAt.send(data.position);
             break;
         default:
             return;

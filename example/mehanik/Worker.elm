@@ -46,7 +46,7 @@ type Msg
     | StepBack
     | StepBackWith Random.Seed
     | Stop
-    | GetPatterns Solver.Options Source
+    | Preprocess Solver.Options Source
     | GetMatchesAt Vec2
 
 
@@ -193,7 +193,7 @@ update msg model =
             , Cmd.none
             )
 
-        GetPatterns options source ->
+        Preprocess options source ->
             ( model
             , case options.approach of
                 Overlapping overlappingOptions ->
@@ -237,11 +237,11 @@ subscriptions _ =
         , step <| always Step
         , back <| always StepBack
         , stop <| always Stop
-        , getPatterns <| \{options, source} ->
+        , preprocess <| \{options, source} ->
             case options |> D.decodeValue Options.decode of
-                Ok decodedOptions -> GetPatterns decodedOptions source
+                Ok decodedOptions -> Preprocess decodedOptions source
                 Err _ -> Stop -- FIXME: show error
-        , getMatchesAt GetMatchesAt
+        , matchesAt GetMatchesAt
         ]
 
 
@@ -273,9 +273,9 @@ port step : (() -> msg) -> Sub msg
 
 port back : (() -> msg) -> Sub msg
 
-port getPatterns : ({ options : E.Value, source : Source } -> msg) -> Sub msg
+port preprocess : ({ options : E.Value, source : Source } -> msg) -> Sub msg
 
-port getMatchesAt : (( Int, Int ) -> msg) -> Sub msg
+port matchesAt : (( Int, Int ) -> msg) -> Sub msg
 
 port onResult : RunResult -> Cmd msg
 
