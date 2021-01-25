@@ -1,4 +1,4 @@
-module Kvant.Cross
+module Kvant.Cardinal
     exposing (..)
 
 
@@ -9,4 +9,4 @@ type Direction
     = N | W | X | S | E
 
 
-type Cross a = Cross (Neighbours (Maybe a))
+type Cardinal a = Cardinal (Neighbours (Maybe a))

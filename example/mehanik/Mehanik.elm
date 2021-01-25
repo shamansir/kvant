@@ -35,13 +35,18 @@ import Kvant.Solver.Options exposing (Approach(..))
 import Kvant.Solver.Options as Solver
 import Kvant.Json.Options as Options
 import Kvant.Patterns exposing (UniquePatterns)
+import Kvant.Neighbours exposing (Neighbours)
+import Kvant.Matches exposing (Matches)
 
 
 type alias Model =
     { status : Status
+    , options : Solver.Options
     , example : CurrentExample
     , images : Dict ImageAlias (Result Http.Error Image)
     , rules : Dict TileGroup (Result String TilingRules)
+    , patterns : Maybe UniquePatterns
+    , matches : Maybe (Neighbours (Matches Int))
     }
 
 
@@ -54,25 +59,9 @@ type Status
 
 type CurrentExample
     = NotSelected
-    | Textual
-        { options : Solver.Options
-        , source : ( Vec2, String )
-        , wave : Maybe (Grid Char)
-        , patterns : Maybe UniquePatterns
-        }
-    | FromImage
-        { options : Solver.Options
-        , source : Image
-        , wave : Maybe Image
-        , patterns : Maybe UniquePatterns
-        }
-    | FromTiles
-        { options : Solver.Options
-        , group : TileGroup
-        , rules : TilingRules
-        , wave : Maybe (Grid TileKey)
-        , patterns : Maybe UniquePatterns
-        }
+    | Textual ( Vec2, String ) (Maybe (Grid Char))
+    | FromImage Image (Maybe Image)
+    | FromTiles TileGroup TilingRules (Maybe (Grid TileKey))
 
 
 type alias Grid a = Array (Array (Array a))
@@ -214,13 +203,16 @@ tiledExamples =
 init : Model
 init =
     { status = None
+    , options = defaultOptions
     , example = NotSelected
     , images = Dict.empty
     , rules = Dict.empty
+    , patterns = Nothing
+    , matches = Nothing
     }
 
 
-defaultTextOptions =
+defaultOptions =
     { approach =
         Overlapping
             { inputBoundary = Bounded -- Periodic
@@ -232,28 +224,13 @@ defaultTextOptions =
     }
 
 
-defaultImageOptions =
-    { approach =
-        Overlapping
-            { inputBoundary = Bounded -- Periodic
-            , patternSize = ( 2, 2 )
-            , symmetry = FlipAndRotate
-            }
-    , outputSize = ( 10, 10 )
-    , outputBoundary = Bounded
-    }
+forText = changeSymmetry FlipAndRotate
 
 
-defaultTilesOptions =
-    { approach =
-        Overlapping
-            { inputBoundary = Bounded -- Periodic
-            , patternSize = ( 2, 2 )
-            , symmetry = NoSymmetry
-            }
-    , outputSize = ( 10, 10 )
-    , outputBoundary = Bounded
-    }
+forImage = changeSymmetry FlipAndRotate
+
+
+forTiles = changeSymmetry NoSymmetry
 
 
 update
@@ -272,14 +249,14 @@ update msg model =
                 NotSelected ->
                     ( model, Cmd.none )
 
-                Textual { options, source }  ->
+                Textual source _  ->
                     (
                         { model
                         | status = WaitingRunResponse
                         }
                     , runInWorker
                         { options =
-                            Options.encode options
+                            Options.encode model.options
                         , source =
                             source
                                 |> TextPlane.boundedStringToGrid
@@ -289,14 +266,14 @@ update msg model =
                         }
                     )
 
-                FromImage { options, source } ->
+                FromImage source _ ->
                     (
                         { model
                         | status = WaitingRunResponse
                         }
                     , runInWorker
                         { options =
-                            Options.encode options
+                            Options.encode model.options
                         , source =
                             source
                                 |> ImageC.toArray2d
@@ -304,7 +281,7 @@ update msg model =
                         }
                     )
 
-                FromTiles { options, rules } ->
+                FromTiles _ rules _ ->
                     (
                         { model
                         | status = WaitingRunResponse
@@ -313,7 +290,7 @@ update msg model =
                         FromGrid tileSet grid ->
                             runInWorker
                                 { options =
-                                    Options.encode options
+                                    Options.encode model.options
                                 , source =
                                     grid
                                         |> Array.map (Array.map <| toIndexInSet tileSet)
@@ -327,7 +304,7 @@ update msg model =
                 NotSelected ->
                     ( model, Cmd.none )
 
-                Textual { options, source } ->
+                Textual source _ ->
                     (
                         { model
                         | status = WaitingTracingResponse
@@ -335,7 +312,7 @@ update msg model =
                     ,
                         traceInWorker
                             { options =
-                                Options.encode options
+                                Options.encode model.options
                             , source =
                                 source
                                     |> TextPlane.boundedStringToGrid
@@ -345,14 +322,14 @@ update msg model =
                             }
                     )
 
-                FromImage { options, source } ->
+                FromImage source _ ->
                     (
                         { model
                         | status = WaitingTracingResponse
                         }
                     , traceInWorker
                         { options =
-                            Options.encode options
+                            Options.encode model.options
                         , source =
                             source
                                 |> ImageC.toArray2d
@@ -360,7 +337,7 @@ update msg model =
                         }
                     )
 
-                FromTiles { options, rules } ->
+                FromTiles _ rules _ ->
                     (
                         { model
                         | status = WaitingTracingResponse
@@ -369,7 +346,7 @@ update msg model =
                         FromGrid tileSet grid ->
                             runInWorker
                                 { options =
-                                    Options.encode options
+                                    Options.encode model.options
                                 , source =
                                     grid
                                         |> Array.map (Array.map <| toIndexInSet tileSet)
@@ -401,21 +378,12 @@ update msg model =
                     case model.example of
                         NotSelected ->
                             NotSelected
-                        Textual state ->
-                            Textual
-                                { state
-                                | wave = Nothing
-                                }
-                        FromImage state ->
-                            FromImage
-                                { state
-                                | wave = Nothing
-                                }
-                        FromTiles state ->
-                            FromTiles
-                                { state
-                                | wave = Nothing
-                                }
+                        Textual source _ ->
+                            Textual source Nothing
+                        FromImage image _ ->
+                            FromImage image Nothing
+                        FromTiles group rules _ ->
+                            FromTiles group rules Nothing
                 }
             , stopWorker ()
             )
@@ -423,13 +391,8 @@ update msg model =
         SwitchToTextExample source ->
             (
                 { model
-                | example =
-                    Textual
-                        { options = defaultTextOptions
-                        , source = source
-                        , wave = Nothing
-                        , patterns = Nothing
-                        }
+                | options = forText model.options
+                , example = Textual source Nothing
                 }
             , Cmd.none
             )
@@ -437,13 +400,8 @@ update msg model =
         SwitchToImageExample image ->
             (
                 { model
-                | example =
-                    FromImage
-                        { options = defaultImageOptions
-                        , source = image
-                        , wave = Nothing
-                        , patterns = Nothing
-                        }
+                | options = forImage model.options
+                , example = FromImage image Nothing
                 }
             , Cmd.none
             )
@@ -451,18 +409,17 @@ update msg model =
         SwitchToTiledExample group ->
             (
                 { model
-                | example =
-                    case model.rules |> Dict.get group of
-                        Just (Ok rules) ->
-                            FromTiles
-                                { options = defaultTilesOptions
-                                , group = group
-                                , rules = rules
-                                , wave = Nothing
-                                , patterns = Nothing
-                                }
-                        _ ->
-                            model.example
+                | options = forTiles model.options
+                , example =
+                    FromTiles
+                        group
+                        (case model.rules |> Dict.get group of
+                            Just (Ok rules) ->
+                                rules
+                            _ ->
+                                FromRules ()
+                        )
+                        Nothing
                 }
             , Cmd.none
             )
@@ -470,7 +427,8 @@ update msg model =
         ChangeN n ->
             (
                 { model
-                | example = changeOptions (changeN n) model.example
+                | options =
+                    model.options |> changeN n
                 }
             , Cmd.none
             )
@@ -478,7 +436,8 @@ update msg model =
         ChangeSymmetry symmetry ->
             (
                 { model
-                | example = changeOptions (changeSymmetry symmetry) model.example
+                | options =
+                    model.options |> changeSymmetry symmetry
                 }
             , Cmd.none
             )
@@ -486,7 +445,9 @@ update msg model =
         ChangeOutputWidth w ->
             (
                 { model
-                | example = changeOptions (changeOutputSize <| \(_, h) -> (w, h)) model.example
+                | options =
+                    model.options
+                        |> (changeOutputSize <| \(_, h) -> (w, h))
                 }
             , Cmd.none
             )
@@ -494,7 +455,9 @@ update msg model =
         ChangeOutputHeight h ->
             (
                 { model
-                | example = changeOptions (changeOutputSize <| \(w, _) -> (w, h)) model.example
+                | options =
+                    model.options
+                        |> (changeOutputSize <| \(w, _) -> (w, h))
                 }
             , Cmd.none
             )
@@ -502,7 +465,9 @@ update msg model =
         UsePeriodicInput ->
             (
                 { model
-                | example = changeOptions (changeInputBoundary Periodic) model.example
+                | options =
+                    model.options
+                        |> changeInputBoundary Periodic
                 }
             , Cmd.none
             )
@@ -510,7 +475,9 @@ update msg model =
         UseBoundedInput ->
             (
                 { model
-                | example = changeOptions (changeInputBoundary Bounded) model.example
+                | options =
+                    model.options
+                        |> changeInputBoundary Bounded
                 }
             , Cmd.none
             )
@@ -518,7 +485,9 @@ update msg model =
         UsePeriodicOutput ->
             (
                 { model
-                | example = changeOptions (changeOutputBoundary Periodic) model.example
+                | options =
+                    model.options
+                        |> changeOutputBoundary Periodic
                 }
             , Cmd.none
             )
@@ -526,7 +495,9 @@ update msg model =
         UseBoundedOutput ->
             (
                 { model
-                | example = changeOptions (changeOutputBoundary Bounded) model.example
+                | options =
+                    model.options
+                        |> changeOutputBoundary Bounded
                 }
             , Cmd.none
             )
@@ -569,22 +540,23 @@ update msg model =
                     = case model.example of
 
                         NotSelected ->
-                            model.example
+                            NotSelected
 
-                        Textual state ->
+                        Textual source _ ->
                             Textual
-                                { state
-                                | wave =
+                                source
+                                (
                                     grid
                                         |> Array.map
                                             (Array.map <| Array.map Char.fromCode)
                                         |> Just
-                                }
 
-                        FromImage state ->
+                                )
+
+                        FromImage image _ ->
                             FromImage
-                                { state
-                                | wave =
+                                image
+                                (
                                     grid
                                         |> Array.map
                                             (Array.map
@@ -593,24 +565,27 @@ update msg model =
                                                     >> ImagePlane.merge)
                                         |> ImageC.fromArray2d
                                         |> Just
-                                }
 
-                        FromTiles state ->
+                                )
+
+                        FromTiles group rules _ ->
                             FromTiles
-                                <| case state.rules of
+                                group
+                                rules
+
+                                ( case rules of
                                     FromGrid tileSet _ ->
-                                        { state
-                                        | wave =
-                                            grid
+                                        grid
                                             |> Array.map
                                                 (Array.map
                                                     <| Array.map
                                                     <| fromIndexInSet tileSet
                                                 )
                                             |> Just
-                                        }
                                     FromRules _ ->
-                                        state  -- FIXME: TODO
+                                        Nothing  -- FIXME: TODO
+                                )
+
                 }
             , Cmd.none
             )
@@ -623,7 +598,7 @@ view model =
         viewExample example =
             case example of
 
-                Textual { source, wave } ->
+                Textual source wave ->
                     div
                         []
                         [ viewSource TextRenderer.make source
@@ -634,7 +609,7 @@ view model =
                             |> Maybe.withDefault (div [] [])
                         ]
 
-                FromImage { source, wave } ->
+                FromImage source wave ->
                     div
                         []
                         [ viewSource ImageRenderer.make source
@@ -645,7 +620,7 @@ view model =
                         ]
                     --Example.view ImageRenderer.make exampleModel
 
-                FromTiles { group, rules, wave } ->
+                FromTiles group rules wave ->
                     case tiledExamples |> Dict.get group of
                         Just ( tiles, format ) ->
                             div []
@@ -953,10 +928,8 @@ view model =
                 [ onInput selectionToMsg ]
                 makeOptions -}
             , case model.example of
-                Textual { options } -> controls options
-                FromImage { options } -> controls options
-                FromTiles { options } -> controls options
-                NotSelected -> Html.text ""
+                NotSelected -> div [] []
+                _ -> controls model.options
             , viewExample model.example
             ]
 
@@ -1127,18 +1100,6 @@ changeOutputSize f options =
     { options
     | outputSize = f options.outputSize
     }
-
-
-changeOptions : (Solver.Options -> Solver.Options) -> CurrentExample -> CurrentExample
-changeOptions f current =
-    case current of
-        Textual state ->
-            Textual { state | options = f state.options }
-        FromImage state ->
-            FromImage { state | options = f state.options }
-        FromTiles state ->
-            FromTiles { state | options = f state.options }
-        _ -> current
 
 
 port runInWorker : { options : E.Value, source : Array (Array Int) } -> Cmd msg
