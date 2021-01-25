@@ -5,20 +5,15 @@ import Dict
 import Dict exposing (Dict)
 import Random
 
-import Kvant.Vec2 as Vec2 exposing (random)
+import Kvant.Vec2 as Vec2
 import Kvant.Matches exposing (Matches)
-import Kvant.Matches as Matches exposing
-    ( toList, fromList
-    , run
-    , and, equal, union
-    , none, single, count, isNone
-    )
+import Kvant.Matches as Matches
 import Kvant.Occurrence exposing (Frequency, frequencyToFloat)
-import Kvant.Plane exposing (Plane(..), Boundary, Symmetry, Offset, Coord, Size)
-import Kvant.Plane as Plane exposing (get, set, filled, foldl, toList, fits, size)
-import Kvant.Patterns exposing (Key, Pattern, PatternId)
+import Kvant.Plane exposing (Plane(..), Coord, Size)
+import Kvant.Plane as Plane
+import Kvant.Patterns exposing (Key, PatternId)
 import Kvant.Patterns as Patterns exposing (Key, UniquePatterns)
-import Kvant.Neighbours as Neighbours exposing (cross)
+import Kvant.Neighbours as Neighbours
 import Kvant.Neighbours as Dir exposing (Direction(..))
 
 

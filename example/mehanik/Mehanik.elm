@@ -3,57 +3,38 @@ port module Mehanik exposing (..)
 
 import Browser
 import Http
-
-import Random
-import Task
-import Time
--- import Dict
 import Dict exposing (Dict)
-import Dict as D exposing (map)
 import Array exposing (Array)
-import Array as A exposing (map)
-import Bytes.Decode as Decode exposing (..)
-import Bytes.Decode as Bytes exposing (Decoder)
 import Bytes exposing (Bytes)
 import Json.Encode as E
-
 import Color exposing (Color)
 import Image exposing (Image)
-import Image.Color as ImageC exposing (toList2d)
+import Image.Color as ImageC
+
 
 import Html exposing (..)
 import Html.Attributes exposing (..)
-import Html.Attributes as H exposing (min, max)
+import Html.Attributes as H
 import Html.Events exposing (..)
 
-import Example.Advance exposing (..)
-
-
-import Example.Instance.Text.Render as TextRenderer exposing (make, grid1)
-import Example.Instance.Image.Render as ImageRenderer exposing (make)
-import Example.Instance.Tiles.Render as TilesRenderer exposing (grid)
+import Example.Instance.Text.Render as TextRenderer
+import Example.Instance.Image.Render as ImageRenderer
+import Example.Instance.Tiles.Render as TilesRenderer
 import Example.Instance.Tiles exposing (TilingRules(..), toIndexInSet, fromIndexInSet)
-import Example.Instance.Text.Plane exposing (TextPlane)
-import Example.Instance.Text.Plane as TextPlane exposing
-    (make, boundedStringToGrid, toBoundedStringFromGrid, merge)
+import Example.Instance.Text.Plane as TextPlane
 import Example.Instance.Image.Plane as ImagePlane exposing
-    (colorToPixel, pixelToColor, merge)
+    (colorToPixel, pixelToColor)
 import Example.Instance.Tiles.Plane exposing (TileKey)
-import Example.Instance.Tiles.Plane as TilesPlane exposing (merge)
+import Example.Instance.Tiles.Plane as TilesPlane
 import Example.Instance.Tiles.Rules as Rules
 import Example.Render exposing (Renderer)
 
-import Kvant.Core as Wfc
-import Kvant.Vec2 exposing (..)
-import Kvant.Plane exposing (Plane, Size)
+import Kvant.Vec2 exposing (Vec2)
+import Kvant.Plane as Plane
 import Kvant.Plane as Plane exposing (Boundary(..), Symmetry(..))
-import Kvant.Plane exposing (flip, rotate)
 import Kvant.Solver.Options exposing (Approach(..))
-import Kvant.Solver.Options as Solver exposing (Options)
-import Kvant.Solver.Options as Options exposing (encode)
-import Kvant.Solver as Solver exposing (Step)
-import Kvant.Solver.History as H exposing (..)
-import List.Extra exposing (group)
+import Kvant.Solver.Options as Solver
+import Kvant.Solver.Options as Options
 
 
 type alias Model =
@@ -87,9 +68,6 @@ type alias ImageAlias = String
 type alias TileGroup = String
 
 
-type alias Pixels = Array (Array Color)
-
-
 type Msg
     = NoOp
     -- switch to example
@@ -108,7 +86,7 @@ type Msg
     -- receiving from worker
     | GotResult (Grid Int)
     -- change options
-    | ChangeN Size
+    | ChangeN Plane.Size
     | ChangeSymmetry Symmetry
     | ChangeOutputWidth Int
     | ChangeOutputHeight Int
@@ -288,7 +266,7 @@ update msg model =
                             Options.encode options
                         , source =
                             source
-                                |> boundedStringToGrid
+                                |> TextPlane.boundedStringToGrid
                                 |> List.map (List.map Char.toCode)
                                 |> List.map Array.fromList
                                 |> Array.fromList
@@ -310,7 +288,7 @@ update msg model =
                         }
                     )
 
-                FromTiles options group rules _ ->
+                FromTiles options _ rules _ ->
                     (
                         { model
                         | status = WaitingRunResponse
@@ -344,7 +322,7 @@ update msg model =
                                 Options.encode options
                             , source =
                                 source
-                                    |> boundedStringToGrid
+                                    |> TextPlane.boundedStringToGrid
                                     |> List.map (List.map Char.toCode)
                                     |> List.map Array.fromList
                                     |> Array.fromList
@@ -366,7 +344,7 @@ update msg model =
                         }
                     )
 
-                FromTiles options group rules _ ->
+                FromTiles options _ rules _ ->
                     (
                         { model
                         | status = WaitingTracingResponse
@@ -968,7 +946,7 @@ viewSource ( renderSource, _ ) source =
 
 viewGrid : (Array a -> Html msg) -> Array (Array (Array a)) -> Html msg
 viewGrid viewElem =
-    Array.map Array.toList >> Array.toList >> grid viewElem
+    Array.map Array.toList >> Array.toList >> TilesRenderer.grid viewElem
 
 
 requestImage : ImageAlias -> Cmd Msg
@@ -1046,7 +1024,7 @@ errorToString error =
             errorMessage
 
 
-changeN : Size -> Solver.Options -> Solver.Options
+changeN : Plane.Size -> Solver.Options -> Solver.Options
 changeN n options =
     { options
     | approach =
@@ -1094,7 +1072,7 @@ changeOutputBoundary boundary options =
     }
 
 
-changeOutputSize : (Size -> Size) -> Solver.Options -> Solver.Options
+changeOutputSize : (Plane.Size -> Plane.Size) -> Solver.Options -> Solver.Options
 changeOutputSize f options =
     { options
     | outputSize = f options.outputSize

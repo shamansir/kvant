@@ -1,10 +1,6 @@
 module Kvant.Occurrence exposing (..)
 
 
-import Dict exposing (Dict)
-import Dict as Dict
-
-
 type Frequency = Frequency Float
 
 

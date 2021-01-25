@@ -13,7 +13,7 @@ module Kvant.Matches exposing
     )
 
 
-import Set exposing (Set)
+import Set
 
 
 type MoreThanOne a = MoreThanOne (List a)

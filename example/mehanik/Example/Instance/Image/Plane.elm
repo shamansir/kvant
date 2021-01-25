@@ -6,7 +6,7 @@ import Color exposing (Color)
 import Color
 import Image
 import Image exposing (Image, Pixel)
-import Image.Color as ImageC exposing (fromList2d)
+import Image.Color as ImageC
 import Bitwise
 
 import Kvant.Vec2 exposing (..)
@@ -69,7 +69,6 @@ merge : List Color -> Color
 merge colors =
     let
         optionsCount = List.length colors
-        maybeFirst = List.head colors
     in
         if optionsCount <= 0 then Color.purple
         else

@@ -3,9 +3,9 @@ module Example.Instance.Tiles.Plane exposing (..)
 import Array exposing (Array)
 
 
-import Kvant.Vec2 exposing (Vec2, loadSize)
-import Kvant.Plane exposing (..)
-import Kvant.Plane as Plane exposing (fromArray2d)
+import Kvant.Vec2 as Vec2
+import Kvant.Plane as Plane
+import Kvant.Plane exposing (Plane)
 
 
 type alias TileKey = String
@@ -24,13 +24,13 @@ noTile = "none"
 make : TileGrid -> TilesPlane
 make tileGrid =
     Plane.fromArray2d
-        (loadSize tileGrid |> Maybe.withDefault (0, 0))
+        (Vec2.loadSize tileGrid |> Maybe.withDefault (0, 0))
         tileGrid
 
 
 toGrid : TilesPlane -> List (List TileKey)
 toGrid plane =
-    toList2d plane
+    Plane.toList2d plane
         |> List.map (List.map <| Maybe.withDefault noTile)
 
 

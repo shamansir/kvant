@@ -1,7 +1,7 @@
 module Example.Instance.Tiles.Rules exposing (..)
 
 import Dict exposing (Dict)
-import Set exposing (Set)
+import Set
 import Array
 import Xml.Decode as D exposing (..)
 

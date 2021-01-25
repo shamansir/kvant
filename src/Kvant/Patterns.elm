@@ -4,9 +4,10 @@ import Dict exposing (Dict)
 
 import Kvant.Vec2 exposing (Vec2)
 import Kvant.Vec2 as Vec2
-import Kvant.Plane exposing (..)
+import Kvant.Plane exposing (Plane, Offset)
+import Kvant.Plane as Plane exposing (..)
 import Kvant.Occurrence exposing (..)
-import Kvant.Occurrence as Occurrence exposing (times, toInt)
+import Kvant.Occurrence as Occurrence
 
 
 type alias PatternId = Int
@@ -31,9 +32,9 @@ type alias UniquePatterns =
 
 
 preprocess
-    :  Symmetry
-    -> Boundary
-    -> Size
+    :  Plane.Symmetry
+    -> Plane.Boundary
+    -> Plane.Size
     -> Plane Key
     -> UniquePatterns
 preprocess symmetry boundary ofSize inPlane =
@@ -81,7 +82,7 @@ evaluateOccurrence subPlanes_ =
                      (
                          \subPlane_ ->
                              ( subPlanes_
-                                 |> List.filter (equal subPlane_)
+                                 |> List.filter (Plane.equal subPlane_)
                                  |> List.length
                                  |> Occurrence.times
                              , subPlane_
@@ -98,7 +99,7 @@ evaluateOccurrence subPlanes_ =
                  |> toFloat
         _ =
             withOccurrence
-                |> List.map (Tuple.mapSecond toList)
+                |> List.map (Tuple.mapSecond Plane.toList)
     in
         withOccurrence
             |> List.map
@@ -115,59 +116,7 @@ evaluateOccurrence subPlanes_ =
                 )
 
 
-{- limitsFor : Vec2 -> { from: Vec2, to: Vec2 }
-limitsFor (w, h) =
-    -- TODO: offsets for 1x1
-    if (w <= 0) || (h <= 0) then
-        { from = (0, 0), to = (0, 0 ) }
-    else
-        { from =
-            ( if w == 1 then 1 else -1 * (w - 1)
-            , if h == 1 then 1 else -1 * (h - 1)
-            )
-        , to =
-            ( if w == 1 then 1 else w - 1
-            , if h == 1 then 1 else h - 1
-            )
-        }
-
-
-shift : Offset Vec2 -> Plane Vec2 a -> Plane Vec2 a
-shift (Offset (offX, offY)) plane =
-    plane
-        |> transform (\(x, y) -> (x - offX, y - offY))
-
-
-shiftCut : Offset Vec2 -> Plane Vec2 a -> Plane Vec2 a
-shiftCut (Offset (offX, offY) as offset) (Plane (width, height) f as plane) =
-    plane
-        |> shift offset
-        |> adjust
-            (\((x, y), maybeV) ->
-                if
-                    (x >= 0) &&
-                    (y >= 0) &&
-                    (x >= offX) &&
-                    (y >= offY) &&
-                    (x < width) &&
-                    (y < height) then maybeV else Nothing
-            )
-
-
-overlappingCoords : Offset Vec2 -> Plane Vec2 a -> List Vec2
-overlappingCoords (Offset (offX, offY)) (Plane (width, height) _ as plane) =
-    coordsFlat plane
-        |> List.foldr
-            (\(x, y) prev ->
-                if (x + offX >= 0) &&
-                   (y + offY >= 0) &&
-                   (x + offX < width) &&
-                   (y + offY < height) then (x + offX, y + offY) :: prev else prev
-            )
-            [] -}
-
-
-overlappingCoords : Offset -> Size -> List Vec2
+overlappingCoords : Offset -> Plane.Size -> List Vec2
 overlappingCoords ( offX, offY ) ( width, height ) =
     Vec2.coordsFlat ( width, height )
         |> List.foldr
@@ -188,15 +137,15 @@ matchesAt offset patterns (Plane size _ as pattern) =
         |> Dict.foldr
             (\idx otherPattern matches -> -- ensure plane is the same size as the source
                 if otherPattern
-                    |> shift offset
-                    |> equalAt oCoords pattern
+                    |> Plane.shift offset
+                    |> Plane.equalAt oCoords pattern
                     then idx :: matches
                     else matches
             )
             []
 
 
-offsetsFor : Size -> List Offset
+offsetsFor : Plane.Size -> List Offset
 offsetsFor ( width, height ) =
     Vec2.rectFlat
         { from = ( -1 * (width - 1),  -1 * (height - 1) )
@@ -216,27 +165,28 @@ isAmong planes subject =
     planes
         |> List.foldl
                 (\other wasBefore ->
-                    wasBefore || equal subject other
+                    wasBefore || Plane.equal subject other
                 )
            False
 
-
 subPatterns
-    :  Symmetry
-    -> Boundary
-    -> Size
+    :  Plane.Symmetry
+    -> Plane.Boundary
+    -> Plane.Size
     -> Pattern
     -> List Pattern
 subPatterns symmetry method ofSize pattern =
     pattern
-    |> coords
+    |> Plane.coords
     |>  (List.map <|
-        case method of
-            Periodic ->
-                \coord -> periodicSubPlaneAt coord ofSize pattern
-            Bounded ->
-                \coord -> subPlaneAt coord ofSize pattern
+            case method of
+                Periodic ->
+                    \coord ->
+                        Plane.periodicSubPlaneAt coord ofSize pattern
+                Bounded ->
+                    \coord ->
+                        Plane.subPlaneAt coord ofSize pattern
         )
     |> List.filter filledWithValues
-    |> List.concatMap (views symmetry)
+    |> List.concatMap (Plane.views symmetry)
 

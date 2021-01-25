@@ -56,7 +56,7 @@ getCurrentPlane status =
 getHistory : Status fmt a -> Maybe History
 getHistory status =
     case status of
-        Solving plane history -> Just history
+        Solving _ history -> Just history
         _ -> Nothing
 
 

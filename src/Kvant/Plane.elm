@@ -2,8 +2,6 @@ module Kvant.Plane exposing (..)
 
 
 import Array exposing (Array)
-import Dict
-import Dict exposing (Dict)
 
 import Kvant.Vec2 exposing (Vec2)
 import Kvant.Vec2 as Vec2 exposing (rect)
@@ -228,9 +226,7 @@ toList (Plane _ grid) =
         |> List.concat
         |> List.filterMap
             (\(coord, maybeVal) ->
-                case maybeVal of
-                    Just val -> Just (coord, val)
-                    Nothing -> Nothing
+                maybeVal |> Maybe.map (Tuple.pair coord)
             )
 
 toList2d : Plane a -> List (List (Maybe a))
@@ -287,8 +283,11 @@ flipBy how (Plane (width, height) _ as plane) =
     plane |>
         transform
             (case how of
-                Horizontal -> \(x, y) -> (width - 1 - x, y)
-                Vertical -> \(x, y) -> (x, height - 1 - y))
+                Horizontal ->
+                    \(x, y) -> (width - 1 - x, y)
+                Vertical ->
+                    \(x, y) -> (x, height - 1 - y)
+            )
 
 
 rotate : Plane a -> Plane a
@@ -304,10 +303,15 @@ rotateTo orientation (Plane (width, height) _ as plane) =
     plane |>
         transform
             (case orientation of
-                North -> identity
-                West -> \(x, y) -> (height - 1 - y, x)
-                South -> \(x, y) -> (width - 1 - x, height - 1 - y)
-                East -> \(x, y) -> (y, width - 1 - x))
+                North ->
+                    identity
+                West ->
+                    \(x, y) -> (height - 1 - y, x)
+                South ->
+                    \(x, y) -> (width - 1 - x, height - 1 - y)
+                East ->
+                    \(x, y) -> (y, width - 1 - x)
+            )
 
 
 filledWithValues : Plane a -> Bool
@@ -319,7 +323,7 @@ filledWithValues (Plane _ grid) =
         |> List.foldl
             (\maybeV prev ->
                 prev && case maybeV of
-                    Just v -> True
+                    Just _ -> True
                     Nothing -> False
             )
             True

@@ -7,9 +7,9 @@ import Html.Attributes exposing (..)
 
 
 import Kvant.Vec2 exposing (..)
-import Kvant.Plane as Plane exposing (toList2d)
+import Kvant.Plane as Plane
 
-import Example.Render as Render exposing (..)
+import Example.Render exposing (Renderer)
 
 import Example.Instance.Tiles.Plane exposing (..)
 

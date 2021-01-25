@@ -2,24 +2,13 @@ module Example.Instance.Tiles exposing (..)
 
 
 import Array exposing (Array)
-import Dict exposing (Dict)
-import Color exposing (Color)
+import Dict
 import Set exposing (Set)
 
 
-import Image exposing (Image, dimensions)
-import Image.Color as ImageC exposing (toArray2d)
-
-import Kvant.Vec2 exposing (..)
-import Kvant.Plane as Plane exposing (empty)
-import Kvant.Core as Kvant exposing (..)
-import Kvant.Solver as Solver exposing (Step(..))
-import Kvant.Solver.Options exposing (Approach(..))
-import Kvant.Solver.Options as Solver exposing (Options)
 
 import Example.Advance exposing (Status(..), AdvanceMode(..))
 import Example.Instance.Tiles.Plane exposing (TileKey, TileGrid, noTile)
-import Example.Instance.Tiles.Plane as TilesPlane exposing (make)
 
 
 type TilingRules

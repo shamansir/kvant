@@ -3,17 +3,17 @@ module Example.Instance.Image.Render exposing (..)
 
 import Array exposing (Array)
 import Color exposing (Color)
-import Image exposing (Image, dimensions)
-import Image as Image exposing (fromList2d)
-import Image.Color as ImageC exposing (fromList2d)
+import Image exposing (Image)
+import Image as Image
+import Image.Color as ImageC
 
 import Html exposing (..)
 import Html.Attributes exposing (..)
 
 import Kvant.Vec2 exposing (..)
-import Kvant.Plane as Plane exposing (coords2d)
+import Kvant.Plane as Plane
 
-import Example.Render as Render exposing (..)
+import Example.Render exposing (Renderer)
 import Example.Instance.Image.Plane exposing (merge, pixelToColor)
 
 

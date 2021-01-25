@@ -7,14 +7,12 @@ import Array exposing (Array)
 import Json.Decode as D
 import Json.Encode as E
 
-import Kvant.Vec2 exposing (Vec2, loadSize)
+import Kvant.Vec2 as Vec2
 import Kvant.Core exposing (Wfc)
-import Kvant.Core as Wfc exposing (make, makeAdvancing)
-import Kvant.Solver as Solver exposing (..)
-import Kvant.Solver.History exposing (..)
-import Kvant.Solver.Options as Solver exposing (..)
-import Kvant.Solver.Options as Options exposing (decode)
-import Kvant.Patterns as P exposing (Key)
+import Kvant.Core as Wfc
+import Kvant.Solver as Solver
+import Kvant.Solver.Options as Solver
+import Kvant.Solver.Options exposing (Approach(..))
 import Kvant.Plane exposing (..)
 
 
@@ -79,7 +77,7 @@ update msg model =
                 sourcePlane =
                     source
                         |> fromArray2d
-                            (loadSize source |> Maybe.withDefault (0, 0))
+                            (Vec2.loadSize source |> Maybe.withDefault (0, 0))
                 solution =
                     Wfc.make options sourcePlane
                         |> Wfc.run seed
@@ -99,7 +97,7 @@ update msg model =
                 sourcePlane =
                     source
                         |> fromArray2d
-                            (loadSize source |> Maybe.withDefault (0, 0))
+                            (Vec2.loadSize source |> Maybe.withDefault (0, 0))
                 tracingWfc =
                     Wfc.makeAdvancing options sourcePlane
                 ( nextStep, traceResult ) =

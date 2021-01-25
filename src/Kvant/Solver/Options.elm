@@ -1,7 +1,6 @@
 module Kvant.Solver.Options exposing (..)
 
 
-import Kvant.Vec2 exposing (Vec2)
 import Kvant.Plane exposing (Plane(..), Size, Boundary(..), Symmetry(..))
 
 

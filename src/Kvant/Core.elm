@@ -11,15 +11,11 @@ import Dict
 
 import Kvant.Vec2 exposing (..)
 import Kvant.Plane exposing (Plane, Size)
-import Kvant.Plane as Plane exposing (empty)
 import Kvant.Solver as Solver exposing (Step(..), Solution)
-import Kvant.Solver.Options as Solver exposing (Options, Approach(..))
-import Kvant.Patterns as Patterns exposing (Key)
+import Kvant.Solver.Options as Solver exposing (Approach(..))
+import Kvant.Patterns as Patterns
 import Kvant.Matches exposing (..)
 import Kvant.Patterns exposing (UniquePatterns)
-
-
-type alias Key = Int
 
 
 type Wfc =
