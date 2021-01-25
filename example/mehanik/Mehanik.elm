@@ -34,6 +34,7 @@ import Kvant.Plane as Plane exposing (Boundary(..), Symmetry(..))
 import Kvant.Solver.Options exposing (Approach(..))
 import Kvant.Solver.Options as Solver
 import Kvant.Json.Options as Options
+import Kvant.Patterns exposing (UniquePatterns)
 
 
 type alias Model =
@@ -53,9 +54,25 @@ type Status
 
 type CurrentExample
     = NotSelected
-    | Textual Solver.Options ( Vec2, String ) ( Maybe (Grid Char) )
-    | FromImage Solver.Options Image (Maybe Image)
-    | FromTiles Solver.Options TileGroup TilingRules ( Maybe (Grid TileKey) )
+    | Textual
+        { options : Solver.Options
+        , source : ( Vec2, String )
+        , wave : Maybe (Grid Char)
+        , patterns : Maybe UniquePatterns
+        }
+    | FromImage
+        { options : Solver.Options
+        , source : Image
+        , wave : Maybe Image
+        , patterns : Maybe UniquePatterns
+        }
+    | FromTiles
+        { options : Solver.Options
+        , group : TileGroup
+        , rules : TilingRules
+        , wave : Maybe (Grid TileKey)
+        , patterns : Maybe UniquePatterns
+        }
 
 
 type alias Grid a = Array (Array (Array a))
@@ -255,7 +272,7 @@ update msg model =
                 NotSelected ->
                     ( model, Cmd.none )
 
-                Textual options source _ ->
+                Textual { options, source }  ->
                     (
                         { model
                         | status = WaitingRunResponse
@@ -272,7 +289,7 @@ update msg model =
                         }
                     )
 
-                FromImage options source _ ->
+                FromImage { options, source } ->
                     (
                         { model
                         | status = WaitingRunResponse
@@ -287,7 +304,7 @@ update msg model =
                         }
                     )
 
-                FromTiles options _ rules _ ->
+                FromTiles { options, rules } ->
                     (
                         { model
                         | status = WaitingRunResponse
@@ -310,7 +327,7 @@ update msg model =
                 NotSelected ->
                     ( model, Cmd.none )
 
-                Textual options source _ ->
+                Textual { options, source } ->
                     (
                         { model
                         | status = WaitingTracingResponse
@@ -328,7 +345,7 @@ update msg model =
                             }
                     )
 
-                FromImage options source _ ->
+                FromImage { options, source } ->
                     (
                         { model
                         | status = WaitingTracingResponse
@@ -343,7 +360,7 @@ update msg model =
                         }
                     )
 
-                FromTiles options _ rules _ ->
+                FromTiles { options, rules } ->
                     (
                         { model
                         | status = WaitingTracingResponse
@@ -383,13 +400,22 @@ update msg model =
                 , example =
                     case model.example of
                         NotSelected ->
-                            model.example
-                        Textual options source _ ->
-                            Textual options source Nothing
-                        FromImage options source _ ->
-                            FromImage options source Nothing
-                        FromTiles options group rules _ ->
-                            FromTiles options group rules Nothing
+                            NotSelected
+                        Textual state ->
+                            Textual
+                                { state
+                                | wave = Nothing
+                                }
+                        FromImage state ->
+                            FromImage
+                                { state
+                                | wave = Nothing
+                                }
+                        FromTiles state ->
+                            FromTiles
+                                { state
+                                | wave = Nothing
+                                }
                 }
             , stopWorker ()
             )
@@ -397,11 +423,13 @@ update msg model =
         SwitchToTextExample source ->
             (
                 { model
-                | example = Textual defaultTextOptions source Nothing
-
-                    {- Textual defaultTextOptions
-                        <| TextExample.quick defaultTextOptions ( size, source )
-                    -}
+                | example =
+                    Textual
+                        { options = defaultTextOptions
+                        , source = source
+                        , wave = Nothing
+                        , patterns = Nothing
+                        }
                 }
             , Cmd.none
             )
@@ -409,7 +437,13 @@ update msg model =
         SwitchToImageExample image ->
             (
                 { model
-                | example = FromImage defaultImageOptions image Nothing
+                | example =
+                    FromImage
+                        { options = defaultImageOptions
+                        , source = image
+                        , wave = Nothing
+                        , patterns = Nothing
+                        }
                 }
             , Cmd.none
             )
@@ -420,7 +454,13 @@ update msg model =
                 | example =
                     case model.rules |> Dict.get group of
                         Just (Ok rules) ->
-                            FromTiles defaultTilesOptions group rules Nothing
+                            FromTiles
+                                { options = defaultTilesOptions
+                                , group = group
+                                , rules = rules
+                                , wave = Nothing
+                                , patterns = Nothing
+                                }
                         _ ->
                             model.example
                 }
@@ -531,35 +571,46 @@ update msg model =
                         NotSelected ->
                             model.example
 
-                        Textual options source _ ->
-                            Textual options source
-                                <| (grid
-                                    |> Array.map
-                                        (Array.map <| Array.map Char.fromCode)
-                                    |> Just)
+                        Textual state ->
+                            Textual
+                                { state
+                                | wave =
+                                    grid
+                                        |> Array.map
+                                            (Array.map <| Array.map Char.fromCode)
+                                        |> Just
+                                }
 
-                        FromImage options source _ ->
-                            FromImage options source
-                                <| (grid
-                                    |> Array.map
-                                        (Array.map
-                                            <| Array.map pixelToColor
-                                                >> Array.toList
-                                                >> ImagePlane.merge)
-                                    |> ImageC.fromArray2d
-                                    |> Just)
+                        FromImage state ->
+                            FromImage
+                                { state
+                                | wave =
+                                    grid
+                                        |> Array.map
+                                            (Array.map
+                                                <| Array.map pixelToColor
+                                                    >> Array.toList
+                                                    >> ImagePlane.merge)
+                                        |> ImageC.fromArray2d
+                                        |> Just
+                                }
 
-                        FromTiles options group (FromGrid tileSet _ as rules) _ ->
-                            FromTiles options group rules
-                                <| (grid
-                                    |> Array.map
-                                        (Array.map
-                                            <| Array.map <| fromIndexInSet tileSet)
-                                    |> Just)
-
-                        FromTiles options group (FromRules _ as rules) _ -> -- FIXME: TODO
-                            model.example
-
+                        FromTiles state ->
+                            FromTiles
+                                <| case state.rules of
+                                    FromGrid tileSet _ ->
+                                        { state
+                                        | wave =
+                                            grid
+                                            |> Array.map
+                                                (Array.map
+                                                    <| Array.map
+                                                    <| fromIndexInSet tileSet
+                                                )
+                                            |> Just
+                                        }
+                                    FromRules _ ->
+                                        state  -- FIXME: TODO
                 }
             , Cmd.none
             )
@@ -572,29 +623,29 @@ view model =
         viewExample example =
             case example of
 
-                Textual _ source maybeGrid ->
+                Textual { source, wave } ->
                     div
                         []
                         [ viewSource TextRenderer.make source
                         , hr [] []
-                        , maybeGrid
+                        , wave
                             |> Maybe.map
                                 (viewGrid <| Array.toList >> TextPlane.merge >> TextRenderer.char)
                             |> Maybe.withDefault (div [] [])
                         ]
 
-                FromImage _ source maybeImage ->
+                FromImage { source, wave } ->
                     div
                         []
                         [ viewSource ImageRenderer.make source
                         , hr [] []
-                        , maybeImage
+                        , wave
                             |> Maybe.map ImageRenderer.drawImage
                             |> Maybe.withDefault (div [] [])
                         ]
                     --Example.view ImageRenderer.make exampleModel
 
-                FromTiles _ group rules maybeGrid ->
+                FromTiles { group, rules, wave } ->
                     case tiledExamples |> Dict.get group of
                         Just ( tiles, format ) ->
                             div []
@@ -613,7 +664,7 @@ view model =
                                             [ viewSource
                                                 (TilesRenderer.make <| toTileUrl format group)
                                                 grid
-                                            , maybeGrid
+                                            , wave
                                                 |> Maybe.map
                                                     (TilesRenderer.grid1
                                                         <| Array.toList
@@ -902,9 +953,9 @@ view model =
                 [ onInput selectionToMsg ]
                 makeOptions -}
             , case model.example of
-                Textual options _ _ -> controls options
-                FromImage options _ _ -> controls options
-                FromTiles options _ _ _-> controls options
+                Textual { options } -> controls options
+                FromImage { options } -> controls options
+                FromTiles { options } -> controls options
                 NotSelected -> Html.text ""
             , viewExample model.example
             ]
@@ -1081,12 +1132,12 @@ changeOutputSize f options =
 changeOptions : (Solver.Options -> Solver.Options) -> CurrentExample -> CurrentExample
 changeOptions f current =
     case current of
-        Textual options source maybeGrid ->
-            Textual (f options) source maybeGrid
-        FromImage options image maybeGrid ->
-            FromImage (f options) image maybeGrid
-        FromTiles options group rules maybeGrid ->
-            FromTiles (f options) group rules maybeGrid
+        Textual state ->
+            Textual { state | options = f state.options }
+        FromImage state ->
+            FromImage { state | options = f state.options }
+        FromTiles state ->
+            FromTiles { state | options = f state.options }
         _ -> current
 
 
