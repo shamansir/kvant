@@ -7,7 +7,6 @@ import Dict exposing (Dict)
 import Array exposing (Array)
 import Bytes exposing (Bytes)
 import Json.Encode as E
-import Color exposing (Color)
 import Image exposing (Image)
 import Image.Color as ImageC
 
@@ -34,7 +33,7 @@ import Kvant.Plane as Plane
 import Kvant.Plane as Plane exposing (Boundary(..), Symmetry(..))
 import Kvant.Solver.Options exposing (Approach(..))
 import Kvant.Solver.Options as Solver
-import Kvant.Solver.Options as Options
+import Kvant.Json.Options as Options
 
 
 type alias Model =

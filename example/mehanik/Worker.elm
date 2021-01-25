@@ -14,6 +14,7 @@ import Kvant.Solver as Solver
 import Kvant.Solver.Options as Solver
 import Kvant.Solver.Options exposing (Approach(..))
 import Kvant.Plane exposing (..)
+import Kvant.Json.Options as Options
 
 
 type alias Source = Array (Array Int)
@@ -190,15 +191,15 @@ update msg model =
 
 
 subscriptions : Model -> Sub Msg
-subscriptions model =
+subscriptions _ =
     Sub.batch
         [ run <| \{options, source} ->
-            case options |> D.decodeValue Solver.decode of
+            case options |> D.decodeValue Options.decode of
                 Ok decodedOptions -> Run decodedOptions source
                 Err _ -> Run defaultOptions source
 
         , trace <| \{options, source} ->
-            case options |> D.decodeValue Solver.decode of
+            case options |> D.decodeValue Options.decode of
                 Ok decodedOptions -> Trace decodedOptions source
                 Err _ -> Trace defaultOptions source
         , step <| always Step
@@ -235,9 +236,17 @@ port step : (() -> msg) -> Sub msg
 
 port back : (() -> msg) -> Sub msg
 
+port getPatterns : ({ options : E.Value, source : Source } -> msg) -> Sub msg
+
+port getMatchesAt : (( Int, Int ) -> msg) -> Sub msg
+
 port onResult : RunResult -> Cmd msg
 
 port onStep : StepResult -> Cmd msg
+
+port onPatterns : E.Value -> Cmd msg
+
+port onMatches : E.Value -> Cmd msg
 
 -- TODO: getTiles:
 
