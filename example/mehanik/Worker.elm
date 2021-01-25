@@ -8,6 +8,7 @@ import Json.Decode as D
 import Json.Encode as E
 
 import Kvant.Vec2 as Vec2
+import Kvant.Vec2 exposing (Vec2)
 import Kvant.Core exposing (Wfc)
 import Kvant.Core as Wfc
 import Kvant.Solver as Solver
@@ -15,6 +16,8 @@ import Kvant.Solver.Options as Solver
 import Kvant.Solver.Options exposing (Approach(..))
 import Kvant.Plane exposing (..)
 import Kvant.Json.Options as Options
+import Kvant.Json.Patterns as Patterns
+import Kvant.Patterns as Patterns
 
 
 type alias Source = Array (Array Int)
@@ -43,6 +46,8 @@ type Msg
     | StepBack
     | StepBackWith Random.Seed
     | Stop
+    | GetPatterns Solver.Options Source
+    | GetMatchesAt Vec2
 
 
 defaultOptions : Solver.Options
@@ -188,6 +193,33 @@ update msg model =
             , Cmd.none
             )
 
+        GetPatterns options source ->
+            ( model
+            , case options.approach of
+                Overlapping overlappingOptions ->
+                    let
+                        sourcePlane =
+                            source
+                                |> fromArray2d
+                                    (Vec2.loadSize source |> Maybe.withDefault (0, 0))
+                    in
+                    sourcePlane
+                        |> Patterns.preprocess
+                            overlappingOptions.symmetry
+                            overlappingOptions.inputBoundary
+                            overlappingOptions.patternSize
+                        |> Patterns.encode
+                        |> onPatterns
+                Tiled ->
+                    Cmd.none
+            )
+
+        GetMatchesAt _ ->
+            -- FIXME:
+            ( Empty
+            , Cmd.none
+            )
+
 
 
 subscriptions : Model -> Sub Msg
@@ -196,15 +228,20 @@ subscriptions _ =
         [ run <| \{options, source} ->
             case options |> D.decodeValue Options.decode of
                 Ok decodedOptions -> Run decodedOptions source
-                Err _ -> Run defaultOptions source
+                Err _ -> Run defaultOptions source -- FIXME: show error
 
         , trace <| \{options, source} ->
             case options |> D.decodeValue Options.decode of
                 Ok decodedOptions -> Trace decodedOptions source
-                Err _ -> Trace defaultOptions source
+                Err _ -> Trace defaultOptions source -- FIXME: show error
         , step <| always Step
         , back <| always StepBack
         , stop <| always Stop
+        , getPatterns <| \{options, source} ->
+            case options |> D.decodeValue Options.decode of
+                Ok decodedOptions -> GetPatterns decodedOptions source
+                Err _ -> Stop -- FIXME: show error
+        , getMatchesAt GetMatchesAt
         ]
 
 
@@ -247,9 +284,3 @@ port onStep : StepResult -> Cmd msg
 port onPatterns : E.Value -> Cmd msg
 
 port onMatches : E.Value -> Cmd msg
-
--- TODO: getTiles:
-
--- TODO: getNeighbours
-
--- TODO: onStatus
