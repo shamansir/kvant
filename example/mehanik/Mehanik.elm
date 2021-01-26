@@ -54,6 +54,8 @@ type Status
     = None
     | WaitingRunResponse
     | WaitingTracingResponse
+    | WaitingPatternsResponse Status
+    | WaitingMatchesResponse Status
     | Tracing
 
 
@@ -85,11 +87,15 @@ type Msg
     | Step
     | StepBack
     | Stop
+    | Preprocess
+    | FindMatchesAt Vec2
     -- receiving from Http requests
     | GotImage ImageAlias (Result Http.Error Image)
     | GotRules TileGroup (Result String TilingRules)
     -- receiving from worker
     | GotResult (Grid Int)
+    | GotPatterns UniquePatterns
+    | GotMatches (Neighbours (Matches Int))
     -- change options
     | ChangeN Plane.Size
     | ChangeSymmetry Symmetry
@@ -388,6 +394,72 @@ update msg model =
             , stopWorker ()
             )
 
+        Preprocess ->
+            case model.example of
+
+                NotSelected ->
+                    ( model, Cmd.none )
+
+                Textual source _  ->
+                    (
+                        { model
+                        | status =
+                            WaitingPatternsResponse model.status
+                        }
+                    , preprocessInWorker
+                        { options =
+                            Options.encode model.options
+                        , source =
+                            source
+                                |> TextPlane.boundedStringToGrid
+                                |> List.map (List.map Char.toCode)
+                                |> List.map Array.fromList
+                                |> Array.fromList
+                        }
+                    )
+
+                FromImage source _ ->
+                    (
+                        { model
+                        | status =
+                            WaitingPatternsResponse model.status
+                        }
+                    , preprocessInWorker
+                        { options =
+                            Options.encode model.options
+                        , source =
+                            source
+                                |> ImageC.toArray2d
+                                |> Array.map (Array.map colorToPixel)
+                        }
+                    )
+
+                FromTiles _ rules _ ->
+                    (
+                        { model
+                        | status =
+                            WaitingPatternsResponse model.status
+                        }
+                    , case rules of
+                        FromGrid tileSet grid ->
+                            preprocessInWorker
+                                { options =
+                                    Options.encode model.options
+                                , source =
+                                    grid
+                                        |> Array.map (Array.map <| toIndexInSet tileSet)
+                                }
+                        FromRules _ -> Cmd.none
+                    )
+
+        FindMatchesAt pos ->
+            (
+                { model
+                | status = WaitingMatchesResponse model.status
+                }
+            , getMatchesAt pos
+            )
+
         SwitchToTextExample source ->
             (
                 { model
@@ -535,6 +607,8 @@ update msg model =
                         None -> None
                         WaitingRunResponse -> None
                         WaitingTracingResponse -> Tracing
+                        WaitingPatternsResponse prevStatus -> prevStatus
+                        WaitingMatchesResponse prevStatus -> prevStatus
                         Tracing -> Tracing
                 , example
                     = case model.example of
@@ -586,6 +660,24 @@ update msg model =
                                         Nothing  -- FIXME: TODO
                                 )
 
+                }
+            , Cmd.none
+            )
+
+        GotPatterns patterns ->
+            (
+                { model
+                | patterns =
+                    Just patterns
+                }
+            , Cmd.none
+            )
+
+        GotMatches matches ->
+            (
+                { model
+                | matches =
+                    Just matches
                 }
             , Cmd.none
             )
@@ -1019,7 +1111,7 @@ loadImage response =
         Http.BadStatus_ metadata _ ->
           Err (Http.BadStatus metadata.statusCode)
 
-        Http.GoodStatus_ metadata bytes ->
+        Http.GoodStatus_ _ bytes ->
           case Image.decode bytes of
             Just image ->
               Ok image
@@ -1101,7 +1193,6 @@ changeOutputSize f options =
     | outputSize = f options.outputSize
     }
 
-
 port runInWorker : { options : E.Value, source : Array (Array Int) } -> Cmd msg
 
 port traceInWorker : { options : E.Value, source : Array (Array Int) } -> Cmd msg
@@ -1112,4 +1203,12 @@ port stepBackInWorker : () -> Cmd msg
 
 port stopWorker : () -> Cmd msg
 
+port preprocessInWorker : { options : E.Value, source : Array (Array Int) } -> Cmd msg
+
+port getMatchesAt : ( Int, Int ) -> Cmd msg
+
 port gotWorkerResult : (Array (Array (Array Int)) -> msg) -> Sub msg
+
+port gotPatternsFromWorker : (E.Value -> msg) -> Sub msg
+
+port gotMatchesFromWorker : (E.Value -> msg) -> Sub msg
