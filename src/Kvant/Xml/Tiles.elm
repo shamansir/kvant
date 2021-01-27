@@ -43,8 +43,20 @@ tilesSpecDecoder =
 
 tilesGridDecoder : AliasToName -> Decoder (List (List String))
 tilesGridDecoder aliasToName =
-    (path [ "row" ] <| list <| stringAttr "tiles")
-        |> D.map (List.map unwrapRow)
+    (path [ "row" ]
+        <| list
+        <| path [ "tile" ]
+        <| list
+        <| D.map2
+            Tuple.pair
+            (stringAttr "name")
+            (maybe <| intAttr "times")
+    )
+        |> D.map
+            (List.map
+                (List.map (Tuple.mapSecond <| Maybe.withDefault 1)
+                    >> unwrapRow)
+                )
         |> D.map
             (List.map
                 (List.map
@@ -53,17 +65,15 @@ tilesGridDecoder aliasToName =
             )
 
 
-unwrapRow : String -> List String
+unwrapRow : List (String, Int) -> List String
 unwrapRow =
-    String.split ":"
-        >> List.foldl
-            (\tile prev ->
-                case String.split "*" tile of
-                    t::countStr::_ ->
-                        case String.toInt countStr of
-                            Just count -> List.repeat count t ++ prev
-                            Nothing -> tile :: prev
-                    _ -> tile :: prev
-            )
-            []
-        >> List.reverse
+    List.foldl
+        (\(tile, count) prev ->
+            if count == 1 then
+                tile :: prev
+            else if count > 0 then
+                List.repeat count tile ++ prev
+            else prev
+        )
+        []
+    >> List.reverse
