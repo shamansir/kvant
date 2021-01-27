@@ -44,8 +44,7 @@ type MaximumSteps = MaximumSteps Int
 
 
 type Observation
-    = Unknown
-    | Collapsed
+    = Collapsed
     | Contradiction
     | Focus Coord PatternId
 
@@ -90,8 +89,6 @@ advance patterns (Step _ _ outputSize _ as step) =
                 ( Collapsed, oSeed ) ->
                     nextStep oSeed step <| Solved wave
                 ( Contradiction, oSeed ) ->
-                    nextStep oSeed step <| Terminated
-                ( Unknown, oSeed ) ->
                     nextStep oSeed step <| Terminated
                 ( Focus position pattern, oSeed ) ->
                     case wave
