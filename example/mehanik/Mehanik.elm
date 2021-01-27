@@ -1231,6 +1231,7 @@ changeOutputSize f options =
     | outputSize = f options.outputSize
     }
 
+
 port runInWorker : { options : E.Value, source : Array (Array Int) } -> Cmd msg
 
 port traceInWorker : { options : E.Value, source : Array (Array Int) } -> Cmd msg

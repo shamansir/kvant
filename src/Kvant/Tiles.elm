@@ -2,7 +2,7 @@ module Kvant.Tiles exposing (..)
 
 
 import Array exposing (Array)
-import Dict
+import Dict exposing (Dict)
 import Set exposing (Set)
 
 
@@ -13,13 +13,24 @@ import Kvant.Plane exposing (Plane)
 type alias TileKey = String
 
 
+type Rotation
+    = Times Int
+
+
+type Symmetry
+    = I | X | L | T | S -- S meaning Slope
+
+
 type alias TileGrid = Array (Array TileKey)
 
 
 type alias TilesPlane = Plane TileKey
 
 
-type alias TileSet = ( Int -> Maybe TileKey, TileKey -> Maybe Int )
+type alias TileSet =
+    ( Dict Int TileKey
+    , Dict TileKey Int
+    )
 
 
 noTile = "none"
@@ -40,25 +51,21 @@ buildTileset =
                 )
            )
         >> Tuple.mapBoth Dict.fromList Dict.fromList
-        >> Tuple.mapBoth
-            (\dict -> \v -> Dict.get v dict)
-            (\dict -> \v -> Dict.get v dict)
 
 
 toIndexInSet : TileSet -> TileKey -> Int
-toIndexInSet ( _, toIndex ) =
-    toIndex >> Maybe.withDefault -1
+toIndexInSet ( _, toIndex ) key =
+    Dict.get key toIndex |> Maybe.withDefault -1
 
 
 fromIndexInSet : TileSet -> Int -> TileKey
-fromIndexInSet ( fromIndex , _ ) =
-    fromIndex >> Maybe.withDefault noTile
+fromIndexInSet ( fromIndex , _ ) key =
+    Dict.get key fromIndex |> Maybe.withDefault noTile
 
 
 toIndexGrid : TileSet -> Array (Array TileKey) -> Array (Array Int)
 toIndexGrid tileSet =
     Array.map << Array.map <| toIndexInSet tileSet
-
 
 
 fromIndexGrid : TileSet -> Array (Array Int) -> Array (Array TileKey)
