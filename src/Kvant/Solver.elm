@@ -154,7 +154,7 @@ propagate uniquePatterns focus pattern wave =
                         |> Maybe.withDefault Matches.none
 
                 probeNeighbours withWave =
-                    Neighbours.cross
+                    Neighbours.cardinal
                         |> List.foldl
                             (\dir curWave ->
 

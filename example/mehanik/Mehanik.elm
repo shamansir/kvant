@@ -17,17 +17,6 @@ import Html.Attributes exposing (..)
 import Html.Attributes as H
 import Html.Events exposing (..)
 
-import Example.Instance.Text.Render as TextRenderer
-import Example.Instance.Image.Render as ImageRenderer
-import Example.Instance.Tiles.Render as TilesRenderer
-import Example.Instance.Tiles exposing (TilingRules(..), toIndexInSet, fromIndexInSet)
-import Example.Instance.Text.Plane as TextPlane
-import Example.Instance.Image.Plane as ImagePlane exposing
-    (colorToPixel, pixelToColor)
-import Example.Instance.Tiles.Plane exposing (TileKey)
-import Example.Instance.Tiles.Plane as TilesPlane
-import Example.Instance.Tiles.Rules as Rules
-import Example.Render exposing (Renderer)
 
 import Kvant.Vec2 exposing (Vec2)
 import Kvant.Plane as Plane
@@ -39,6 +28,19 @@ import Kvant.Patterns exposing (UniquePatterns)
 import Kvant.Json.Patterns as Patterns
 import Kvant.Neighbours exposing (Neighbours)
 import Kvant.Matches exposing (Matches)
+import Kvant.Tiles exposing (toIndexInSet, fromIndexInSet, TileKey)
+import Kvant.TilingRules exposing (TilingRules(..))
+import Kvant.Xml.TilingRules as Rules exposing (decode)
+
+
+import Example.Instance.Text.Render as TextRenderer
+import Example.Instance.Image.Render as ImageRenderer
+import Example.Instance.Tiles.Render as TilesRenderer
+import Example.Instance.Text.Plane as TextPlane
+import Example.Instance.Image.Plane as ImagePlane exposing
+    (colorToPixel, pixelToColor)
+import Example.Instance.Tiles.Plane as TilesPlane
+import Example.Render exposing (Renderer)
 
 
 type alias Model =
