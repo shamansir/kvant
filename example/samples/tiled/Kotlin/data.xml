@@ -1,298 +1,298 @@
 <set size="15">
     <tiles>
-        <tile name="filled_corner_bl" alias="fbl" />
-        <tile name="filled_corner_br" alias="fbr" />
-        <tile name="filled_corner_tl" alias="ftl" />
-        <tile name="filled_corner_tr" alias="ftr" />
-        <tile name="filled_quad" alias="fq" />
-        <tile name="mixed_corner_bl" alias="mbl" />
-        <tile name="mixed_corner_br" alias="mbr" />
-        <tile name="mixed_corner_tl" alias="mtl" />
-        <tile name="mixed_corner_tr" alias="mtr" />
-        <tile name="mixed_clash_corner_bl" alias="mcbl" />
-        <tile name="mixed_clash_corner_br" alias="mcbr" />
-        <tile name="mixed_clash_corner_tl" alias="mctl" />
-        <tile name="mixed_clash_corner_tr" alias="mctr" />
-        <tile name="striped_corner_bl" alias="sbl" />
-        <tile name="striped_corner_br" alias="sbr" />
-        <tile name="striped_corner_tl" alias="stl" />
-        <tile name="striped_corner_tr" alias="str" />
-        <tile name="striped_quad_l" alias="sql" />
-        <tile name="striped_quad_r" alias="sqr" />
-        <tile name="empty" alias="e" />
+        <tile name="filled_corner_bl" />
+        <tile name="filled_corner_br" />
+        <tile name="filled_corner_tl" />
+        <tile name="filled_corner_tr" />
+        <tile name="filled_quad" />
+        <tile name="mixed_corner_bl" />
+        <tile name="mixed_corner_br" />
+        <tile name="mixed_corner_tl" />
+        <tile name="mixed_corner_tr" />
+        <tile name="mixed_clash_corner_bl" />
+        <tile name="mixed_clash_corner_br" />
+        <tile name="mixed_clash_corner_tl" />
+        <tile name="mixed_clash_corner_tr" />
+        <tile name="striped_corner_bl" />
+        <tile name="striped_corner_br" />
+        <tile name="striped_corner_tl" />
+        <tile name="striped_corner_tr" />
+        <tile name="striped_quad_l" />
+        <tile name="striped_quad_r" />
+        <tile name="empty" />
     </tiles>
     <grid>
         <row>
-            <tile name="e" times="27" />
-            <tile name="fbr" />
-            <tile name="e" />
-        </row>
-        <row>
-            <tile name="e" times="26" />
-            <tile name="fbr" />
-            <tile name="fq" />
-            <tile name="e" />
-        </row>
-        <row>
-            <tile name="e" times="26" />
-            <tile name="fq" />
-            <tile name="ftl" />
-            <tile name="e" />
-        </row>
-        <row>
-            <tile name="e" times="24" />
-            <tile name="sbl" />
-            <tile name="e" />
-            <tile name="ftl" />
-            <tile name="e" times="2" />
-        </row>
-        <row>
-            <tile name="e" times="18" />
-            <tile name="fbr" />
-            <tile name="sbr" />
-            <tile name="sbl" />
-            <tile name="fbl" />
-            <tile name="e" times="2" />
-            <tile name="sql" />
-            <tile name="sbl" />
-            <tile name="e" times="2" />
-            <tile name="sbr" />
-        </row>
-        <row>
-            <tile name="e" times="18" />
-            <tile name="fq" />
-            <tile name="sql" />
-            <tile name="sqr" />
-            <tile name="fq" />
-            <tile name="e" times="2" />
-            <tile name="str" />
-            <tile name="sql" />
-            <tile name="e" />
-            <tile name="sbr" />
-            <tile name="sqr" />
-        </row>
-        <row>
-            <tile name="e" times="18" />
-            <tile name="fq" />
-            <tile name="sql" />
-            <tile name="sqr" />
-            <tile name="fq" />
-            <tile name="fbr" />
-            <tile name="fbl" />
-            <tile name="e" />
-            <tile name="str" />
-            <tile name="sbr" />
-            <tile name="sqr" />
-            <tile name="stl" />
-            <tile name="e" />
-        </row>
-        <row>
-            <tile name="e" times="15" />
-            <tile name="fbr" />
-            <tile name="e" times="2" />
-            <tile name="ftr" />
-            <tile name="sql" />
-            <tile name="sqr" />
-            <tile name="fq" times="3" />
-            <tile name="fbl" />
-            <tile name="e" />
-            <tile name="sqr" />
-            <tile name="stl" />
-            <tile name="e" />
-        </row>
-        <row>
-            <tile name="e" times="12" />
-            <tile name="fbr" />
-            <tile name="fbl" />
-            <tile name="fbr" />
-            <tile name="fq" />
-            <tile name="e" />
-            <tile name="sbl" />
-            <tile name="e" />
-            <tile name="str" />
-            <tile name="mbr" />
-            <tile name="fq" />
-            <tile name="ftl" />
-            <tile name="ftr" />
-            <tile name="fq" />
-            <tile name="fbl" />
-            <tile name="mbr" />
-            <tile name="fbl" />
-            <tile name="e" />
-        </row>
-        <row>
-            <tile name="e" times="13" />
-            <tile name="fq" times="2" />
-            <tile name="ftl" />
-            <tile name="e" />
-            <tile name="sql" />
-            <tile name="sbl" />
-            <tile name="e" />
-            <tile name="fq" />
-            <tile name="ftl" />
-            <tile name="e" times="3" />
-            <tile name="sbr" />
-            <tile name="fq" times="2" />
-            <tile name="fbl" />
-        </row>
-        <row>
-            <tile name="e" times="13" />
-            <tile name="ftr" />
-            <tile name="mctl" />
-            <tile name="sbl" />
-            <tile name="e" />
-            <tile name="str" />
-            <tile name="sql" />
-            <tile name="sbl" />
-            <tile name="ftl" />
-            <tile name="e" times="3" />
-            <tile name="sbr" />
-            <tile name="sqr" />
-            <tile name="fq" times="3" />
-        </row>
-        <row>
-            <tile name="e" times="14" />
-            <tile name="str" />
-            <tile name="sql" />
-            <tile name="sbl" />
-            <tile name="e" />
-            <tile name="mbl" />
-            <tile name="sql" />
-            <tile name="e" />
-            <tile name="fbr" />
-            <tile name="e" />
-            <tile name="sbr" />
-            <tile name="sqr" />
-            <tile name="stl" />
-            <tile name="ftr" />
-            <tile name="fq" />
-            <tile name="ftr" />
-        </row>
-        <row>
-            <tile name="e" times="5" />
-            <tile name="fbl" />
-            <tile name="e" times="4" />
-            <tile name="sbr" />
-            <tile name="sbl" />
-            <tile name="e" times="3" />
-            <tile name="str" />
-            <tile name="sql" />
-            <tile name="e" />
-            <tile name="fq" />
-            <tile name="mbl" />
-            <tile name="fbr" />
-            <tile name="fq" />
-            <tile name="e" />
-            <tile name="sqr" />
-            <tile name="stl" />
-            <tile name="e" />
-            <tile name="fbr" />
-            <tile name="fq" />
-            <tile name="sbr" />
-        </row>
-        <row>
-            <tile name="e" times="3" />
-            <tile name="sbr" />
-            <tile name="fbl" />
-            <tile name="fq" />
-            <tile name="fbl" />
-            <tile name="e" times="2" />
-            <tile name="sbr" />
-            <tile name="sqr" />
-            <tile name="sql" />
-            <tile name="sbl" />
-            <tile name="e" times="3" />
-            <tile name="str" />
-            <tile name="e" />
-            <tile name="ftr" />
-            <tile name="fq" />
-            <tile name="fq" />
-            <tile name="ftl" />
-            <tile name="e" />
-            <tile name="stl" />
-            <tile name="e" times="2" />
-            <tile name="fq" />
-            <tile name="mtl" />
-            <tile name="sqr" />
-        </row>
-        <row>
-            <tile name="e" times="2" />
-            <tile name="sbr" />
-            <tile name="sqr" />
-            <tile name="fq" />
-            <tile name="ftr" />
-            <tile name="fq" />
-            <tile name="fbl" />
-            <tile name="sbr" />
-            <tile name="sqr" />
-            <tile name="mbr" />
-            <tile name="str" />
-            <tile name="sql" />
-            <tile name="sbl" />
-            <tile name="e" times="2" />
-            <tile name="fbr" />
-            <tile name="fbl" />
-            <tile name="e" />
-            <tile name="ftr" />
-            <tile name="ftl" />
-            <tile name="e" times="2" />
-            <tile name="fbl" />
-            <tile name="e" times="2" />
-            <tile name="mtl" />
-            <tile name="sqr" />
-            <tile name="stl" />
-        </row>
-        <row>
-            <tile name="fbl" />
-            <tile name="sbr" />
-            <tile name="sqr" />
-            <tile name="stl" />
-            <tile name="ftr" />
-            <tile name="e" />
-            <tile name="ftr" />
-            <tile name="fq" />
-            <tile name="sqr" />
-            <tile name="mbr" />
-            <tile name="fq" />
+            <tile name="empty" times="27" />
+            <tile name="filled_corner_br" />
             <tile name="empty" />
-            <tile name="str" />
-            <tile name="sql" />
-            <tile name="e" />
-            <tile name="fbr" />
-            <tile name="fq" />
-            <tile name="fq" />
-            <tile name="fbl" />
-            <tile name="sbr" />
-            <tile name="sqr" />
-            <tile name="stl" />
-            <tile name="e" />
-            <tile name="fq" />
-            <tile name="fbl" />
-            <tile name="e" />
-            <tile name="sqr" />
-            <tile name="stl" />
-            <tile name="e" />
         </row>
         <row>
-            <tile name="fq" />
-            <tile name="sqr" />
-            <tile name="stl" />
-            <tile name="e" times="4" />
-            <tile name="ftr" />
-            <tile name="mbr" />
-            <tile name="fq" times="2" />
-            <tile name="e" times="2" />
-            <tile name="str" />
-            <tile name="fbr" />
-            <tile name="fq" times="2" />
-            <tile name="fq" times="2" />
-            <tile name="mcbl" />
-            <tile name="stl" />
-            <tile name="e" times="2" />
-            <tile name="fq" times="2" />
-            <tile name="fbl" />
-            <tile name="stl" />
-            <tile name="e" times="2" />
+            <tile name="empty" times="26" />
+            <tile name="filled_corner_br" />
+            <tile name="filled_quad" />
+            <tile name="empty" />
+        </row>
+        <row>
+            <tile name="empty" times="26" />
+            <tile name="filled_quad" />
+            <tile name="filled_corner_tl" />
+            <tile name="empty" />
+        </row>
+        <row>
+            <tile name="empty" times="24" />
+            <tile name="striped_corner_bl" />
+            <tile name="empty" />
+            <tile name="filled_corner_tl" />
+            <tile name="empty" times="2" />
+        </row>
+        <row>
+            <tile name="empty" times="18" />
+            <tile name="filled_corner_br" />
+            <tile name="striped_corner_br" />
+            <tile name="striped_corner_bl" />
+            <tile name="filled_corner_bl" />
+            <tile name="empty" times="2" />
+            <tile name="striped_quad_l" />
+            <tile name="striped_corner_bl" />
+            <tile name="empty" times="2" />
+            <tile name="striped_corner_br" />
+        </row>
+        <row>
+            <tile name="empty" times="18" />
+            <tile name="filled_quad" />
+            <tile name="striped_quad_l" />
+            <tile name="striped_quad_r" />
+            <tile name="filled_quad" />
+            <tile name="empty" times="2" />
+            <tile name="striped_corner_tr" />
+            <tile name="striped_quad_l" />
+            <tile name="empty" />
+            <tile name="striped_corner_br" />
+            <tile name="striped_quad_r" />
+        </row>
+        <row>
+            <tile name="empty" times="18" />
+            <tile name="filled_quad" />
+            <tile name="striped_quad_l" />
+            <tile name="striped_quad_r" />
+            <tile name="filled_quad" />
+            <tile name="filled_corner_br" />
+            <tile name="filled_corner_bl" />
+            <tile name="empty" />
+            <tile name="striped_corner_tr" />
+            <tile name="striped_corner_br" />
+            <tile name="striped_quad_r" />
+            <tile name="striped_corner_tl" />
+            <tile name="empty" />
+        </row>
+        <row>
+            <tile name="empty" times="15" />
+            <tile name="filled_corner_br" />
+            <tile name="empty" times="2" />
+            <tile name="filled_corner_tr" />
+            <tile name="striped_quad_l" />
+            <tile name="striped_quad_r" />
+            <tile name="filled_quad" times="3" />
+            <tile name="filled_corner_bl" />
+            <tile name="empty" />
+            <tile name="striped_quad_r" />
+            <tile name="striped_corner_tl" />
+            <tile name="empty" />
+        </row>
+        <row>
+            <tile name="empty" times="12" />
+            <tile name="filled_corner_br" />
+            <tile name="filled_corner_bl" />
+            <tile name="filled_corner_br" />
+            <tile name="filled_quad" />
+            <tile name="empty" />
+            <tile name="striped_corner_bl" />
+            <tile name="empty" />
+            <tile name="striped_corner_tr" />
+            <tile name="mixed_corner_br" />
+            <tile name="filled_quad" />
+            <tile name="filled_corner_tl" />
+            <tile name="filled_corner_tr" />
+            <tile name="filled_quad" />
+            <tile name="filled_corner_bl" />
+            <tile name="mixed_corner_br" />
+            <tile name="filled_corner_bl" />
+            <tile name="empty" />
+        </row>
+        <row>
+            <tile name="empty" times="13" />
+            <tile name="filled_quad" times="2" />
+            <tile name="filled_corner_tl" />
+            <tile name="empty" />
+            <tile name="striped_quad_l" />
+            <tile name="striped_corner_bl" />
+            <tile name="empty" />
+            <tile name="filled_quad" />
+            <tile name="filled_corner_tl" />
+            <tile name="empty" times="3" />
+            <tile name="striped_corner_br" />
+            <tile name="filled_quad" times="2" />
+            <tile name="filled_corner_bl" />
+        </row>
+        <row>
+            <tile name="empty" times="13" />
+            <tile name="filled_corner_tr" />
+            <tile name="mixed_clash_corner_tl" />
+            <tile name="striped_corner_bl" />
+            <tile name="empty" />
+            <tile name="striped_corner_tr" />
+            <tile name="striped_quad_l" />
+            <tile name="striped_corner_bl" />
+            <tile name="filled_corner_tl" />
+            <tile name="empty" times="3" />
+            <tile name="striped_corner_br" />
+            <tile name="striped_quad_r" />
+            <tile name="filled_quad" times="3" />
+        </row>
+        <row>
+            <tile name="empty" times="14" />
+            <tile name="striped_corner_tr" />
+            <tile name="striped_quad_l" />
+            <tile name="striped_corner_bl" />
+            <tile name="empty" />
+            <tile name="mixed_corner_bl" />
+            <tile name="striped_quad_l" />
+            <tile name="empty" />
+            <tile name="filled_corner_br" />
+            <tile name="empty" />
+            <tile name="striped_corner_br" />
+            <tile name="striped_quad_r" />
+            <tile name="striped_corner_tl" />
+            <tile name="filled_corner_tr" />
+            <tile name="filled_quad" />
+            <tile name="filled_corner_tr" />
+        </row>
+        <row>
+            <tile name="empty" times="5" />
+            <tile name="filled_corner_bl" />
+            <tile name="empty" times="4" />
+            <tile name="striped_corner_br" />
+            <tile name="striped_corner_bl" />
+            <tile name="empty" times="3" />
+            <tile name="striped_corner_tr" />
+            <tile name="striped_quad_l" />
+            <tile name="empty" />
+            <tile name="filled_quad" />
+            <tile name="mixed_corner_bl" />
+            <tile name="filled_corner_br" />
+            <tile name="filled_quad" />
+            <tile name="empty" />
+            <tile name="striped_quad_r" />
+            <tile name="striped_corner_tl" />
+            <tile name="empty" />
+            <tile name="filled_corner_br" />
+            <tile name="filled_quad" />
+            <tile name="striped_corner_br" />
+        </row>
+        <row>
+            <tile name="empty" times="3" />
+            <tile name="striped_corner_br" />
+            <tile name="filled_corner_bl" />
+            <tile name="filled_quad" />
+            <tile name="filled_corner_bl" />
+            <tile name="empty" times="2" />
+            <tile name="striped_corner_br" />
+            <tile name="striped_quad_r" />
+            <tile name="striped_quad_l" />
+            <tile name="striped_corner_bl" />
+            <tile name="empty" times="3" />
+            <tile name="striped_corner_tr" />
+            <tile name="empty" />
+            <tile name="filled_corner_tr" />
+            <tile name="filled_quad" />
+            <tile name="filled_quad" />
+            <tile name="filled_corner_tl" />
+            <tile name="empty" />
+            <tile name="striped_corner_tl" />
+            <tile name="empty" times="2" />
+            <tile name="filled_quad" />
+            <tile name="mixed_corner_tl" />
+            <tile name="striped_quad_r" />
+        </row>
+        <row>
+            <tile name="empty" times="2" />
+            <tile name="striped_corner_br" />
+            <tile name="striped_quad_r" />
+            <tile name="filled_quad" />
+            <tile name="filled_corner_tr" />
+            <tile name="filled_quad" />
+            <tile name="filled_corner_bl" />
+            <tile name="striped_corner_br" />
+            <tile name="striped_quad_r" />
+            <tile name="mixed_corner_br" />
+            <tile name="striped_corner_tr" />
+            <tile name="striped_quad_l" />
+            <tile name="striped_corner_bl" />
+            <tile name="empty" times="2" />
+            <tile name="filled_corner_br" />
+            <tile name="filled_corner_bl" />
+            <tile name="empty" />
+            <tile name="filled_corner_tr" />
+            <tile name="filled_corner_tl" />
+            <tile name="empty" times="2" />
+            <tile name="filled_corner_bl" />
+            <tile name="empty" times="2" />
+            <tile name="mixed_corner_tl" />
+            <tile name="striped_quad_r" />
+            <tile name="striped_corner_tl" />
+        </row>
+        <row>
+            <tile name="filled_corner_bl" />
+            <tile name="striped_corner_br" />
+            <tile name="striped_quad_r" />
+            <tile name="striped_corner_tl" />
+            <tile name="filled_corner_tr" />
+            <tile name="empty" />
+            <tile name="filled_corner_tr" />
+            <tile name="filled_quad" />
+            <tile name="striped_quad_r" />
+            <tile name="mixed_corner_br" />
+            <tile name="filled_quad" />
+            <tile name="empty" />
+            <tile name="striped_corner_tr" />
+            <tile name="striped_quad_l" />
+            <tile name="empty" />
+            <tile name="filled_corner_br" />
+            <tile name="filled_quad" />
+            <tile name="filled_quad" />
+            <tile name="filled_corner_bl" />
+            <tile name="striped_corner_br" />
+            <tile name="striped_quad_r" />
+            <tile name="striped_corner_tl" />
+            <tile name="empty" />
+            <tile name="filled_quad" />
+            <tile name="filled_corner_bl" />
+            <tile name="empty" />
+            <tile name="striped_quad_r" />
+            <tile name="striped_corner_tl" />
+            <tile name="empty" />
+        </row>
+        <row>
+            <tile name="filled_quad" />
+            <tile name="striped_quad_r" />
+            <tile name="striped_corner_tl" />
+            <tile name="empty" times="4" />
+            <tile name="filled_corner_tr" />
+            <tile name="mixed_corner_br" />
+            <tile name="filled_quad" times="2" />
+            <tile name="empty" times="2" />
+            <tile name="striped_corner_tr" />
+            <tile name="filled_corner_br" />
+            <tile name="filled_quad" times="2" />
+            <tile name="filled_quad" times="2" />
+            <tile name="mixed_clash_corner_bl" />
+            <tile name="striped_corner_tl" />
+            <tile name="empty" times="2" />
+            <tile name="filled_quad" times="2" />
+            <tile name="filled_corner_bl" />
+            <tile name="striped_corner_tl" />
+            <tile name="empty" times="2" />
         </row>
     </grid>
 </set>

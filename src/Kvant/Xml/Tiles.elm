@@ -10,10 +10,7 @@ import Xml.Decode as D exposing (..)
 import Kvant.Tiles exposing (..)
 
 
-type alias AliasToName = Dict String String
-
-
--- type alias TileSpec = { alias : String, name : String }
+-- type alias TileSpec = { name : String, symmetry : .., weight : .. }
 
 
 decoder : Decoder ( TileSet, TileGrid )
@@ -21,28 +18,30 @@ decoder =
     (path [ "tiles", "tile" ] <| list tilesSpecDecoder)
     |> D.map
         (\tiles ->
-            ( buildTileset <| Set.fromList <| List.map Tuple.first <| tiles
-            , Dict.fromList <| List.map (\(name, alias) -> (alias, name)) <| tiles )
+            buildTileset <| Set.fromList <| tiles
         )
     |> D.andThen
-        (\( tileSet, aliasToName ) ->
-            (path [ "grid" ] <| single <| tilesGridDecoder aliasToName)
+        (\tileSet ->
+            (path [ "grid" ] <| single <| tilesGridDecoder)
                 |> D.map (Array.fromList >> Array.map Array.fromList)
                 |> D.map (Tuple.pair tileSet)
         )
 
 
 
-tilesSpecDecoder : Decoder ( String, String )
+tilesSpecDecoder : Decoder String
 tilesSpecDecoder =
+    stringAttr "name"
+    {-
     D.map2
         Tuple.pair
         (stringAttr "name")
         (stringAttr "alias")
+    -}
 
 
-tilesGridDecoder : AliasToName -> Decoder (List (List String))
-tilesGridDecoder aliasToName =
+tilesGridDecoder : Decoder (List (List String))
+tilesGridDecoder =
     (path [ "row" ]
         <| list
         <| path [ "tile" ]
@@ -57,12 +56,6 @@ tilesGridDecoder aliasToName =
                 (List.map (Tuple.mapSecond <| Maybe.withDefault 1)
                     >> unwrapRow)
                 )
-        |> D.map
-            (List.map
-                (List.map
-                    (\alias_ -> Dict.get alias_ aliasToName |> Maybe.withDefault alias_)
-                )
-            )
 
 
 unwrapRow : List (String, Int) -> List String
