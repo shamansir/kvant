@@ -17,6 +17,11 @@ app.ports.onPatterns.subscribe((patterns) => {
     self.postMessage({ cmd: 'patterns', patterns: patterns });
 });
 
+app.ports.onError.subscribe((error) => {
+    console.log('onError', error);
+    self.postMessage({ cmd: 'error', error: error });
+});
+
 self.addEventListener('message', function(e) {
     var data = e.data;
     switch (data.cmd) {

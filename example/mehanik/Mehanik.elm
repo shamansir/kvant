@@ -7,6 +7,7 @@ import Dict exposing (Dict)
 import Array exposing (Array)
 import Bytes exposing (Bytes)
 import Json.Encode as E
+import Json.Decode as D
 import Image exposing (Image)
 import Image.Color as ImageC
 
@@ -35,6 +36,7 @@ import Kvant.Solver.Options exposing (Approach(..))
 import Kvant.Solver.Options as Solver
 import Kvant.Json.Options as Options
 import Kvant.Patterns exposing (UniquePatterns)
+import Kvant.Json.Patterns as Patterns
 import Kvant.Neighbours exposing (Neighbours)
 import Kvant.Matches exposing (Matches)
 
@@ -47,6 +49,7 @@ type alias Model =
     , rules : Dict TileGroup (Result String TilingRules)
     , patterns : Maybe UniquePatterns
     , matches : Maybe (Neighbours (Matches Int))
+    , lastError : Maybe String
     }
 
 
@@ -77,6 +80,7 @@ type alias TileGroup = String
 
 type Msg
     = NoOp
+    | Error String
     -- switch to example
     | SwitchToTextExample ( Vec2, String )
     | SwitchToImageExample Image
@@ -215,6 +219,7 @@ init =
     , rules = Dict.empty
     , patterns = Nothing
     , matches = Nothing
+    , lastError = Nothing
     }
 
 
@@ -667,7 +672,11 @@ update msg model =
         GotPatterns patterns ->
             (
                 { model
-                | patterns =
+                | status =
+                    case model.status of
+                        WaitingPatternsResponse prevStatus -> prevStatus
+                        _ -> None
+                , patterns =
                     Just patterns
                 }
             , Cmd.none
@@ -678,6 +687,14 @@ update msg model =
                 { model
                 | matches =
                     Just matches
+                }
+            , Cmd.none
+            )
+
+        Error error -> -- TODO
+            (
+                { model
+                | lastError = Just error
                 }
             , Cmd.none
             )
@@ -908,15 +925,23 @@ view model =
                                 ]
                                 []
                             ]
+                        , controlPanel ""
+                            [ input
+                                [ type_ "button"
+                                , onClick Preprocess
+                                , value "Show Patterns"
+                                , disabled <| model.status /= None
+                                ]
+                                [ text "Show Patterns"
+                                ]
+                            ]
                         , controlPanel "" -- "Run/Trace"
                             [ fancyButton
                                 (model.status == None)
                                 "▶️"
                                 Run
                             , fancyButton
-                                (model.status /= WaitingRunResponse
-                                    && model.status /= WaitingTracingResponse
-                                )
+                                (model.status == Tracing || model.status == None)
                                 "⏭️"
                                 (case model.status of
                                     Tracing -> Step
@@ -1023,6 +1048,9 @@ view model =
                 NotSelected -> div [] []
                 _ -> controls model.options
             , viewExample model.example
+            , case model.lastError of
+                Just error -> div [] [ text error ]
+                Nothing -> div [] []
             ]
 
 
@@ -1041,7 +1069,15 @@ main =
         , onUrlRequest = always NoOp
         , subscriptions =
             \_ ->
-                gotWorkerResult GotResult
+                Sub.batch
+                    [ gotWorkerResult GotResult
+                    , gotPatternsFromWorker
+                        (\value ->
+                            case D.decodeValue Patterns.decode value of
+                                Err error -> Error <| D.errorToString error
+                                Ok patterns -> GotPatterns patterns
+                        )
+                    ]
         , update = update
         , view = \model -> { title = "Kvant : Mehanik", body = [ view model ] }
         }

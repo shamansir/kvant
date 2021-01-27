@@ -38,7 +38,7 @@ decodePatternStats =
             (D.field "pattern" decodePattern)
             (D.map2
                 Tuple.pair
-                (D.field "occurence" decodeOccurrence)
+                (D.field "occurrence" decodeOccurrence)
                 (D.field "frequency"
                     (D.float
                         |> D.map

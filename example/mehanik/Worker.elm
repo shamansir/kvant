@@ -48,6 +48,7 @@ type Msg
     | Stop
     | Preprocess Solver.Options Source
     | GetMatchesAt Vec2
+    | InformError String
 
 
 defaultOptions : Solver.Options
@@ -220,6 +221,11 @@ update msg model =
             , Cmd.none
             )
 
+        InformError error ->
+            ( Empty
+            , onError error
+            )
+
 
 
 subscriptions : Model -> Sub Msg
@@ -240,7 +246,7 @@ subscriptions _ =
         , preprocess <| \{options, source} ->
             case options |> D.decodeValue Options.decode of
                 Ok decodedOptions -> Preprocess decodedOptions source
-                Err _ -> Stop -- FIXME: show error
+                Err error -> InformError <| D.errorToString error
         , matchesAt GetMatchesAt
         ]
 
@@ -284,3 +290,5 @@ port onStep : StepResult -> Cmd msg
 port onPatterns : E.Value -> Cmd msg
 
 port onMatches : E.Value -> Cmd msg
+
+port onError : String -> Cmd msg
