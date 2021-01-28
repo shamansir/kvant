@@ -8,17 +8,17 @@ import Html.Attributes exposing (..)
 
 import Kvant.Vec2 exposing (..)
 import Kvant.Plane as Plane
+import Kvant.Tiles exposing (TileKey, Rotation, noTile)
+import Kvant.Adjacency exposing (TileGrid)
 
 import Example.Render exposing (Renderer)
 
-import Example.Instance.Tiles.Plane exposing (..)
 
-
-make : (TileKey -> String) -> Renderer TileGrid TileKey (Html msg)
+make : (( TileKey, Rotation ) -> String) -> Renderer TileGrid ( TileKey, Rotation ) (Html msg)
 make toPath =
     ( Array.toList >> List.map Array.toList >> grid (tile1 toPath)
     , Plane.toList2d
-        >> List.map (List.map <| Maybe.withDefault noTile)
+        >> List.map (List.map <| Maybe.withDefault (noTile, 0))
         >> grid (tile1 toPath)
     )
 
@@ -33,12 +33,12 @@ tile path =
         [ ]
 
 
-tile1 : (TileKey -> String) -> TileKey -> Html msg
+tile1 : (( TileKey, Rotation ) -> String) -> ( TileKey, Rotation ) -> Html msg
 tile1 toPath key =
     tile <| toPath key
 
 
-tileAndCount : (TileKey -> String) -> ( TileKey, Int ) -> Html msg
+tileAndCount : (( TileKey, Rotation ) -> String) -> ( ( TileKey, Rotation ), Int ) -> Html msg
 tileAndCount toPath ( key, count ) =
     if count <= 1 then
         tile1 toPath key

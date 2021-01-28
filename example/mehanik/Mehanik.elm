@@ -6,8 +6,9 @@ import Http
 import Dict exposing (Dict)
 import Array exposing (Array)
 import Bytes exposing (Bytes)
-import Json.Encode as E
-import Json.Decode as D
+import Json.Encode as JE
+import Json.Decode as JD
+import Xml.Decode as XD
 import Image exposing (Image)
 import Image.Color as ImageC
 
@@ -28,9 +29,11 @@ import Kvant.Patterns exposing (UniquePatterns)
 import Kvant.Json.Patterns as Patterns
 import Kvant.Neighbours exposing (Neighbours)
 import Kvant.Matches exposing (Matches)
-import Kvant.Tiles exposing (toIndexInSet, fromIndexInSet, TileKey)
-import Kvant.TilingRules exposing (TilingRules(..))
-import Kvant.Xml.TilingRules as Rules exposing (decode)
+import Kvant.Tiles exposing
+    (toIndexInSet, fromIndexInSet, buildMapping, noMapping, TileMapping, TileKey, TileSet, Rotation)
+import Kvant.Adjacency exposing (Adjacency(..))
+import Kvant.Xml.Tiles as Tiles
+import Kvant.Xml.Adjacency as Adjacency
 
 
 import Example.Instance.Text.Render as TextRenderer
@@ -48,7 +51,7 @@ type alias Model =
     , options : Solver.Options
     , example : CurrentExample
     , images : Dict ImageAlias (Result Http.Error Image)
-    , rules : Dict TileGroup (Result String TilingRules)
+    , rules : Dict TileGroup (Result String ( TileSet, Adjacency ))
     , patterns : Maybe UniquePatterns
     , matches : Maybe (Neighbours (Matches Int))
     , lastError : Maybe String
@@ -68,7 +71,7 @@ type CurrentExample
     = NotSelected
     | Textual ( Vec2, String ) (Maybe (Grid Char))
     | FromImage Image (Maybe Image)
-    | FromTiles TileGroup TilingRules (Maybe (Grid TileKey))
+    | FromTiles TileGroup TileMapping (Maybe (Grid (TileKey, Rotation)))
 
 
 type alias Grid a = Array (Array (Array a))
@@ -97,7 +100,7 @@ type Msg
     | FindMatchesAt Vec2
     -- receiving from Http requests
     | GotImage ImageAlias (Result Http.Error Image)
-    | GotRules TileGroup (Result String TilingRules)
+    | GotTiles TileGroup (Result String (TileSet, Adjacency))
     -- receiving from worker
     | GotResult (Grid Int)
     | GotPatterns UniquePatterns
@@ -294,21 +297,21 @@ update msg model =
                         }
                     )
 
-                FromTiles _ rules _ ->
+                FromTiles tileGroup mapping _ ->
                     (
                         { model
                         | status = WaitingRunResponse
                         }
-                    , case rules of
-                        FromGrid tileSet grid ->
+                    , case model.rules |> Dict.get tileGroup of
+                        Just (Ok (_, FromGrid grid)) ->
                             runInWorker
                                 { options =
                                     Options.encode model.options
                                 , source =
                                     grid
-                                        |> Array.map (Array.map <| toIndexInSet tileSet)
+                                        |> Array.map (Array.map <| toIndexInSet mapping)
                                 }
-                        FromRules _ -> Cmd.none
+                        _ -> Cmd.none
                     )
 
         Trace ->
@@ -350,21 +353,21 @@ update msg model =
                         }
                     )
 
-                FromTiles _ rules _ ->
+                FromTiles tileGroup mapping _ ->
                     (
                         { model
                         | status = WaitingTracingResponse
                         }
-                    , case rules of
-                        FromGrid tileSet grid ->
+                    , case model.rules |> Dict.get tileGroup of
+                        Just (Ok (_, FromGrid grid)) ->
                             runInWorker
                                 { options =
                                     Options.encode model.options
                                 , source =
                                     grid
-                                        |> Array.map (Array.map <| toIndexInSet tileSet)
+                                        |> Array.map (Array.map <| toIndexInSet mapping)
                                 }
-                        FromRules _ -> Cmd.none
+                        _ -> Cmd.none
                     )
 
         Step ->
@@ -395,8 +398,8 @@ update msg model =
                             Textual source Nothing
                         FromImage image _ ->
                             FromImage image Nothing
-                        FromTiles group rules _ ->
-                            FromTiles group rules Nothing
+                        FromTiles group mapping _ ->
+                            FromTiles group mapping Nothing
                 }
             , stopWorker ()
             )
@@ -441,22 +444,22 @@ update msg model =
                         }
                     )
 
-                FromTiles _ rules _ ->
+                FromTiles tileGroup mapping _ ->
                     (
                         { model
                         | status =
                             WaitingPatternsResponse model.status
                         }
-                    , case rules of
-                        FromGrid tileSet grid ->
+                    , case model.rules |> Dict.get tileGroup of
+                        Just (Ok (_, FromGrid grid)) ->
                             preprocessInWorker
                                 { options =
                                     Options.encode model.options
                                 , source =
                                     grid
-                                        |> Array.map (Array.map <| toIndexInSet tileSet)
+                                        |> Array.map (Array.map <| toIndexInSet mapping)
                                 }
-                        FromRules _ -> Cmd.none
+                        _ -> Cmd.none
                     )
 
         FindMatchesAt pos ->
@@ -493,10 +496,10 @@ update msg model =
                     FromTiles
                         group
                         (case model.rules |> Dict.get group of
-                            Just (Ok rules) ->
-                                rules
+                            Just (Ok (tileSet, _)) ->
+                                buildMapping tileSet
                             _ ->
-                                FromRules ()
+                                noMapping
                         )
                         Nothing
                 }
@@ -591,7 +594,7 @@ update msg model =
             , Cmd.none
             )
 
-        GotRules tileGroup result ->
+        GotTiles tileGroup result ->
             (
                 { model
                 | rules =
@@ -649,21 +652,20 @@ update msg model =
 
                                 )
 
-                        FromTiles group rules _ ->
+                        FromTiles group mapping _ ->
                             FromTiles
                                 group
-                                rules
-
-                                ( case rules of
-                                    FromGrid tileSet _ ->
+                                mapping
+                                ( case model.rules |> Dict.get group of
+                                    Just (Ok (_, FromGrid _)) ->
                                         grid
                                             |> Array.map
                                                 (Array.map
                                                     <| Array.map
-                                                    <| fromIndexInSet tileSet
+                                                    <| fromIndexInSet mapping
                                                 )
                                             |> Just
-                                    FromRules _ ->
+                                    _ ->
                                         Nothing  -- FIXME: TODO
                                 )
 
@@ -731,7 +733,7 @@ view model =
                         ]
                     --Example.view ImageRenderer.make exampleModel
 
-                FromTiles group rules wave ->
+                FromTiles group _ wave ->
                     case tiledExamples |> Dict.get group of
                         Just ( tiles, format ) ->
                             div []
@@ -739,10 +741,11 @@ view model =
                                     []
                                     <| List.map TilesRenderer.tile
                                     <| List.map (toTileUrl format group)
+                                    <| List.map (\key -> ( key, 0 ))  -- FIXME
                                     <| tiles
                                 , hr [] []
-                                , case rules of
-                                    FromGrid _ grid ->
+                                , case model.rules |> Dict.get group of
+                                    Just (Ok (_, FromGrid grid)) ->
                                         div
                                             [ style "transform" "scale(0.6)"
                                             , style "transform-origin" "0 0"
@@ -962,7 +965,7 @@ view model =
                         ]
                 _ -> div [] []
 
-        toTileUrl format group tile =
+        toTileUrl format group ( tile, _ ) = -- FIXME: use rotation
             "http://localhost:3000/tiled/" ++ group ++ "/" ++ tile ++ "." ++ format
 
         imageFrom toMsg dict imgAlias =
@@ -1075,8 +1078,8 @@ main =
                     [ gotWorkerResult GotResult
                     , gotPatternsFromWorker
                         (\value ->
-                            case D.decodeValue Patterns.decode value of
-                                Err error -> Error <| D.errorToString error
+                            case JD.decodeValue Patterns.decode value of
+                                Err error -> Error <| JD.errorToString error
                                 Ok patterns -> GotPatterns patterns
                         )
                     ]
@@ -1124,8 +1127,14 @@ requestRules tileGroup =
         , expect =
             Http.expectString
                 (Result.mapError errorToString
-                >> Result.andThen Rules.decode
-                >> GotRules tileGroup
+                >> Result.andThen
+                    (\xmlString ->
+                        Result.map2
+                            Tuple.pair
+                            ( XD.run Tiles.decode xmlString )
+                            ( XD.run Adjacency.decode xmlString )
+                    )
+                >> GotTiles tileGroup
                 )
         }
 
@@ -1232,9 +1241,9 @@ changeOutputSize f options =
     }
 
 
-port runInWorker : { options : E.Value, source : Array (Array Int) } -> Cmd msg
+port runInWorker : { options : JE.Value, source : Array (Array Int) } -> Cmd msg
 
-port traceInWorker : { options : E.Value, source : Array (Array Int) } -> Cmd msg
+port traceInWorker : { options : JE.Value, source : Array (Array Int) } -> Cmd msg
 
 port stepInWorker : () -> Cmd msg
 
@@ -1242,12 +1251,12 @@ port stepBackInWorker : () -> Cmd msg
 
 port stopWorker : () -> Cmd msg
 
-port preprocessInWorker : { options : E.Value, source : Array (Array Int) } -> Cmd msg
+port preprocessInWorker : { options : JE.Value, source : Array (Array Int) } -> Cmd msg
 
 port getMatchesAt : ( Int, Int ) -> Cmd msg
 
 port gotWorkerResult : (Array (Array (Array Int)) -> msg) -> Sub msg
 
-port gotPatternsFromWorker : (E.Value -> msg) -> Sub msg
+port gotPatternsFromWorker : (JE.Value -> msg) -> Sub msg
 
-port gotMatchesFromWorker : (E.Value -> msg) -> Sub msg
+port gotMatchesFromWorker : (JE.Value -> msg) -> Sub msg

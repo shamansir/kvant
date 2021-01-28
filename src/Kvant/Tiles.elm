@@ -13,36 +13,49 @@ import Kvant.Plane exposing (Plane)
 type alias TileKey = String
 
 
-type Rotation
-    = Times Int
+type alias Rotation = Int
+
+
+maxRotations = 4
 
 
 type Symmetry
     = I | X | L | T | S -- S meaning Slope
 
 
-type alias TileGrid = Array (Array TileKey)
+type alias TileInfo =
+    { key : String
+    , symmetry : Maybe Symmetry
+    , weight : Maybe Float
+    }
 
 
-type alias TilesPlane = Plane TileKey
+type alias TileSet = List TileInfo
 
 
-type alias TileSet =
-    ( Dict Int TileKey
-    , Dict TileKey Int
+type alias TilesPlane = Plane (TileKey, Rotation)
+
+
+
+type alias TileMapping =
+    ( Dict Int ( TileKey, Rotation )
+    , Dict ( TileKey, Rotation ) Int
     )
 
 
+noTile : TileKey
 noTile = "none"
 
 
-buildTileset : Set TileKey -> TileSet
-buildTileset =
-    Set.toList
+buildMapping : TileSet -> TileMapping
+buildMapping =
+    List.map .key
+        >> List.concatMap
+            (List.repeat maxRotations >> List.indexedMap Tuple.pair)
         >> List.indexedMap
-            (\index key ->
-                ( ( index, key )
-                , ( key, index )
+            (\index ( rot, key ) ->
+                ( ( index, ( key, rot ) )
+                , ( ( key, rot ), index )
                 )
             )
         >> (\list ->
@@ -53,22 +66,57 @@ buildTileset =
         >> Tuple.mapBoth Dict.fromList Dict.fromList
 
 
-toIndexInSet : TileSet -> TileKey -> Int
+noMapping : TileMapping
+noMapping = ( Dict.empty, Dict.empty )
+
+
+toIndexInSet : TileMapping -> ( TileKey, Rotation ) -> Int
 toIndexInSet ( _, toIndex ) key =
     Dict.get key toIndex |> Maybe.withDefault -1
 
 
-fromIndexInSet : TileSet -> Int -> TileKey
+fromIndexInSet : TileMapping -> Int -> ( TileKey, Rotation )
 fromIndexInSet ( fromIndex , _ ) key =
-    Dict.get key fromIndex |> Maybe.withDefault noTile
+    Dict.get key fromIndex |> Maybe.withDefault ( noTile, 0 )
 
 
-toIndexGrid : TileSet -> Array (Array TileKey) -> Array (Array Int)
-toIndexGrid tileSet =
-    Array.map << Array.map <| toIndexInSet tileSet
+toIndexGrid : TileMapping -> Array (Array ( TileKey, Rotation )) -> Array (Array Int)
+toIndexGrid tileMapping =
+    Array.map << Array.map <| toIndexInSet tileMapping
 
 
-fromIndexGrid : TileSet -> Array (Array Int) -> Array (Array TileKey)
-fromIndexGrid tileSet =
-    Array.map << Array.map <| fromIndexInSet tileSet
+fromIndexGrid : TileMapping -> Array (Array Int) -> Array (Array ( TileKey, Rotation ))
+fromIndexGrid tileMapping =
+    Array.map << Array.map <| fromIndexInSet tileMapping
+
+
+symmetryFromString : String -> Maybe Symmetry
+symmetryFromString str =
+    case str of
+        "I" -> Just I
+        "X" -> Just X
+        "L" -> Just L
+        "T" -> Just T
+        "\\" -> Just S
+        _ -> Nothing
+
+
+symmetryToString : Symmetry -> String
+symmetryToString symmetry =
+    case symmetry of
+        I -> "I"
+        X -> "X"
+        L -> "L"
+        T -> "T"
+        S -> "\\"
+
+keyRotFromString : String -> ( TileKey, Rotation )
+keyRotFromString str =
+    case String.split " " str of
+        key::rotation::_ ->
+            ( key, String.toInt rotation |> Maybe.withDefault 0 )
+        [ key ] ->
+            ( key, 0 )
+        [] ->
+            ( noTile, 0 )
 
