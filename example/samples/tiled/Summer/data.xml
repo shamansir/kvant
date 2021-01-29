@@ -1,5 +1,5 @@
 <set size="48" unique="True">
-	<tiles>
+	<tiles format="png">
 		<tile name="cliff" symmetry="T"/>
 		<tile name="cliffcorner" symmetry="L"/>
 		<tile name="cliffturn" symmetry="L"/>

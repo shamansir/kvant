@@ -13,6 +13,9 @@ import Kvant.Plane exposing (Plane)
 type alias TileKey = String
 
 
+type alias Format = String
+
+
 type alias Rotation = Int
 
 
@@ -30,7 +33,7 @@ type alias TileInfo =
     }
 
 
-type alias TileSet = List TileInfo
+type alias TileSet = ( Format, List TileInfo )
 
 
 type alias TilesPlane = Plane (TileKey, Rotation)
@@ -49,7 +52,8 @@ noTile = "none"
 
 buildMapping : TileSet -> TileMapping
 buildMapping =
-    List.map .key
+    Tuple.second
+        >> List.map .key
         >> List.concatMap
             (List.repeat maxRotations >> List.indexedMap Tuple.pair)
         >> List.indexedMap

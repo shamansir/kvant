@@ -1,5 +1,5 @@
 <set size="32">
-	<tiles>
+	<tiles format="png">
 		<tile name="b_half" symmetry="T"/>
 		<tile name="b_i" symmetry="I"/>
 		<tile name="b_quarter" symmetry="L"/>

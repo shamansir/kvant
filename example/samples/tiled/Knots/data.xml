@@ -1,5 +1,5 @@
 <set size="10">
-	<tiles>
+	<tiles format="png">
 		<tile name="corner" symmetry="L"/>
 		<tile name="cross" symmetry="I"/>
 		<tile name="empty" symmetry="X"/>

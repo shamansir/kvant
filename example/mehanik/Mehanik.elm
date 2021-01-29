@@ -50,10 +50,12 @@ type alias Model =
     { status : Status
     , options : Solver.Options
     , example : CurrentExample
-    , images : Dict ImageAlias (Result Http.Error Image)
-    , rules : Dict TileGroup (Result String ( TileSet, Adjacency ))
+    , images : Dict ImageAlias Image
+    , tiles : Dict TileGroup ( TileSet, Adjacency )
     , patterns : Maybe UniquePatterns
     , matches : Maybe (Neighbours (Matches Int))
+    , imagesErrors : Dict ImageAlias Http.Error
+    , tilesErrors : Dict TileGroup String
     , lastError : Maybe String
     }
 
@@ -99,8 +101,10 @@ type Msg
     | Preprocess
     | FindMatchesAt Vec2
     -- receiving from Http requests
-    | GotImage ImageAlias (Result Http.Error Image)
-    | GotTiles TileGroup (Result String (TileSet, Adjacency))
+    | GotImage ImageAlias Image
+    | GotTiles TileGroup ( TileSet, Adjacency )
+    | ImageLoadError ImageAlias Http.Error
+    | TilesLoadError TileGroup String
     -- receiving from worker
     | GotResult (Grid Int)
     | GotPatterns UniquePatterns
@@ -196,23 +200,14 @@ pixelatedExamples =
 
 
 tiledExamples =
-    Dict.fromList
-        [
-            ( "Kotlin"
-            ,
-                ( [ "filled_corner_bl", "filled_corner_br", "filled_corner_tl", "filled_corner_tr", "filled_quad", "mixed_corner_bl", "mixed_corner_bl", "mixed_corner_br", "mixed_corner_tl", "mixed_corner_tr", "mixed_corner_bl", "mixed_corner_tr", "striped_corner_bl", "striped_corner_br", "striped_corner_tl", "striped_corner_tr", "striped_quad_l", "striped_quad_r" ], "svg" )
-            )
-        {- ,
-            ( "Castle"
-            ,
-                ( [ "bridge", "ground", "river", "riverturn", "road", "roadturn", "t", "tower", "wall", "wallriver", "wallroad" ], "png" )
-            )
-        ,
-            ( "Circles"
-            ,
-                ( [ "b_half", "b_i", "b_quarter", "b", "w_half", "w_i", "w_quarter", "w" ], "png" )
-            ) -}
-        ]
+    [ "Kotlin"
+    , "Castle"
+    , "Circles"
+    , "Circuit"
+    , "Knots"
+    , "Rooms"
+    , "Summer"
+    ]
 
 
 init : Model
@@ -221,10 +216,12 @@ init =
     , options = defaultOptions
     , example = NotSelected
     , images = Dict.empty
-    , rules = Dict.empty
+    , tiles = Dict.empty
     , patterns = Nothing
     , matches = Nothing
     , lastError = Nothing
+    , imagesErrors = Dict.empty
+    , tilesErrors = Dict.empty
     }
 
 
@@ -302,8 +299,8 @@ update msg model =
                         { model
                         | status = WaitingRunResponse
                         }
-                    , case model.rules |> Dict.get tileGroup of
-                        Just (Ok (_, FromGrid grid)) ->
+                    , case model.tiles |> Dict.get tileGroup of
+                        Just (_, FromGrid grid) ->
                             runInWorker
                                 { options =
                                     Options.encode model.options
@@ -358,8 +355,8 @@ update msg model =
                         { model
                         | status = WaitingTracingResponse
                         }
-                    , case model.rules |> Dict.get tileGroup of
-                        Just (Ok (_, FromGrid grid)) ->
+                    , case model.tiles |> Dict.get tileGroup of
+                        Just (_, FromGrid grid) ->
                             runInWorker
                                 { options =
                                     Options.encode model.options
@@ -450,8 +447,8 @@ update msg model =
                         | status =
                             WaitingPatternsResponse model.status
                         }
-                    , case model.rules |> Dict.get tileGroup of
-                        Just (Ok (_, FromGrid grid)) ->
+                    , case model.tiles |> Dict.get tileGroup of
+                        Just (_, FromGrid grid) ->
                             preprocessInWorker
                                 { options =
                                     Options.encode model.options
@@ -495,8 +492,8 @@ update msg model =
                 , example =
                     FromTiles
                         group
-                        (case model.rules |> Dict.get group of
-                            Just (Ok (tileSet, _)) ->
+                        (case model.tiles |> Dict.get group of
+                            Just (tileSet, _) ->
                                 buildMapping tileSet
                             _ ->
                                 noMapping
@@ -594,19 +591,34 @@ update msg model =
             , Cmd.none
             )
 
-        GotTiles tileGroup result ->
+        GotTiles tileGroup tiles ->
             (
                 { model
-                | rules =
-                    model.rules
-                        |> Dict.insert tileGroup result
+                | tiles =
+                    model.tiles
+                        |> Dict.insert tileGroup tiles
                 }
-            ,
-                {- if tileGroup == "Kotlin" then
-                    Task.succeed "Kotlin"
-                        |> Task.perform SwitchToTiledExample
-                else -} Cmd.none
-                -- FIXME
+            , Cmd.none
+            )
+
+        ImageLoadError imageAlias error ->
+            (
+                { model
+                | imagesErrors =
+                    model.imagesErrors
+                        |> Dict.insert imageAlias error
+                }
+            , Cmd.none
+            )
+
+        TilesLoadError tileGroup error ->
+            (
+                { model
+                | tilesErrors =
+                    model.tilesErrors
+                        |> Dict.insert tileGroup error
+                }
+            , Cmd.none
             )
 
         GotResult grid ->
@@ -656,8 +668,8 @@ update msg model =
                             FromTiles
                                 group
                                 mapping
-                                ( case model.rules |> Dict.get group of
-                                    Just (Ok (_, FromGrid _)) ->
+                                ( case model.tiles |> Dict.get group of
+                                    Just (_, FromGrid _) ->
                                         grid
                                             |> Array.map
                                                 (Array.map
@@ -734,18 +746,19 @@ view model =
                     --Example.view ImageRenderer.make exampleModel
 
                 FromTiles group _ wave ->
-                    case tiledExamples |> Dict.get group of
-                        Just ( tiles, format ) ->
+                    case model.tiles |> Dict.get group of
+                        Just ( ( format, tiles ), adjacency ) ->
                             div []
                                 [ div
                                     []
                                     <| List.map TilesRenderer.tile
                                     <| List.map (toTileUrl format group)
                                     <| List.map (\key -> ( key, 0 ))  -- FIXME
+                                    <| List.map .key
                                     <| tiles
                                 , hr [] []
-                                , case model.rules |> Dict.get group of
-                                    Just (Ok (_, FromGrid grid)) ->
+                                , case adjacency of
+                                    FromGrid grid ->
                                         div
                                             [ style "transform" "scale(0.6)"
                                             , style "transform-origin" "0 0"
@@ -968,10 +981,10 @@ view model =
         toTileUrl format group ( tile, _ ) = -- FIXME: use rotation
             "http://localhost:3000/tiled/" ++ group ++ "/" ++ tile ++ "." ++ format
 
-        imageFrom toMsg dict imgAlias =
-            case dict |> Dict.get imgAlias of
-                Just (Ok image) ->
-                    exampleFrame (toMsg image)
+        pixelatedExample imgAlias =
+            case ( model.images |> Dict.get imgAlias, model.imagesErrors |> Dict.get imgAlias ) of
+                ( Just image, _ ) ->
+                    exampleFrame (SwitchToImageExample image)
                         [ img
                             [ src <| Image.toPngUrl image
                             , style "min-width" "50px"
@@ -980,10 +993,10 @@ view model =
                             ]
                             []
                         ]
-                Just (Err error) ->
+                ( _, Just error ) ->
                     exampleFrame NoOp
                         [ Html.text <| imgAlias ++ ": Error " ++ errorToString error ]
-                Nothing ->
+                ( Nothing, Nothing ) ->
                     exampleFrame NoOp
                         [ Html.text <| imgAlias ++ ": Loading..." ]
 
@@ -1015,16 +1028,19 @@ view model =
                     )
                 ++
                     (tiledExamples
-                    |> Dict.toList
                     |> List.map
-                        (\( group, ( files, format ) ) ->
-                            case model.rules |> Dict.get group of
-                                Just _ ->
+                        (\group ->
+                            case model.tiles |> Dict.get group of
+                                Just ( ( format, tiles ), _ ) ->
                                     exampleFrame (SwitchToTiledExample group)
                                         [ img
                                             [ src <| "http://localhost:3000/tiled/"
                                                 ++ group ++ "/" ++
-                                                (files |> List.head |> Maybe.withDefault "")
+                                                (tiles
+                                                    |> List.head
+                                                    |> Maybe.map .key
+                                                    |> Maybe.withDefault ""
+                                                )
                                                 ++ "." ++ format
                                             , width 50
                                             , height 50
@@ -1037,10 +1053,7 @@ view model =
                         )
                     )
                 ++
-                    (pixelatedExamples
-                    |> List.map
-                        (imageFrom SwitchToImageExample model.images)
-                    )
+                    (pixelatedExamples |> List.map pixelatedExample)
                 )
     in
         div
@@ -1067,7 +1080,7 @@ main =
                 ( init
                 , Cmd.batch
                     [ requestAllImages pixelatedExamples
-                    , requestAllRules <| Dict.keys tiledExamples
+                    , requestAllRules tiledExamples
                     ]
                 )
         , onUrlChange = always NoOp
@@ -1111,7 +1124,7 @@ requestImage imageAlias =
         { url = "http://localhost:3000/overlapping/" ++ imageAlias ++ ".png"
         , expect =
             Http.expectBytesResponse
-                (GotImage imageAlias)
+                (runResult (ImageLoadError imageAlias) (GotImage imageAlias))
                 loadImage
         }
 
@@ -1134,9 +1147,15 @@ requestRules tileGroup =
                             ( XD.run Tiles.decode xmlString )
                             ( XD.run Adjacency.decode xmlString )
                     )
-                >> GotTiles tileGroup
+                >> runResult (TilesLoadError tileGroup) (GotTiles tileGroup)
                 )
         }
+
+runResult : (x -> b) -> (a -> b) -> Result x a -> b
+runResult onError onSuccess result =
+    case result of
+        Ok val -> onSuccess val
+        Err err -> onError err
 
 
 requestAllRules : List TileGroup -> Cmd Msg

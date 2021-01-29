@@ -1,5 +1,5 @@
 <set size="14">
-	<tiles>
+	<tiles format="png">
 		<tile name="bridge" symmetry="I" weight="1.0"/>
 		<tile name="component" symmetry="X" weight="20.0"/>
 		<tile name="connection" symmetry="T" weight="10.0"/>

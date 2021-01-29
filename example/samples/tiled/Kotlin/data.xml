@@ -1,5 +1,5 @@
 <set size="15">
-    <tiles>
+    <tiles format="svg">
         <tile name="filled_corner_bl" />
         <tile name="filled_corner_br" />
         <tile name="filled_corner_tl" />

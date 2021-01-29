@@ -1,5 +1,5 @@
 <set size="7">
-	<tiles>
+	<tiles format="png">
 		<tile name="bridge" symmetry="I"/>
 		<tile name="ground" symmetry="X"/>
 		<tile name="river" symmetry="I"/>

@@ -1,5 +1,5 @@
 <set size="3">
-	<tiles>
+	<tiles format="png">
 		<tile name="bend" symmetry="L" weight="0.5"/>
 		<tile name="corner" symmetry="L" weight="0.5"/>
 		<tile name="corridor" symmetry="I" weight="1.0"/>
