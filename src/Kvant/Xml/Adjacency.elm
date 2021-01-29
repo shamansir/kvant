@@ -11,7 +11,15 @@ import Kvant.Adjacency exposing (Adjacency(..), Repetition, TileGrid, Rule)
 
 decode : D.Decoder Adjacency
 decode =
-    decodeGrid |> D.map FromGrid
+    D.map2
+        (\maybeRules maybeGrid ->
+            case ( maybeRules, maybeGrid ) of
+                ( Just rules, _ ) -> FromRules rules
+                ( _, Just grid ) -> FromGrid grid
+                ( Nothing, Nothing ) -> FromRules []
+        )
+        (D.maybe <| decodeRules)
+        (D.maybe <| decodeGrid)
 
 
 decodeGrid : D.Decoder TileGrid

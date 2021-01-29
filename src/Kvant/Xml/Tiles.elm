@@ -13,7 +13,11 @@ decode : D.Decoder TileSet
 decode =
     D.map2
         Tuple.pair
-        (D.path [ "tiles" ] <| D.single <| D.stringAttr "format")
+        (D.path [ "tiles" ]
+            <| D.single
+            <| D.map (Maybe.withDefault "png")
+            <| D.maybe <| D.stringAttr "format"
+        )
         (D.path [ "tiles", "tile" ] <| D.list decodeTileInfo)
 
 

@@ -56,7 +56,7 @@ type alias Model =
     , matches : Maybe (Neighbours (Matches Int))
     , imagesErrors : Dict ImageAlias Http.Error
     , tilesErrors : Dict TileGroup String
-    , lastError : Maybe String
+    , workerError : Maybe String
     }
 
 
@@ -87,7 +87,7 @@ type alias TileGroup = String
 
 type Msg
     = NoOp
-    | Error String
+    | WorkerError String
     -- switch to example
     | SwitchToTextExample ( Vec2, String )
     | SwitchToImageExample Image
@@ -219,7 +219,7 @@ init =
     , tiles = Dict.empty
     , patterns = Nothing
     , matches = Nothing
-    , lastError = Nothing
+    , workerError = Nothing
     , imagesErrors = Dict.empty
     , tilesErrors = Dict.empty
     }
@@ -707,10 +707,10 @@ update msg model =
             , Cmd.none
             )
 
-        Error error -> -- TODO
+        WorkerError error -> -- TODO
             (
                 { model
-                | lastError = Just error
+                | workerError = Just error
                 }
             , Cmd.none
             )
@@ -1066,9 +1066,6 @@ view model =
                 NotSelected -> div [] []
                 _ -> controls model.options
             , viewExample model.example
-            , case model.lastError of
-                Just error -> div [] [ text error ]
-                Nothing -> div [] []
             ]
 
 
@@ -1092,7 +1089,7 @@ main =
                     , gotPatternsFromWorker
                         (\value ->
                             case JD.decodeValue Patterns.decode value of
-                                Err error -> Error <| JD.errorToString error
+                                Err error -> WorkerError <| JD.errorToString error
                                 Ok patterns -> GotPatterns patterns
                         )
                     ]
