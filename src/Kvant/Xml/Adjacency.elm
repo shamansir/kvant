@@ -6,7 +6,7 @@ import Array
 
 
 import Kvant.Tiles exposing (TileKey, Rotation, keyRotFromString)
-import Kvant.Adjacency exposing (Adjacency(..), Repetition, TileGrid)
+import Kvant.Adjacency exposing (Adjacency(..), Repetition, TileGrid, Rule)
 
 
 decode : D.Decoder Adjacency
@@ -15,7 +15,9 @@ decode =
 
 
 decodeGrid : D.Decoder TileGrid
-decodeGrid = D.path [ "grid" ] <| D.single <| tilesGridDecoder
+decodeGrid =
+    D.path [ "grid" ]
+        <| D.single <| tilesGridDecoder
 
 
 tilesGridDecoder : D.Decoder TileGrid
@@ -50,3 +52,16 @@ unwrapRow =
         []
     >> List.map keyRotFromString
     >> List.reverse
+
+
+decodeRules : D.Decoder (List Rule)
+decodeRules =
+    D.path [ "neighbors", "neighbor" ] <| D.list decodeRule
+
+
+decodeRule : D.Decoder Rule
+decodeRule =
+    D.map2
+        Rule
+        (D.stringAttr "left" |> D.map keyRotFromString)
+        (D.stringAttr "right" |> D.map keyRotFromString)
