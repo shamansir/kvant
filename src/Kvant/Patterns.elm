@@ -22,7 +22,7 @@ type alias Pattern = Plane Key
 type alias PatternWithStats =
     { pattern : Pattern
     , frequency : ( Occurrence, Maybe Frequency )
-    , matches : Dict Offset (List PatternId)
+    , matches : Dict Offset (List PatternId) -- FIXME: why not (Matches PatternId)?
     --, rotations : Dict Rotation PatternId
     }
 

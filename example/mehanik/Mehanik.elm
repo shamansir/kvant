@@ -265,7 +265,8 @@ update msg model =
                 Textual source _  ->
                     (
                         { model
-                        | status = WaitingRunResponse
+                        | matches = Nothing
+                        , status = WaitingRunResponse
                         }
                     , runInWorker
                         { options =
@@ -282,7 +283,8 @@ update msg model =
                 FromImage source _ ->
                     (
                         { model
-                        | status = WaitingRunResponse
+                        | matches = Nothing
+                        , status = WaitingRunResponse
                         }
                     , runInWorker
                         { options =
@@ -297,7 +299,8 @@ update msg model =
                 FromTiles tileGroup mapping _ ->
                     (
                         { model
-                        | status = WaitingRunResponse
+                        | matches = Nothing
+                        , status = WaitingRunResponse
                         }
                     , case model.tiles |> Dict.get tileGroup of
                         Just (_, FromGrid grid) ->
@@ -320,7 +323,8 @@ update msg model =
                 Textual source _ ->
                     (
                         { model
-                        | status = WaitingTracingResponse
+                        | matches = Nothing
+                        , status = WaitingTracingResponse
                         }
                     ,
                         traceInWorker
@@ -338,7 +342,8 @@ update msg model =
                 FromImage source _ ->
                     (
                         { model
-                        | status = WaitingTracingResponse
+                        | matches = Nothing
+                        , status = WaitingTracingResponse
                         }
                     , traceInWorker
                         { options =
@@ -353,7 +358,8 @@ update msg model =
                 FromTiles tileGroup mapping _ ->
                     (
                         { model
-                        | status = WaitingTracingResponse
+                        | matches = Nothing
+                        , status = WaitingTracingResponse
                         }
                     , case model.tiles |> Dict.get tileGroup of
                         Just (_, FromGrid grid) ->
@@ -370,7 +376,8 @@ update msg model =
         Step ->
             (
                 { model
-                | status = WaitingTracingResponse
+                | matches = Nothing
+                , status = WaitingTracingResponse
                 }
             , stepInWorker ()
             )
@@ -378,7 +385,8 @@ update msg model =
         StepBack ->
             (
                 { model
-                | status = WaitingTracingResponse
+                | matches = Nothing
+                , status = WaitingTracingResponse
                 }
             , stepBackInWorker ()
             )
@@ -386,7 +394,8 @@ update msg model =
         Stop ->
             (
                 { model
-                | status = None
+                | matches = Nothing
+                , status = None
                 , example =
                     case model.example of
                         NotSelected ->
@@ -462,7 +471,8 @@ update msg model =
         FindMatchesAt pos ->
             (
                 { model
-                | status = WaitingMatchesResponse model.status
+                | matches = Nothing
+                , status = WaitingMatchesResponse model.status
                 }
             , getMatchesAt pos
             )
@@ -472,6 +482,8 @@ update msg model =
                 { model
                 | options = forText model.options
                 , example = Textual source Nothing
+                , patterns = Nothing
+                , matches = Nothing
                 }
             , Cmd.none
             )
@@ -481,6 +493,8 @@ update msg model =
                 { model
                 | options = forImage model.options
                 , example = FromImage image Nothing
+                , patterns = Nothing
+                , matches = Nothing
                 }
             , Cmd.none
             )
@@ -499,6 +513,8 @@ update msg model =
                                 noMapping
                         )
                         Nothing
+                , patterns = Nothing
+                , matches = Nothing
                 }
             , Cmd.none
             )
@@ -720,8 +736,8 @@ view : Model -> Html Msg
 view model =
     let
 
-        viewExample example =
-            case example of
+        viewExample =
+            case model.example of
 
                 Textual source wave ->
                     div
@@ -782,6 +798,36 @@ view model =
                         Nothing -> div [] []
                 NotSelected -> Html.text "Not Selected"
                 -- WaitingForImage url -> Html.text <| "Waiting for image " ++ url ++ " to load"
+
+        viewPattern patternId pattern =
+            case model.example of
+                Textual _ _ ->
+                    (TextRenderer.make |> Tuple.second) <| Plane.map Char.fromCode <| pattern
+                FromImage _ _ ->
+                    (ImageRenderer.make |> Tuple.second)
+                        <| Plane.map ImagePlane.pixelToColor <| pattern
+                FromTiles group mapping _ ->
+                    case model.tiles |> Dict.get group of
+                        Just ( ( format, _ ), _ ) ->
+                            (TilesRenderer.make (toTileUrl format group) |> Tuple.second)
+                                <| Plane.map (fromIndexInSet mapping) <| pattern
+                        Nothing -> div [] []
+                _ -> div [] []
+
+        viewPatterns patterns =
+            div
+                [ style "display" "flex"
+                , style "overflow" "scroll"
+                ]
+                <| List.map
+                    (\(patternId, { pattern } ) ->
+                        div
+                            [ style "transform" "scale(0.5)"
+                            , style "margin" "5px" ]
+                            [ viewPattern patternId pattern ]
+                    )
+                <| Dict.toList
+                <| patterns
 
         fancyButton isEnabled label msg =
             button
@@ -1059,13 +1105,13 @@ view model =
         div
             [ style "font-family" "sans-serif" ]
             [ examples
-            {-, select
-                [ onInput selectionToMsg ]
-                makeOptions -}
             , case model.example of
                 NotSelected -> div [] []
                 _ -> controls model.options
-            , viewExample model.example
+            , case model.patterns of
+                Just patterns -> viewPatterns patterns
+                Nothing -> div [] []
+            , viewExample
             ]
 
 

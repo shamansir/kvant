@@ -238,19 +238,6 @@ toArray2d : Plane a -> Array (Array (Maybe a))
 toArray2d (Plane _ grid) = grid
 
 
-{-
-toList2d : Plane a -> List (List (Vec2, a))
-toList2d (Plane ( (ox, oy), _ ) grid) = -- zip all + coords ?
-    grid
-        |> Array.indexedMap
-            (\y row ->
-                row
-                    |> Array.indexedMap (\x v -> ( ( ox + x, oy + y ), v ) )
-                    |> Array.toList
-            )
-        |> Array.toList -}
-
-
 shift : Offset -> Plane a -> Plane a
 shift (offX, offY) (Plane (width, height) _ as plane) =
     toList plane
@@ -394,60 +381,3 @@ views symmetry source =
         FlipOnly -> bothFlips
         RotateOnly -> allRotations
         FlipAndRotate -> allViews
-
-
-{-
-findSubPlanes : Symmetry -> Boundary -> Vec2 -> Plane a -> List (Plane a)
-findSubPlanes symmetry boundary ofSize inPlane =
-    inPlane
-        |> views symmetry
-        -- first rotate and then search for subs or search for subs and rotate them?
-        |> List.concatMap
-            (\view ->
-                coordsFlat view
-                    |> case boundary of
-                        Periodic ->
-                            List.map (\coord -> periodicSubAt coord ofSize view)
-                        Bounded ->
-                            List.map (\coord -> subAt coord ofSize view)
-                            >> List.filterMap identity
-            ) -}
-
-
-{- fromDict : Vec2 -> Dict Vec2 a -> Plane (Maybe a)
-fromDict size dict =
-    Plane size <| \v -> Dict.get v dict -}
-
-
--- TODO: When Walker will be inside the Panel, we may use `Walker.all` for that purpose
-
-{-}
-take : List Vec2 -> Plane a -> List (Vec2, Maybe a)
-take all (Plane _ f) =
-    all |> List.map (\v -> (v, f v))
-
-
-takeAsDict : List Vec2 -> Plane a -> Dict Vec2 a
-takeAsDict all =
-    toList all
-        >> List.map cellToMaybe
-        >> List.filterMap identity
-        >> Dict.fromList -}
-
-
-{- loadNeighbours : Vec2 -> (Vec2 -> Direction -> Vec2) -> Plane a -> Neighbours (Maybe a)
-loadNeighbours focus move (Plane _ f) =
-    Neighbours.collect focus move f -}
-
-
-{- apply : Vec2 -> (Vec2 -> Direction -> Vec2) -> Neighbours a -> Plane a -> Plane a
-apply focus move neighbours =
-    let
-        fromNeighbours = neighbours |> Neighbours.byCoord focus move
-    in
-        positionedMap
-            (\v cur ->
-                fromNeighbours v
-                    |> Maybe.map Just
-                    |> Maybe.withDefault cur
-            ) -}

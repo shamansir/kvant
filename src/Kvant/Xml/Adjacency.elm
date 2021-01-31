@@ -14,6 +14,7 @@ decode =
     D.map2
         (\maybeRules maybeGrid ->
             case ( maybeRules, maybeGrid ) of
+                ( Just [], Just grid ) -> FromGrid grid
                 ( Just rules, _ ) -> FromRules rules
                 ( _, Just grid ) -> FromGrid grid
                 ( Nothing, Nothing ) -> FromRules []
