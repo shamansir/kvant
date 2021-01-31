@@ -129,6 +129,15 @@ toList neighbours =
         |> List.map (\dir -> (dir, get dir neighbours))
 
 
+fromList : List (Direction, a) -> Neighbours (Maybe a)
+fromList =
+    List.foldl
+        (\(dir, val) ->
+            set dir <| Just val
+        )
+        (fill Nothing)
+
+
 flatten : Neighbours a -> List a
 flatten = toList >> List.map Tuple.second
 
@@ -247,6 +256,21 @@ dirToString direction =
         SW -> "SW"
         S  -> "S"
         SE -> "SE"
+
+
+dirFromString : String -> Maybe Direction
+dirFromString str =
+    case str of
+        "NW" -> Just NW
+        "N"  -> Just N
+        "NE" -> Just NE
+        "W"  -> Just W
+        "X"  -> Just X
+        "E"  -> Just E
+        "SW" -> Just SW
+        "S"  -> Just S
+        "SE" -> Just SE
+        _    -> Nothing
 
 
 toString : (a -> String) -> Neighbours a -> String

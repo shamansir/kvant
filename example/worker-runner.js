@@ -17,6 +17,11 @@ app.ports.onPatterns.subscribe((patterns) => {
     self.postMessage({ cmd: 'patterns', patterns: patterns });
 });
 
+app.ports.onMatches.subscribe((matches) => {
+    console.log('onMatches', matches);
+    self.postMessage({ cmd: 'matches', matches: matches });
+});
+
 app.ports.onError.subscribe((error) => {
     console.log('onError', error);
     self.postMessage({ cmd: 'error', error: error });

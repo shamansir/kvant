@@ -15,6 +15,7 @@ import Kvant.Patterns exposing (Key, PatternId)
 import Kvant.Patterns as Patterns exposing (Key, UniquePatterns)
 import Kvant.Neighbours as Neighbours
 import Kvant.Neighbours as Dir exposing (Direction(..))
+import Kvant.Neighbours exposing (Neighbours)
 
 
 type alias Wave = Plane (Matches PatternId)
@@ -190,6 +191,39 @@ propagate uniquePatterns focus pattern wave =
             |> probe focus (Matches.single pattern)
 
 
+initWave : UniquePatterns -> Size -> Wave
+initWave uniquePatterns size =
+    Plane.filled size <| Matches.fromList <| Dict.keys uniquePatterns
+
+
+produce
+    :  UniquePatterns
+    -> Step
+    -> Solution
+produce patterns (Step _ _ outputSize status) =
+    let
+        loadValues : Matches PatternId -> List Key
+        loadValues matches =
+            matches
+                |> Matches.toList
+                |> List.map (\patternId ->
+                    patterns
+                        |> Dict.get patternId
+                        |> Maybe.andThen (.pattern >> Plane.get (0, 0))
+                    )
+                |> List.filterMap identity
+                -- if pattern wasn't found or contains no value at this point, it is skipped
+        fromWave : Wave -> Plane (List Patterns.Key)
+        fromWave wave = wave |> Plane.map loadValues
+    in
+        fromWave <| case status of
+            Initial -> initWave patterns outputSize
+            InProgress _ wave -> wave
+            Solved wave -> wave
+            Terminated -> Plane.empty outputSize
+            ReachedLimit _ -> Plane.empty outputSize
+
+
 noiseCoefficient : Float
 noiseCoefficient = 0.1
 
@@ -322,39 +356,6 @@ loadFrequencies : UniquePatterns -> Dict PatternId (Maybe Frequency)
 loadFrequencies = Dict.map <| always <| (.frequency >> Tuple.second)
 
 
-initWave : UniquePatterns -> Size -> Wave
-initWave uniquePatterns size =
-    Plane.filled size <| Matches.fromList <| Dict.keys uniquePatterns
-
-
-produce
-    :  UniquePatterns
-    -> Step
-    -> Solution
-produce patterns (Step _ _ outputSize status) =
-    let
-        loadValues : Matches PatternId -> List Key
-        loadValues matches =
-            matches
-                |> Matches.toList
-                |> List.map (\patternId ->
-                    patterns
-                        |> Dict.get patternId
-                        |> Maybe.andThen (.pattern >> Plane.get (0, 0))
-                    )
-                |> List.filterMap identity
-                -- if pattern wasn't found or contains no value at this point, it is skipped
-        fromWave : Wave -> Plane (List Patterns.Key)
-        fromWave wave = wave |> Plane.map loadValues
-    in
-        fromWave <| case status of
-            Initial -> initWave patterns outputSize
-            InProgress _ wave -> wave
-            Solved wave -> wave
-            Terminated -> Plane.empty outputSize
-            ReachedLimit _ -> Plane.empty outputSize
-
-
 getSeed : Step -> Random.Seed
 getSeed (Step _ seed _ _) = seed
 
@@ -373,3 +374,16 @@ updateStatus status (Step n seed opts _) = Step n seed opts status
 
 exceeds : Int -> Step -> Bool
 exceeds count (Step stepN _ _ _) = count <= stepN
+
+
+extractMatchesAt : Coord -> Step -> Maybe (Dir.Neighbours (Matches PatternId))
+extractMatchesAt coord (Step _ _ _ status) =
+    case status of
+        Initial -> Nothing
+        Terminated -> Nothing
+        ReachedLimit _ -> Nothing
+        InProgress _ wave ->
+            wave |> Plane.getNeighboursOr Matches.none coord |> Just
+        Solved wave ->
+            wave |> Plane.getNeighboursOr Matches.none coord |> Just
+

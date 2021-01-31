@@ -17,7 +17,11 @@ import Kvant.Solver.Options exposing (Approach(..))
 import Kvant.Plane exposing (..)
 import Kvant.Json.Options as Options
 import Kvant.Json.Patterns as Patterns
+import Kvant.Json.Matches as Matches
 import Kvant.Patterns as Patterns
+import Kvant.Neighbours exposing (Neighbours)
+import Kvant.Neighbours as Neighbours
+import Kvant.Matches as Matches
 
 
 type alias Source = Array (Array Int)
@@ -75,7 +79,7 @@ update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         Run options source ->
-            ( model
+            ( Empty
             , makeSeedAnd <| RunWith options source
             )
 
@@ -95,7 +99,7 @@ update msg model =
                 )
 
         Trace options source ->
-            ( model
+            ( Empty
             , makeSeedAnd <| TraceWith options source
             )
 
@@ -120,7 +124,7 @@ update msg model =
             case model of
                 Tracing tracingWfc prevStep ->
                     let
-                        (nextStep, traceResult )
+                        ( nextStep, traceResult )
                             = tracingWfc
                                 |> Wfc.step prevStep
                     in
@@ -215,17 +219,19 @@ update msg model =
                     Cmd.none
             )
 
-        GetMatchesAt _ ->
-            -- FIXME:
-            ( Empty
-            , Cmd.none
+        GetMatchesAt position ->
+            ( model
+            , onMatches <| Matches.encodeNeighbours <| case model of
+                Tracing _ step_ ->
+                    step_ |> Solver.extractMatchesAt position
+                        |> Maybe.withDefault (Neighbours.fill Matches.none)
+                _ -> Neighbours.fill Matches.none
             )
 
         InformError error ->
             ( Empty
             , onError error
             )
-
 
 
 subscriptions : Model -> Sub Msg

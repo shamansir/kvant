@@ -39,6 +39,9 @@
     mehanik.ports.preprocessInWorker.subscribe(({ options, source }) => {
         jsWorker.postMessage({ 'cmd': 'preprocess', 'source': source, 'options': options });
     });
+    mehanik.ports.getMatchesAt.subscribe(position => {
+        jsWorker.postMessage({ 'cmd': 'matches', 'position': position });
+    });
     jsWorker.postMessage({'cmd': 'start'});
 
     jsWorker.addEventListener('message', (e) => {
@@ -50,6 +53,8 @@
                 mehanik.ports.gotWorkerResult.send(data.wave);
             case 'patterns':
                 mehanik.ports.gotPatternsFromWorker.send(data.patterns);
+            case 'matches':
+                mehanik.ports.gotMatchesFromWorker.send(data.matches);
             default: return;
         }
     });

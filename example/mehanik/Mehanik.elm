@@ -718,7 +718,11 @@ update msg model =
         GotMatches matches ->
             (
                 { model
-                | matches =
+                | status =
+                    case model.status of
+                        WaitingMatchesResponse prevStatus -> prevStatus
+                        _ -> None
+                , matches =
                     Just matches
                 }
             , Cmd.none

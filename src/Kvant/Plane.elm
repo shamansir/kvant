@@ -6,6 +6,8 @@ import Array exposing (Array)
 import Kvant.Vec2 exposing (Vec2)
 import Kvant.Vec2 as Vec2 exposing (rect)
 import Html exposing (b)
+import Kvant.Neighbours exposing (Neighbours)
+import Kvant.Neighbours as Neighbours
 
 
 type alias Coord = Vec2
@@ -381,3 +383,17 @@ views symmetry source =
         FlipOnly -> bothFlips
         RotateOnly -> allRotations
         FlipAndRotate -> allViews
+
+
+getNeighbours : Coord -> Plane a -> Neighbours (Maybe a)
+getNeighbours coord plane =
+    if plane |> fits coord then
+        Neighbours.collectFlat coord (\ncoord -> get ncoord plane)
+    else
+        Neighbours.fill Nothing
+
+
+getNeighboursOr : a -> Coord -> Plane a -> Neighbours a
+getNeighboursOr default coord plane =
+    getNeighbours coord plane
+        |> Neighbours.map (Maybe.withDefault default)
