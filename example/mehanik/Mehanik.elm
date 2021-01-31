@@ -19,7 +19,7 @@ import Html.Attributes as H
 import Html.Events exposing (..)
 
 
-import Kvant.Vec2 exposing (Vec2)
+import Kvant.Vec2 exposing (Vec2, loadSize)
 import Kvant.Plane as Plane
 import Kvant.Plane as Plane exposing (Boundary(..), Symmetry(..))
 import Kvant.Solver.Options exposing (Approach(..))
@@ -100,6 +100,7 @@ type Msg
     | Stop
     | Preprocess
     | FindMatchesAt Vec2
+    -- TODO: | ShowMatchesFor TileKey
     -- receiving from Http requests
     | GotImage ImageAlias Image
     | GotTiles TileGroup ( TileSet, Adjacency )
@@ -745,6 +746,13 @@ view model =
                         [ viewSource TextRenderer.make source
                         , hr [] []
                         , wave
+                            |> Maybe.andThen loadSize
+                            |> Maybe.map
+                                (\size ->
+                                    viewClickableArea size ( 25, 20 ) FindMatchesAt
+                                )
+                            |> Maybe.withDefault (div [] [])
+                        , wave
                             |> Maybe.map
                                 (viewGrid <| Array.toList >> TextPlane.merge >> TextRenderer.char)
                             |> Maybe.withDefault (div [] [])
@@ -828,6 +836,38 @@ view model =
                     )
                 <| Dict.toList
                 <| patterns
+
+        viewClickableArea ( width, height ) ( itemWidth, itemHeight ) toMsg =
+            List.range 0 (height - 1)
+                |> List.map
+                    (\row ->
+                            List.range 0 (width - 1)
+                                |> List.map (Tuple.pair row)
+                    )
+                |> List.map
+                    (\row ->
+                        div
+                            [ style "display" "flex", style "flex-direction" "row"
+                            -- , style "width" <| String.fromInt itemWidth
+                            , style "height" <| String.fromInt itemHeight
+                            ]
+                            <|
+                                List.map (\(x, y) ->
+                                    div
+                                        [ style "width" <| String.fromInt itemWidth ++ "px"
+                                        , style "height" <| String.fromInt itemHeight ++ "px"
+                                        , style "cursor" "pointer"
+                                        , onClick <| toMsg (x, y)
+                                        ]
+                                        []
+                                ) row
+                    )
+                |> div
+                    [ style "display" "flex"
+                    , style "flex-direction" "column"
+                    , style "position" "absolute"
+                    , style "z-index" "1111"
+                    ]
 
         fancyButton isEnabled label msg =
             button
