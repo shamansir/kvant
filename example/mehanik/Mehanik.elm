@@ -20,6 +20,7 @@ import Html.Events exposing (..)
 
 
 import Kvant.Vec2 exposing (Vec2, loadSize)
+import Kvant.Vec2 as Vec2
 import Kvant.Plane as Plane
 import Kvant.Plane as Plane exposing (Boundary(..), Symmetry(..))
 import Kvant.Solver.Options exposing (Approach(..))
@@ -28,11 +29,15 @@ import Kvant.Json.Options as Options
 import Kvant.Patterns exposing (UniquePatterns)
 import Kvant.Json.Patterns as Patterns
 import Kvant.Neighbours exposing (Neighbours)
+import Kvant.Neighbours as Neighbours
+import Kvant.Neighbours as Dir exposing (Direction(..))
 import Kvant.Matches exposing (Matches)
+import Kvant.Matches as Matches
+import Kvant.Json.Matches as Matches
 import Kvant.Tiles exposing
     (toIndexInSet, fromIndexInSet, buildMapping, noMapping, TileMapping, TileKey, TileSet, Rotation)
-import Kvant.Adjacency exposing (Adjacency(..))
 import Kvant.Xml.Tiles as Tiles
+import Kvant.Adjacency exposing (Adjacency(..))
 import Kvant.Xml.Adjacency as Adjacency
 
 
@@ -663,7 +668,6 @@ update msg model =
                                         |> Array.map
                                             (Array.map <| Array.map Char.fromCode)
                                         |> Just
-
                                 )
 
                         FromImage image _ ->
@@ -749,13 +753,7 @@ view model =
                         []
                         [ viewSource TextRenderer.make source
                         , hr [] []
-                        , wave
-                            |> Maybe.andThen loadSize
-                            |> Maybe.map
-                                (\size ->
-                                    viewClickableArea size ( 25, 20 ) FindMatchesAt
-                                )
-                            |> Maybe.withDefault (div [] [])
+                        , viewNeighboursLoadingArea ( 25, 25 ) wave
                         , wave
                             |> Maybe.map
                                 (viewGrid <| Array.toList >> TextPlane.merge >> TextRenderer.char)
@@ -840,6 +838,68 @@ view model =
                     )
                 <| Dict.toList
                 <| patterns
+
+        viewMatches neighbours =
+            [ [ Dir.NE, Dir.N, Dir.NW ]
+            , [ Dir.E,  Dir.X, Dir.W  ]
+            , [ Dir.SE, Dir.S, Dir.SW ]
+            ]
+            |> List.map
+                (\directionsRow ->
+                    div
+                        [ style "display" "flex", style "flex-direction" "row"
+                        , style "margin" "20px 20px"
+                        ]
+                        <|
+                            List.map (\dir ->
+                                div []
+                                    [ text <| Neighbours.dirToString dir
+                                    , text <| Vec2.toString <| Neighbours.offsetFor dir
+                                    , div
+                                            [ style "display" "flex"
+                                            , style "flex-direction" "row" -- "column"
+                                            , style "margin" "20px 20px"
+                                            ]
+                                            <|
+                                                (\list -> case list of
+                                                    [] -> [ text "NONE" ]
+                                                    _ -> list
+                                                )
+                                            <| List.map
+                                                (\patternId ->
+                                                case model.patterns |> Maybe.andThen (Dict.get patternId) of
+                                                        Just { pattern } ->
+                                                            div
+                                                                [ style "transform" "scale(0.8)"
+                                                                , style "margin" "0px 5px"
+                                                                ]
+                                                                [ viewPattern patternId pattern
+                                                                ]
+                                                        Nothing ->
+                                                            div [] []
+                                                )
+                                            <| Matches.toList
+                                            <| Neighbours.get dir neighbours
+                                    ]
+                            ) directionsRow
+                )
+            |> div
+                [ style "display" "flex"
+                , style "flex-direction" "column"
+                , style "margin" "10px 0"
+                ]
+
+        viewNeighboursLoadingArea itemSize wave
+            = case model.patterns of
+                Just _ ->
+                    wave
+                        |> Maybe.andThen loadSize
+                        |> Maybe.map
+                            (\size ->
+                                viewClickableArea size itemSize FindMatchesAt
+                            )
+                        |> Maybe.withDefault (div [] [])
+                Nothing -> div [] []
 
         viewClickableArea ( width, height ) ( itemWidth, itemHeight ) toMsg =
             List.range 0 (height - 1)
@@ -1156,6 +1216,9 @@ view model =
                 Just patterns -> viewPatterns patterns
                 Nothing -> div [] []
             , viewExample
+            , case model.matches of
+                Just matches -> viewMatches matches
+                Nothing -> div [] []
             ]
 
 
@@ -1181,6 +1244,12 @@ main =
                             case JD.decodeValue Patterns.decode value of
                                 Err error -> WorkerError <| JD.errorToString error
                                 Ok patterns -> GotPatterns patterns
+                        )
+                    , gotMatchesFromWorker
+                        (\value ->
+                            case JD.decodeValue Matches.decodeNeighbours value of
+                                Err error -> WorkerError <| JD.errorToString error
+                                Ok matches -> GotMatches matches
                         )
                     ]
         , update = update

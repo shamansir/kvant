@@ -57,3 +57,8 @@ random ( limitX, limitY ) =
         Tuple.pair
         (Random.int 0 limitX)
         (Random.int 0 limitY)
+
+
+toString : Vec2 -> String
+toString ( x, y ) =
+    "(" ++ String.fromInt x ++ "," ++ String.fromInt y ++ ")"
