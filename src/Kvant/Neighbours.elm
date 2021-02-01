@@ -305,7 +305,7 @@ toDirection (x, y) =
     else SW
 
 
-fromDirection : Direction -> Vec2
+fromDirection : Direction -> Vec2 -- FIXME: same as offsetFor
 fromDirection direction =
     case direction of
         NE -> ( -1, -1 )

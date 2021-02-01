@@ -1,6 +1,7 @@
 module Kvant.Matches exposing
     ( MoreThanOne
     , Matches
+    , map
     , none, single, some, safeSome
     , count, isNone, extract
     , toList, fromList
@@ -24,6 +25,14 @@ type Matches a
     | Single a
     | Some (MoreThanOne a)
     -- TODO: Any
+
+
+map : (a -> b) -> Matches a -> Matches b
+map f matches =
+    case matches of
+        None -> None
+        Single v -> Single <| f v
+        Some (MoreThanOne list) -> Some <| MoreThanOne <| List.map f <| list
 
 
 none : Matches a

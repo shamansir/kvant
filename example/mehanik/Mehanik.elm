@@ -34,6 +34,7 @@ import Kvant.Neighbours as Dir exposing (Direction(..))
 import Kvant.Matches exposing (Matches)
 import Kvant.Matches as Matches
 import Kvant.Json.Matches as Matches
+import Kvant.Patterns exposing (PatternId)
 import Kvant.Tiles exposing
     (toIndexInSet, fromIndexInSet, buildMapping, noMapping, TileMapping, TileKey, TileSet, Rotation)
 import Kvant.Xml.Tiles as Tiles
@@ -106,7 +107,7 @@ type Msg
     | Stop
     | Preprocess
     | FindMatchesAt Vec2
-    -- TODO: | ShowMatchesFor TileKey
+    | ShowMatchesFor PatternId
     -- receiving from Http requests
     | GotImage ImageAlias Image
     | GotTiles TileGroup ( TileSet, Adjacency )
@@ -115,7 +116,7 @@ type Msg
     -- receiving from worker
     | GotResult (Grid Int)
     | GotPatterns UniquePatterns
-    | GotMatches (Neighbours (Matches Int))
+    | GotMatches Vec2 (Neighbours (Matches Int))
     -- change options
     | ChangeN Plane.Size
     | ChangeSymmetry Symmetry
@@ -484,6 +485,21 @@ update msg model =
             , getMatchesAt pos
             )
 
+        ShowMatchesFor patternId ->
+            (
+                { model
+                | matches =
+                    model.patterns
+                        |> Maybe.andThen (Dict.get patternId)
+                        |> Maybe.map (.matches >> Dict.toList)
+                        |> Maybe.map
+                            (List.map (Tuple.mapBoth Neighbours.toDirection Matches.fromList))
+                        |> Maybe.map Neighbours.fromList
+                        |> Maybe.map (Neighbours.map (Maybe.withDefault Matches.none))
+                }
+            , Cmd.none
+            )
+
         SwitchToTextExample source ->
             (
                 { model
@@ -723,7 +739,7 @@ update msg model =
             , Cmd.none
             )
 
-        GotMatches matches ->
+        GotMatches _ matches ->
             (
                 { model
                 | status =
@@ -849,7 +865,13 @@ view model =
                     (\(patternId, { pattern } ) ->
                         div
                             [ style "transform" "scale(0.5)"
-                            , style "margin" "5px" ]
+                            , style "margin" "5px"
+                            , style "cursor" "pointer"
+                            , style "padding" "3px"
+                            , style "border" "1px solid lightgray"
+                            , style "border-radius" "3px"
+                            , onClick <| ShowMatchesFor patternId
+                            ]
                             [ viewPattern patternId pattern ]
                     )
                 <| Dict.toList
@@ -873,7 +895,7 @@ view model =
                                     , text <| Vec2.toString <| Neighbours.offsetFor dir
                                     , div
                                             [ style "display" "flex"
-                                            , style "flex-direction" "row" -- "column"
+                                            , style "flex-direction" "column"
                                             , style "margin" "20px 20px"
                                             ]
                                             <|
@@ -887,7 +909,10 @@ view model =
                                                         Just { pattern } ->
                                                             div
                                                                 [ style "transform" "scale(0.8)"
-                                                                , style "margin" "0px 5px"
+                                                                , style "margin" "0px 10px"
+                                                                , style "padding" "3px"
+                                                                , style "border" "1px solid lightgray"
+                                                                , style "border-radius" "3px"
                                                                 ]
                                                                 [ viewPattern patternId pattern
                                                                 ]
@@ -1259,7 +1284,7 @@ main =
                         (\value ->
                             case JD.decodeValue Matches.decodeNeighbours value of
                                 Err error -> WorkerError <| JD.errorToString error
-                                Ok matches -> GotMatches matches
+                                Ok matches -> GotMatches (0, 0) matches -- FIXME: actual position
                         )
                     ]
         , update = update
