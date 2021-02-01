@@ -49,6 +49,7 @@ import Example.Instance.Image.Plane as ImagePlane exposing
     (colorToPixel, pixelToColor)
 import Example.Instance.Tiles.Plane as TilesPlane
 import Example.Render exposing (Renderer)
+import Maybe
 
 
 type alias Model =
@@ -486,7 +487,8 @@ update msg model =
         SwitchToTextExample source ->
             (
                 { model
-                | options = forText model.options
+                | status = None
+                , options = forText model.options
                 , example = Textual source Nothing
                 , patterns = Nothing
                 , matches = Nothing
@@ -497,7 +499,8 @@ update msg model =
         SwitchToImageExample image ->
             (
                 { model
-                | options = forImage model.options
+                | status = None
+                , options = forImage model.options
                 , example = FromImage image Nothing
                 , patterns = Nothing
                 , matches = Nothing
@@ -508,7 +511,8 @@ update msg model =
         SwitchToTiledExample group ->
             (
                 { model
-                | options = forTiles model.options
+                | status = None
+                , options = forTiles model.options
                 , example =
                     FromTiles
                         group
@@ -753,7 +757,10 @@ view model =
                         []
                         [ viewSource TextRenderer.make source
                         , hr [] []
-                        , viewNeighboursLoadingArea ( 25, 25 ) wave
+                        , viewNeighboursLoadingArea ( 25, 25 )
+                            <| Maybe.withDefault (0, 0)
+                            <| Maybe.andThen loadSize
+                            <| wave
                         , wave
                             |> Maybe.map
                                 (viewGrid <| Array.toList >> TextPlane.merge >> TextRenderer.char)
@@ -765,6 +772,11 @@ view model =
                         []
                         [ viewSource ImageRenderer.make source
                         , hr [] []
+                        , viewNeighboursLoadingArea ( 10, 10 )
+                            <| Maybe.withDefault (0, 0)
+                            <| Maybe.map (\{ width, height } -> ( width, height ))
+                            <| Maybe.map Image.dimensions
+                            <| wave
                         , wave
                             |> Maybe.map ImageRenderer.drawImage
                             |> Maybe.withDefault (div [] [])
@@ -783,6 +795,10 @@ view model =
                                     <| List.map .key
                                     <| tiles
                                 , hr [] []
+                                , viewNeighboursLoadingArea ( 10, 10 ) -- FIXME: size of a tile
+                                    <| Maybe.withDefault (0, 0)
+                                    <| Maybe.andThen loadSize
+                                    <| wave
                                 , case adjacency of
                                     FromGrid grid ->
                                         div
@@ -840,9 +856,9 @@ view model =
                 <| patterns
 
         viewMatches neighbours =
-            [ [ Dir.NE, Dir.N, Dir.NW ]
-            , [ Dir.E,  Dir.X, Dir.W  ]
-            , [ Dir.SE, Dir.S, Dir.SW ]
+            [ [ Dir.NW, Dir.N, Dir.NE ]
+            , [ Dir.W,  Dir.X, Dir.E  ]
+            , [ Dir.SW, Dir.S, Dir.SE ]
             ]
             |> List.map
                 (\directionsRow ->
@@ -889,16 +905,10 @@ view model =
                 , style "margin" "10px 0"
                 ]
 
-        viewNeighboursLoadingArea itemSize wave
+        viewNeighboursLoadingArea itemSize areaSize
             = case model.patterns of
                 Just _ ->
-                    wave
-                        |> Maybe.andThen loadSize
-                        |> Maybe.map
-                            (\size ->
-                                viewClickableArea size itemSize FindMatchesAt
-                            )
-                        |> Maybe.withDefault (div [] [])
+                    viewClickableArea areaSize itemSize FindMatchesAt
                 Nothing -> div [] []
 
         viewClickableArea ( width, height ) ( itemWidth, itemHeight ) toMsg =
@@ -916,7 +926,7 @@ view model =
                             , style "height" <| String.fromInt itemHeight
                             ]
                             <|
-                                List.map (\(x, y) ->
+                                List.map (\(y, x) ->
                                     div
                                         [ style "width" <| String.fromInt itemWidth ++ "px"
                                         , style "height" <| String.fromInt itemHeight ++ "px"

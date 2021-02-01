@@ -49,6 +49,7 @@ self.addEventListener('message', function(e) {
             app.ports.preprocess.send({ options: data.options, source : data.source });
             break;
         case 'matches':
+            console.log(data.position);
             app.ports.matchesAt.send(data.position);
             break;
         default:

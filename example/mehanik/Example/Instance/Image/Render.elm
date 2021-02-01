@@ -52,8 +52,8 @@ drawFromGrid grid =
         |> drawImage
 
 
-drawImage : Image -> Html msg
-drawImage srcImage =
+drawImagePreview : Image -> Html msg
+drawImagePreview srcImage =
     img
         [ src <| Image.toPngUrl srcImage
         , style "min-width" "100px"
@@ -61,3 +61,16 @@ drawImage srcImage =
         , style "image-rendering" "pixelated"
         ]
         []
+
+
+drawImage : Image -> Html msg
+drawImage srcImage =
+    case Image.dimensions srcImage of
+        { width, height } ->
+            img
+                [ src <| Image.toPngUrl srcImage
+                , style "min-width" <| String.fromInt (width * 10) ++ "px"
+                , style "min-height"<| String.fromInt (height * 10) ++ "px"
+                , style "image-rendering" "pixelated"
+                ]
+                []
