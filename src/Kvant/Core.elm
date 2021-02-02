@@ -23,7 +23,7 @@ type Wfc =
     Wfc Size ( Solver.Step -> ( Solver.Step, Solution ) )
 
 
-makeWith : (UniquePatterns -> Step -> Step) -> Solver.Options -> Plane Patterns.Key -> Wfc
+makeWith : (UniquePatterns -> Step -> Step) -> Solver.Options -> Plane Patterns.AtomId -> Wfc
 makeWith doStep options source =
     let
         uniquePatterns =
@@ -44,11 +44,11 @@ makeWith doStep options source =
                 )
 
 
-make : Solver.Options -> Plane Patterns.Key -> Wfc
+make : Solver.Options -> Plane Patterns.AtomId -> Wfc
 make = makeWith Solver.solve
 
 
-makeAdvancing : Solver.Options -> Plane Patterns.Key -> Wfc
+makeAdvancing : Solver.Options -> Plane Patterns.AtomId -> Wfc
 makeAdvancing = makeWith Solver.advance
 
 

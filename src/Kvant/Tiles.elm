@@ -8,6 +8,7 @@ import Set exposing (Set)
 
 
 import Kvant.Plane exposing (Plane)
+import Kvant.Adjacency as A
 
 
 type alias TileKey = String
@@ -37,6 +38,18 @@ type alias TileSet = ( Format, List TileInfo )
 
 
 type alias TilesPlane = Plane (TileKey, Rotation)
+
+
+type alias Adjacency = A.Adjacency (TileKey, Rotation) (TileKey, Rotation)
+
+
+type alias TileGrid = Array (Array (TileKey, Rotation))
+
+
+type alias Rule =  -- TODO: allow directions
+    { left : ( TileKey, Rotation )
+    , right : ( TileKey, Rotation )
+    }
 
 
 

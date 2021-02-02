@@ -5,22 +5,8 @@ import Xml.Decode as D
 import Array
 
 
-import Kvant.Tiles exposing (TileKey, Rotation, keyRotFromString)
-import Kvant.Adjacency exposing (Adjacency(..), Repetition, TileGrid, Rule)
-
-
-decode : D.Decoder Adjacency
-decode =
-    D.map2
-        (\maybeRules maybeGrid ->
-            case ( maybeRules, maybeGrid ) of
-                ( Just [], Just grid ) -> FromGrid grid
-                ( Just rules, _ ) -> FromRules rules
-                ( _, Just grid ) -> FromGrid grid
-                ( Nothing, Nothing ) -> FromRules []
-        )
-        (D.maybe <| decodeRules)
-        (D.maybe <| decodeGrid)
+import Kvant.Tiles exposing (TileKey, Rotation, keyRotFromString, TileGrid, Rule)
+import Kvant.Adjacency exposing (Repetition)
 
 
 decodeGrid : D.Decoder TileGrid

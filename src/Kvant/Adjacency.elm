@@ -1,29 +1,25 @@
 module Kvant.Adjacency exposing (..)
 
-import Array exposing (Array)
+import Dict exposing (Dict)
 
-import Kvant.Tiles exposing (TileKey, Rotation)
+import Kvant.Matches exposing (Matches)
+import Kvant.Plane exposing (Offset)
 
 
 type alias Repetition = Int
 
 
-type alias TileGrid = Array (Array (TileKey, Rotation))
+type alias SubjectId = Int
 
 
--- TODO: Adjacency a = Dict Offset (List a) --> Patterns: PatternId, Tiles: TileId
-
--- TODO: Adjacencies a = Dict a (Adjacency a)
-
--- or just : Ajacency a = Dict a (Dict Offset (List a))
-
-
-type Adjacency
-    = FromGrid TileGrid -- > fromGrid -> UniquePatterns (containing Dict PatternId (Adjacency PatternId))
-    | FromRules (List Rule) -- > Dict TileId (Adjacency TileId)
+type alias Adjacency subj_id subj =
+    Dict
+        subj_id
+        { subject: subj
+        , weight : Float
+        , matches : Dict Offset (Matches subj_id)
+        }
 
 
-type alias Rule =  -- TODO: allow directions
-    { left : ( TileKey, Rotation )
-    , right : ( TileKey, Rotation)
-    }
+
+-- fromGrid : TileGrid -> Adjacency (TileKey, Rotation) (TileKey, Rotation)

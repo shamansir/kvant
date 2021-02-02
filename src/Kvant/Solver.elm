@@ -8,20 +8,18 @@ import Random
 import Kvant.Vec2 as Vec2
 import Kvant.Matches exposing (Matches)
 import Kvant.Matches as Matches
-import Kvant.Occurrence exposing (Frequency, frequencyToFloat)
 import Kvant.Plane exposing (Plane(..), Coord, Size)
 import Kvant.Plane as Plane
-import Kvant.Patterns exposing (Key, PatternId)
-import Kvant.Patterns as Patterns exposing (Key, UniquePatterns)
+import Kvant.Patterns exposing (PatternId, Frequency, UniquePatterns)
+import Kvant.Patterns as Patterns
 import Kvant.Neighbours as Neighbours
 import Kvant.Neighbours as Dir exposing (Direction(..))
-import Kvant.Neighbours exposing (Neighbours)
 
 
 type alias Wave = Plane (Matches PatternId)
 
 
-type alias Solution = Plane (List Patterns.Key)
+type alias Solution = Plane (List Patterns.AtomId)
 
 
 type Step
@@ -202,18 +200,18 @@ produce
     -> Solution
 produce patterns (Step _ _ outputSize status) =
     let
-        loadValues : Matches PatternId -> List Key
+        loadValues : Matches PatternId -> List Patterns.AtomId
         loadValues matches =
             matches
                 |> Matches.toList
                 |> List.map (\patternId ->
                     patterns
                         |> Dict.get patternId
-                        |> Maybe.andThen (.pattern >> Plane.get (0, 0))
+                        |> Maybe.andThen (.subject >> Plane.get (0, 0))
                     )
                 |> List.filterMap identity
                 -- if pattern wasn't found or contains no value at this point, it is skipped
-        fromWave : Wave -> Plane (List Patterns.Key)
+        fromWave : Wave -> Plane (List Patterns.AtomId)
         fromWave wave = wave |> Plane.map loadValues
     in
         fromWave <| case status of
@@ -235,18 +233,16 @@ entropyOf seed uniquePatterns matches =
         1 -> ( Just 0, seed )
         count ->
             let
-                patternFrequency : PatternId -> Maybe Frequency
+                patternFrequency : PatternId -> Frequency
                 patternFrequency patternId =
                     Dict.get patternId uniquePatterns |>
-                        Maybe.map .frequency |>
-                        Maybe.andThen Tuple.second
+                        Maybe.map .weight |>
+                        Maybe.withDefault 0
                 -- TODO: prepare frequency lists in advance, before calculation
                 weights =
                     matches
                         |> Matches.toList
                         |> List.map patternFrequency
-                        |> List.filterMap identity
-                        |> List.map frequencyToFloat
                 maxWeight =
                     List.maximum weights |> Maybe.withDefault 0
                 sumOfWeights = List.foldl (+) 0 weights
@@ -295,16 +291,14 @@ findLowestEntropy seed uniquePatterns =
             >> Tuple.mapFirst (Maybe.map Tuple.first)
 
 
- -- TODO: produce several IDs?
 randomPattern : UniquePatterns -> PatternId -> List PatternId -> Random.Generator PatternId
 randomPattern uniquePatterns first others =
     let
-        packWithFrequency : PatternId -> ( Float, PatternId )
+        packWithFrequency : PatternId -> ( Frequency, PatternId )
         packWithFrequency pattern =
             ( uniquePatterns
                 |> Dict.get pattern
-                |> Maybe.andThen (.frequency >> Tuple.second)
-                |> Maybe.map frequencyToFloat
+                |> Maybe.map .weight
                 |> Maybe.withDefault 0
             , pattern
             )
@@ -331,7 +325,6 @@ getMatchesOf uniquePatterns dir pattern =
             (\{ matches } ->
                 matches |> Dict.get (Dir.offsetFor dir)
             )
-        |> Maybe.map Matches.fromList
 
 
 hasAContradiction : Wave -> Bool
@@ -350,10 +343,6 @@ isCollapsed =
             wasCollapsed && (Matches.count matches == 1)
         )
         True
-
-
-loadFrequencies : UniquePatterns -> Dict PatternId (Maybe Frequency)
-loadFrequencies = Dict.map <| always <| (.frequency >> Tuple.second)
 
 
 getSeed : Step -> Random.Seed

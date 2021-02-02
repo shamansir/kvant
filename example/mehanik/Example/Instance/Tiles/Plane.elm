@@ -6,8 +6,7 @@ import Array exposing (Array)
 import Kvant.Vec2 as Vec2
 import Kvant.Plane as Plane
 import Kvant.Plane exposing (Plane)
-import Kvant.Tiles exposing (noTile, TileKey, Rotation)
-import Kvant.Adjacency exposing (TileGrid)
+import Kvant.Tiles exposing (noTile, TileKey, Rotation, TileGrid)
 
 
 type alias TilesPlane = Plane (TileKey, Rotation)

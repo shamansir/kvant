@@ -36,9 +36,11 @@ import Kvant.Matches as Matches
 import Kvant.Json.Matches as Matches
 import Kvant.Patterns exposing (PatternId)
 import Kvant.Tiles exposing
-    (toIndexInSet, fromIndexInSet, buildMapping, noMapping, TileMapping, TileKey, TileSet, Rotation)
+    ( toIndexInSet, fromIndexInSet, buildMapping, noMapping
+    , TileMapping, TileKey, TileSet, TileGrid, Rotation
+    )
+import Kvant.Tiles as Tiles
 import Kvant.Xml.Tiles as Tiles
-import Kvant.Adjacency exposing (Adjacency(..))
 import Kvant.Xml.Adjacency as Adjacency
 
 
@@ -58,7 +60,7 @@ type alias Model =
     , options : Solver.Options
     , example : CurrentExample
     , images : Dict ImageAlias Image
-    , tiles : Dict TileGroup ( TileSet, Adjacency )
+    , tiles : Dict TileGroup ( TileSet, Maybe TileGrid )
     , patterns : Maybe UniquePatterns
     , matches : Maybe (Neighbours (Matches Int))
     , imagesErrors : Dict ImageAlias Http.Error
@@ -110,7 +112,7 @@ type Msg
     | ShowMatchesFor PatternId
     -- receiving from Http requests
     | GotImage ImageAlias Image
-    | GotTiles TileGroup ( TileSet, Adjacency )
+    | GotTiles TileGroup ( TileSet, Maybe TileGrid )
     | ImageLoadError ImageAlias Http.Error
     | TilesLoadError TileGroup String
     -- receiving from worker
@@ -311,7 +313,7 @@ update msg model =
                         , status = WaitingRunResponse
                         }
                     , case model.tiles |> Dict.get tileGroup of
-                        Just (_, FromGrid grid) ->
+                        Just ( _, Just grid ) ->
                             runInWorker
                                 { options =
                                     Options.encode model.options
@@ -370,7 +372,7 @@ update msg model =
                         , status = WaitingTracingResponse
                         }
                     , case model.tiles |> Dict.get tileGroup of
-                        Just (_, FromGrid grid) ->
+                        Just (_, Just grid ) ->
                             runInWorker
                                 { options =
                                     Options.encode model.options
@@ -465,7 +467,7 @@ update msg model =
                             WaitingPatternsResponse model.status
                         }
                     , case model.tiles |> Dict.get tileGroup of
-                        Just (_, FromGrid grid) ->
+                        Just (_, Just grid) ->
                             preprocessInWorker
                                 { options =
                                     Options.encode model.options
@@ -492,8 +494,7 @@ update msg model =
                     model.patterns
                         |> Maybe.andThen (Dict.get patternId)
                         |> Maybe.map (.matches >> Dict.toList)
-                        |> Maybe.map
-                            (List.map (Tuple.mapBoth Neighbours.toDirection Matches.fromList))
+                        |> Maybe.map (List.map (Tuple.mapFirst Neighbours.toDirection))
                         |> Maybe.map Neighbours.fromList
                         |> Maybe.map (Neighbours.map (Maybe.withDefault Matches.none))
                 }
@@ -710,7 +711,7 @@ update msg model =
                                 group
                                 mapping
                                 ( case model.tiles |> Dict.get group of
-                                    Just (_, FromGrid _) ->
+                                    Just _ ->
                                         grid
                                             |> Array.map
                                                 (Array.map
@@ -801,7 +802,7 @@ view model =
 
                 FromTiles group _ wave ->
                     case model.tiles |> Dict.get group of
-                        Just ( ( format, tiles ), adjacency ) ->
+                        Just ( ( format, tiles ), maybeGrid ) ->
                             div []
                                 [ div
                                     []
@@ -815,8 +816,8 @@ view model =
                                     <| Maybe.withDefault (0, 0)
                                     <| Maybe.andThen loadSize
                                     <| wave
-                                , case adjacency of
-                                    FromGrid grid ->
+                                , case maybeGrid of
+                                    Just grid ->
                                         div
                                             [ style "transform" "scale(0.6)"
                                             , style "transform-origin" "0 0"
@@ -862,7 +863,7 @@ view model =
                 , style "overflow" "scroll"
                 ]
                 <| List.map
-                    (\(patternId, { pattern } ) ->
+                    (\(patternId, { subject } ) ->
                         div
                             [ style "transform" "scale(0.5)"
                             , style "margin" "5px"
@@ -872,7 +873,7 @@ view model =
                             , style "border-radius" "3px"
                             , onClick <| ShowMatchesFor patternId
                             ]
-                            [ viewPattern patternId pattern ]
+                            [ viewPattern patternId subject ]
                     )
                 <| Dict.toList
                 <| patterns
@@ -906,7 +907,7 @@ view model =
                                             <| List.map
                                                 (\patternId ->
                                                 case model.patterns |> Maybe.andThen (Dict.get patternId) of
-                                                        Just { pattern } ->
+                                                        Just { subject } ->
                                                             div
                                                                 [ style "transform" "scale(0.8)"
                                                                 , style "margin" "0px 10px"
@@ -914,7 +915,7 @@ view model =
                                                                 , style "border" "1px solid lightgray"
                                                                 , style "border-radius" "3px"
                                                                 ]
-                                                                [ viewPattern patternId pattern
+                                                                [ viewPattern patternId subject
                                                                 ]
                                                         Nothing ->
                                                             div [] []
@@ -1336,7 +1337,7 @@ requestRules tileGroup =
                         Result.map2
                             Tuple.pair
                             ( XD.run Tiles.decode xmlString )
-                            ( XD.run Adjacency.decode xmlString )
+                            ( XD.run (XD.maybe Adjacency.decodeGrid) xmlString )
                     )
                 >> runResult (TilesLoadError tileGroup) (GotTiles tileGroup)
                 )

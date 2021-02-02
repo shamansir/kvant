@@ -6,41 +6,35 @@ import Kvant.Vec2 exposing (Vec2)
 import Kvant.Vec2 as Vec2
 import Kvant.Plane exposing (Plane, Offset)
 import Kvant.Plane as Plane exposing (..)
-import Kvant.Occurrence exposing (..)
-import Kvant.Occurrence as Occurrence
+import Kvant.Adjacency exposing (Adjacency)
+import Kvant.Matches exposing (Matches)
+import Kvant.Matches as Matches
 
 
 type alias PatternId = Int
 
--- value can be pixel, color, tile, character, whatever, but `Key` is the integer ID of it
-type alias Key = Int
+-- atom can be pixel, color, tile, character, whatever, but `Key` is the integer ID of it
+type alias AtomId = Int
+
+type alias Frequency = Float
 
 
-type alias Pattern = Plane Key
+type alias Pattern = Plane AtomId
 
 
-type alias PatternWithStats =
-    { pattern : Pattern
-    , frequency : ( Occurrence, Maybe Frequency )
-    , matches : Dict Offset (List PatternId) -- FIXME: why not (Matches PatternId)?
-    --, rotations : Dict Rotation PatternId
-    }
-
-
-type alias UniquePatterns =
-    Dict PatternId PatternWithStats
+type alias UniquePatterns = Adjacency PatternId Pattern
 
 
 preprocess
     :  Plane.Symmetry
     -> Plane.Boundary
     -> Plane.Size
-    -> Plane Key
+    -> Plane AtomId
     -> UniquePatterns
 preprocess symmetry boundary ofSize inPlane =
     let
         allSubplanes = subPatterns symmetry boundary ofSize inPlane
-        uniquePatterns = evaluateOccurrence allSubplanes
+        uniquePatterns = evaluateWeights allSubplanes
         uniquePatternsDict =
             uniquePatterns
                 |> List.indexedMap Tuple.pair
@@ -50,22 +44,22 @@ preprocess symmetry boundary ofSize inPlane =
                 |> Dict.map (always Tuple.second)
     in
         uniquePatternsDict
-                |> Dict.map (\_ ( frequency, pattern ) ->
-                        { frequency = frequency
-                        , pattern = pattern
-                        , matches =
-                            findMatches
-                                onlyPatternsDict
-                                pattern
-                        }
-                    )
+            |> Dict.map (\_ ( frequency, pattern ) ->
+                    { weight = frequency
+                    , subject = pattern
+                    , matches =
+                        findMatches
+                            onlyPatternsDict
+                            pattern
+                    }
+                )
 
 
 
-evaluateOccurrence
+evaluateWeights
     :  List Pattern
-    -> List ((Occurrence, Maybe Frequency), Pattern)
-evaluateOccurrence subPlanes_ =
+    -> List (Frequency, Pattern)
+evaluateWeights subPlanes_ =
     let
         uniquePatterns =
             subPlanes_
@@ -84,16 +78,15 @@ evaluateOccurrence subPlanes_ =
                              ( subPlanes_
                                  |> List.filter (Plane.equal subPlane_)
                                  |> List.length
-                                 |> Occurrence.times
                              , subPlane_
                              )
                      )
-                 |> List.sortBy (Tuple.first >> Occurrence.toInt)
+                 |> List.sortBy Tuple.first
         total =
              withOccurrence
                 |> List.foldl
                     (\(occurrence, _) sum ->
-                         sum + Occurrence.toInt occurrence
+                         sum + occurrence
                     )
                     0
                  |> toFloat
@@ -103,14 +96,8 @@ evaluateOccurrence subPlanes_ =
     in
         withOccurrence
             |> List.map
-                (\(occurrence, v) ->
-                    (
-                        ( occurrence
-                        , occurrence
-                            |> Occurrence.toMaybe
-                            |> Maybe.map
-                                (\occurred ->
-                                    Occurrence.frequencyFromFloat <| toFloat occurred / total))
+                (\(occurred, v) ->
+                    ( toFloat occurred / total
                     , v
                     )
                 )
@@ -153,10 +140,10 @@ offsetsFor ( width, height ) =
         }
 
 
-findMatches : Dict PatternId Pattern -> Pattern -> Dict Offset (List PatternId)
+findMatches : Dict PatternId Pattern -> Pattern -> Dict Offset (Matches PatternId)
 findMatches patterns (Plane size _ as pattern) =
     offsetsFor size
-        |> List.map (\offset -> ( offset, pattern |> matchesAt offset patterns ))
+        |> List.map (\offset -> ( offset, pattern |> matchesAt offset patterns |> Matches.fromList))
         |> Dict.fromList
 
 

@@ -8,8 +8,7 @@ import Html.Attributes exposing (..)
 
 import Kvant.Vec2 exposing (..)
 import Kvant.Plane as Plane
-import Kvant.Tiles exposing (TileKey, Rotation, noTile)
-import Kvant.Adjacency exposing (TileGrid)
+import Kvant.Tiles exposing (TileKey, Rotation, noTile, TileGrid)
 
 import Example.Render exposing (Renderer)
 
