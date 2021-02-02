@@ -7,8 +7,11 @@ import Set exposing (Set)
 
 
 
-import Kvant.Plane exposing (Plane)
+import Kvant.Plane exposing (Plane, Offset)
 import Kvant.Adjacency as A
+import Kvant.Neighbours exposing (Neighbours, Cardinal(..), Direction)
+import Kvant.Neighbours as Neighbours
+import Kvant.Matches exposing (Matches)
 
 
 type alias TileKey = String
@@ -24,7 +27,7 @@ maxRotations = 4
 
 
 type Symmetry
-    = I | X | L | T | S -- S meaning Slope
+    = I | X | L | T | S -- | Q -- S meaning Slope, Q means none
 
 
 type alias TileInfo =
@@ -127,6 +130,7 @@ symmetryToString symmetry =
         T -> "T"
         S -> "\\"
 
+
 keyRotFromString : String -> ( TileKey, Rotation )
 keyRotFromString str =
     case String.split " " str of
@@ -137,3 +141,68 @@ keyRotFromString str =
         [] ->
             ( noTile, 0 )
 
+
+symmetryToIndices : Symmetry -> Cardinal Int
+symmetryToIndices symmetry =
+    case symmetry of
+        X ->
+            Cardinal
+                   1
+                1  0  1
+                   1
+        I ->
+            Cardinal
+                   2
+                1  0  1
+                   2
+        L ->
+            Cardinal
+                   2
+                1  0  2
+                   1
+        T ->
+            Cardinal
+                   2
+                1  0  1
+                   1
+        S -> -- a.k.a `\`
+            Cardinal
+                   2
+                1  0  2
+                   1
+        -- Q ->
+        --     Cardinal
+        --            4
+        --         4  0  4
+        --            4
+
+
+matchesBySymmetry : Direction -> Symmetry -> Symmetry -> Bool
+matchesBySymmetry dir symmetryA symmetryB =
+    (Neighbours.getCardinal dir <| symmetryToIndices symmetryA)
+    == (Neighbours.getCardinal dir <| symmetryToIndices symmetryB)
+
+
+findMatches : List TileInfo -> List Rule -> TileInfo -> Dict Offset (Matches (TileKey, Rotation))
+findMatches tiles rules currentTile =
+    Dict.empty
+
+
+buildAdjacencyRules : List TileInfo -> List Rule -> Adjacency
+buildAdjacencyRules tiles rules =
+    tiles
+        |> List.concatMap
+            (\tile ->
+                List.range 0 (maxRotations - 1)
+                    |> List.map (\rotation ->
+                            ( ( tile.key, rotation ), tile )
+                        )
+            )
+        |> Dict.fromList
+        |> Dict.map
+            (\(tileKey, rotation) tile ->
+                { subject = ( tileKey, rotation )
+                , weight = tile.weight |> Maybe.withDefault 0
+                , matches = findMatches tiles rules tile
+                }
+            )

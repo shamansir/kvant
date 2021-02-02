@@ -13,6 +13,13 @@ type Neighbours a =
         a a a
 
 
+type Cardinal a =
+    Cardinal
+          a
+        a a a -- we could exclude center
+          a
+
+
 type Direction
     = NW | N | NE
     |  W | X | E
@@ -317,3 +324,32 @@ fromDirection direction =
         SE -> ( -1,  1 )
         S  -> (  0,  1 )
         SW -> (  1,  1 )
+
+
+toCardinal : Neighbours a -> Cardinal a
+toCardinal n =
+    Cardinal
+                  (get N n)
+        (get W n) (get X n) (get E n)
+                  (get S n)
+
+
+fromCardinal : Cardinal a -> Neighbours (Maybe a)
+fromCardinal c =
+    case c of
+        Cardinal n w x e s ->
+            Neighbours
+                Nothing  (Just n) Nothing
+                (Just w) (Just x) (Just e)
+                Nothing  (Just s) Nothing
+
+
+getCardinal : Direction -> Cardinal a -> a
+getCardinal dir (Cardinal n w x e s) =
+    case dir of
+        N -> n
+        W -> w
+        X -> x
+        E -> e
+        S -> s
+        _ -> x
