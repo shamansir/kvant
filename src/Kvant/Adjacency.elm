@@ -23,3 +23,22 @@ type alias Adjacency subj_id subj =
 
 
 -- fromGrid : TileGrid -> Adjacency (TileKey, Rotation) (TileKey, Rotation)
+
+
+map : (a -> b) -> Adjacency i a -> Adjacency i b
+map f =
+    Dict.map
+        (\_ v ->
+            { subject = f v.subject
+            , weight = v.weight
+            , matches = v.matches
+            }
+        )
+
+
+mapKey : (comparable -> comparable) -> Adjacency comparable a -> Adjacency comparable a
+mapKey f =
+    Dict.toList
+        >> List.map (Tuple.mapFirst f)
+        >> Dict.fromList
+

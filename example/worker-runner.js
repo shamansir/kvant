@@ -31,10 +31,14 @@ self.addEventListener('message', function(e) {
     var data = e.data;
     switch (data.cmd) {
         case 'run':
-            app.ports.run.send({ options: data.options, source : data.source });
+            app.ports.run.send(
+                { options: data.options, source : data.source, adjacency : data.adjacency }
+            );
             break;
         case 'trace':
-            app.ports.trace.send({ options: data.options, source : data.source });
+            app.ports.trace.send(
+                { options: data.options, source : data.source, adjacency : data.adjacency }
+            );
             break;
         case 'step':
             app.ports.step.send(null);
@@ -46,7 +50,9 @@ self.addEventListener('message', function(e) {
             app.ports.stop.send(null);
             break;
         case 'preprocess':
-            app.ports.preprocess.send({ options: data.options, source : data.source });
+            app.ports.preprocess.send(
+                { options: data.options, source : data.source, adjacency : data.adjacency }
+            );
             break;
         case 'matches':
             console.log(data.position);
