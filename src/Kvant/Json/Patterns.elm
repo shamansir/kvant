@@ -8,13 +8,12 @@ import Json.Decode as D
 import Kvant.Vec2 as Vec2
 import Kvant.Patterns as P
 import Kvant.Plane as Plane
-import Kvant.Matches as Matches exposing (Matches)
+import Kvant.Json.Adjacency as Adjacency
 
 
 decode : D.Decoder P.UniquePatterns
 decode =
-    D.list decodePatternStats
-        |> D.map Dict.fromList
+    Adjacency.decode decodePattern
 
 
 decodePattern : D.Decoder P.Pattern
@@ -28,42 +27,9 @@ decodePattern =
             )
 
 
-decodePatternStats
-    : D.Decoder
-        ( P.PatternId
-        ,
-            { subject : P.Pattern
-            , weight : Float
-            , matches : Dict Plane.Offset (Matches P.PatternId)
-            }
-        )
-decodePatternStats =
-    D.map2
-        Tuple.pair
-        (D.field "id" D.int)
-        <| D.map3
-            (\s w m -> { subject = s, weight = w, matches = m })
-            (D.field "pattern" decodePattern)
-            (D.field "weight" D.float)
-            (D.field "matches" decodeMatches)
-
-
-decodeMatches : D.Decoder (Dict Plane.Offset (Matches P.PatternId))
-decodeMatches =
-    D.list
-        (D.map3
-            (\x y matches -> ( (x, y), Matches.fromList matches ))
-            (D.field "x" D.int)
-            (D.field "y" D.int)
-            (D.field "matches" <| D.list D.int)
-        )
-        |> D.map Dict.fromList
-
-
 encode : P.UniquePatterns -> E.Value
 encode =
-    Dict.toList
-        >> E.list encodePatternStats
+    Adjacency.encode encodePattern
 
 
 encodePattern : P.Pattern -> E.Value
@@ -71,35 +37,4 @@ encodePattern =
     Plane.toList2d
         >> E.list
             (E.list (Maybe.withDefault -1 >> E.int))
-
-
-encodePatternStats
-    :
-        ( P.PatternId
-        ,
-            { subject : P.Pattern
-            , weight : Float
-            , matches : Dict Plane.Offset (Matches P.PatternId)
-            }
-        )
-    -> E.Value
-encodePatternStats ( patternId, stats ) =
-    E.object
-        [ ( "id", E.int patternId )
-        , ( "pattern", stats.subject |> encodePattern )
-        , ( "weight", stats.weight |> E.float )
-        ,
-            ( "matches"
-            , stats.matches
-                |> Dict.toList
-                |> E.list
-                    (\((x, y), matches) ->
-                        E.object
-                            [ ( "x", E.int x )
-                            , ( "y", E.int y )
-                            , ( "matches", matches |> Matches.toList |> E.list E.int )
-                            ]
-                    )
-            )
-        ]
 

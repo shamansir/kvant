@@ -21,11 +21,15 @@
 
     var jsWorker = new Worker('./worker-runner.js');
 
-    mehanik.ports.runInWorker.subscribe(({ options, source }) => {
-        jsWorker.postMessage({ 'cmd': 'run', 'source': source, 'options': options });
+    mehanik.ports.runInWorker.subscribe(({ options, source, adjacency }) => {
+        jsWorker.postMessage(
+            { 'cmd': 'run', 'source': source, 'options': options, 'adjacency': adjacency }
+        );
     });
-    mehanik.ports.traceInWorker.subscribe(({ options, source }) => {
-        jsWorker.postMessage({ 'cmd': 'trace', 'source': source, 'options': options });
+    mehanik.ports.traceInWorker.subscribe(({ options, source, adjacency }) => {
+        jsWorker.postMessage(
+            { 'cmd': 'trace', 'source': source, 'options': options, 'adjacency': adjacency }
+        );
     });
     mehanik.ports.stepInWorker.subscribe((_) => {
         jsWorker.postMessage({ 'cmd': 'step' });
@@ -36,8 +40,10 @@
     mehanik.ports.stopWorker.subscribe((_) => {
         jsWorker.postMessage({ 'cmd': 'stop' });
     });
-    mehanik.ports.preprocessInWorker.subscribe(({ options, source }) => {
-        jsWorker.postMessage({ 'cmd': 'preprocess', 'source': source, 'options': options });
+    mehanik.ports.preprocessInWorker.subscribe(({ options, source, adjacency }) => {
+        jsWorker.postMessage(
+            { 'cmd': 'preprocess', 'source': source, 'options': options, 'adjacency': adjacency }
+        );
     });
     mehanik.ports.getMatchesAt.subscribe(position => {
         jsWorker.postMessage({ 'cmd': 'matches', 'position': position });

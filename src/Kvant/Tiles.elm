@@ -6,10 +6,9 @@ import Dict exposing (Dict)
 import Set exposing (Set)
 
 
-
 import Kvant.Plane exposing (Plane, Offset)
-import Kvant.Adjacency as A
-import Kvant.Neighbours exposing (Neighbours, Cardinal(..), Direction)
+import Kvant.Adjacency exposing (Adjacency)
+import Kvant.Neighbours exposing (Cardinal(..), Direction)
 import Kvant.Neighbours as Neighbours
 import Kvant.Neighbours as D exposing (Direction(..))
 import Kvant.Matches as Matches exposing (Matches)
@@ -46,7 +45,7 @@ type alias TileSet = ( Format, List TileInfo )
 type alias TilesPlane = Plane (TileKey, Rotation)
 
 
-type alias Adjacency = A.Adjacency (TileKey, Rotation) (TileKey, Rotation)
+type alias TileAdjacency = Adjacency (TileKey, Rotation) (TileKey, Rotation)
 
 
 type alias TileGrid = Array (Array (TileKey, Rotation))
@@ -253,7 +252,7 @@ findMatches tiles rules ( currentTile, currentRotation ) =
         |> Neighbours.toDict
 
 
-buildAdjacencyRules : List TileInfo -> List Rule -> Adjacency
+buildAdjacencyRules : List TileInfo -> List Rule -> TileAdjacency
 buildAdjacencyRules tiles rules =
     tiles
         |> List.concatMap
