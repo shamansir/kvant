@@ -11,7 +11,10 @@ import Kvant.Plane exposing (Plane, Offset)
 import Kvant.Adjacency as A
 import Kvant.Neighbours exposing (Neighbours, Cardinal(..), Direction)
 import Kvant.Neighbours as Neighbours
-import Kvant.Matches exposing (Matches)
+import Kvant.Neighbours as D exposing (Direction(..))
+import Kvant.Matches as Matches exposing (Matches)
+import List
+import Dict
 
 
 type alias TileKey = String
@@ -49,7 +52,7 @@ type alias Adjacency = A.Adjacency (TileKey, Rotation) (TileKey, Rotation)
 type alias TileGrid = Array (Array (TileKey, Rotation))
 
 
-type alias Rule =  -- TODO: allow directions
+type alias Rule =
     { left : ( TileKey, Rotation )
     , right : ( TileKey, Rotation )
     }
@@ -180,12 +183,74 @@ symmetryToIndices symmetry =
 matchesBySymmetry : Direction -> Symmetry -> Symmetry -> Bool
 matchesBySymmetry dir symmetryA symmetryB =
     (Neighbours.getCardinal dir <| symmetryToIndices symmetryA)
-    == (Neighbours.getCardinal dir <| symmetryToIndices symmetryB)
+    == (Neighbours.getCardinal (Neighbours.opposite dir) <| symmetryToIndices symmetryB)
 
 
-findMatches : List TileInfo -> List Rule -> TileInfo -> Dict Offset (Matches (TileKey, Rotation))
-findMatches tiles rules currentTile =
-    Dict.empty
+rotate : Rotation -> Direction -> Direction
+rotate r dir =
+    case ( r, dir ) of
+        ( 0, _    ) -> dir
+        ( _, D.X  ) -> D.X
+
+        ( 1, D.NW ) -> D.NE
+        ( 1, D.N  ) -> D.E
+        ( 1, D.NE ) -> D.SE
+        ( 1, D.E  ) -> D.S
+        ( 1, D.SE ) -> D.SW
+        ( 1, D.S  ) -> D.W
+        ( 1, D.SW ) -> D.NW
+        ( 1, D.W  ) -> D.N
+
+        ( 2, D.NW ) -> D.SE
+        ( 2, D.N  ) -> D.S
+        ( 2, D.NE ) -> D.SW
+        ( 2, D.E  ) -> D.W
+        ( 2, D.SE ) -> D.NW
+        ( 2, D.S  ) -> D.N
+        ( 2, D.SW ) -> D.SW
+        ( 2, D.W  ) -> D.E
+
+        ( 3, D.NW ) -> D.SW
+        ( 3, D.N  ) -> D.W
+        ( 3, D.NE ) -> D.NW
+        ( 3, D.E  ) -> D.N
+        ( 3, D.SE ) -> D.NE
+        ( 3, D.S  ) -> D.E
+        ( 3, D.SW ) -> D.SE
+        ( 3, D.W  ) -> D.S
+
+        ( _, _    ) -> dir
+
+
+findMatches
+    :  List TileInfo
+    -> List Rule
+    -> ( TileInfo, Rotation )
+    -> Dict Offset (Matches (TileKey, Rotation))
+findMatches tiles rules ( currentTile, currentRotation ) =
+    Neighbours.cardinal
+        |> List.foldl
+            (\dir neighbours ->
+                let
+                    bySymmetry
+                        = tiles
+                            |> List.foldl
+                                (\otherTile neighbours_ ->
+                                    if matchesBySymmetry
+                                        (dir |> rotate currentRotation)
+                                        (currentTile.symmetry |> Maybe.withDefault X)
+                                        (otherTile.symmetry |> Maybe.withDefault X)
+                                        then neighbours_
+                                            |> Neighbours.at dir
+                                                ((::) ( otherTile.key, currentRotation ))
+                                        else neighbours_
+                                )
+                                neighbours
+                in bySymmetry
+            )
+            (Neighbours.fill [])
+        |> Neighbours.map Matches.fromList
+        |> Neighbours.toDict
 
 
 buildAdjacencyRules : List TileInfo -> List Rule -> Adjacency
@@ -203,6 +268,6 @@ buildAdjacencyRules tiles rules =
             (\(tileKey, rotation) tile ->
                 { subject = ( tileKey, rotation )
                 , weight = tile.weight |> Maybe.withDefault 0
-                , matches = findMatches tiles rules tile
+                , matches = ( tile, rotation ) |> findMatches tiles rules
                 }
             )

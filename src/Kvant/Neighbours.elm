@@ -3,8 +3,9 @@ module Kvant.Neighbours
 
 
 import Kvant.Vec2 exposing (..)
+import Dict exposing (Dict)
 
--- TODO: Move to Plane.Walker
+
 
 type Neighbours a =
     Neighbours
@@ -143,6 +144,13 @@ fromList =
             set dir <| Just val
         )
         (fill Nothing)
+
+
+toDict : Neighbours a -> Dict Vec2 a
+toDict =
+    toList
+        >> List.map (Tuple.mapFirst offsetFor)
+        >> Dict.fromList
 
 
 flatten : Neighbours a -> List a
@@ -353,3 +361,14 @@ getCardinal dir (Cardinal n w x e s) =
         E -> e
         S -> s
         _ -> x
+
+
+isCardinal : Direction -> Bool
+isCardinal dir =
+    case dir of
+        N -> True
+        W -> True
+        X -> False
+        E -> True
+        S -> True
+        _ -> False
