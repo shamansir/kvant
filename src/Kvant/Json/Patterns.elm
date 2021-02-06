@@ -13,7 +13,7 @@ import Kvant.Json.Adjacency as Adjacency
 
 decode : D.Decoder P.UniquePatterns
 decode =
-    Adjacency.decode decodePattern
+    Adjacency.decode D.int decodePattern
 
 
 decodePattern : D.Decoder P.Pattern
@@ -29,7 +29,7 @@ decodePattern =
 
 encode : P.UniquePatterns -> E.Value
 encode =
-    Adjacency.encode encodePattern
+    Adjacency.encode E.int encodePattern
 
 
 encodePattern : P.Pattern -> E.Value
