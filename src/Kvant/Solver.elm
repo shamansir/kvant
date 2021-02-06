@@ -10,16 +10,25 @@ import Kvant.Matches exposing (Matches)
 import Kvant.Matches as Matches
 import Kvant.Plane exposing (Plane(..), Coord, Size)
 import Kvant.Plane as Plane
-import Kvant.Patterns exposing (PatternId, Frequency, UniquePatterns)
-import Kvant.Patterns as Patterns
+import Kvant.Patterns exposing (UniquePatterns)
 import Kvant.Neighbours as Neighbours
 import Kvant.Neighbours as Dir exposing (Direction(..))
+import Kvant.Adjacency as A
 
 
-type alias Wave = Plane (Matches PatternId)
+type alias Adjacency a = A.Adjacency Int a
 
 
-type alias Solution = Plane (List Patterns.AtomId)
+type alias AtomId = Int
+
+
+type alias Weight = Float
+
+
+type alias Wave = Plane (Matches AtomId)
+
+
+type alias Solution = Plane (List AtomId)
 
 
 type Step
@@ -45,7 +54,7 @@ type MaximumSteps = MaximumSteps Int
 type Observation
     = Collapsed
     | Contradiction
-    | Focus Coord PatternId
+    | Focus Coord AtomId
 
 
 firstStep : Size -> Random.Seed -> Step
@@ -53,45 +62,45 @@ firstStep size seed =
     Step 0 seed size Initial
 
 
-solve : UniquePatterns -> Step -> Step
-solve patterns fromStep =
+solve : Adjacency a -> Step -> Step
+solve adjacencyRules fromStep =
     let
-        succeedingStep = advance patterns fromStep
+        succeedingStep = advance adjacencyRules fromStep
     in case getStatus succeedingStep of
         Solved _ -> succeedingStep
         Terminated -> succeedingStep
-        _ -> solve patterns succeedingStep
+        _ -> solve adjacencyRules succeedingStep
 
 
-solveUntil : MaximumSteps -> UniquePatterns -> Step -> Step
-solveUntil (MaximumSteps maxSteps) patterns fromStep =
+solveUntil : MaximumSteps -> Adjacency a -> Step -> Step
+solveUntil (MaximumSteps maxSteps) adjacencyRules fromStep =
     let
-        succeedingStep = advance patterns fromStep
+        succeedingStep = advance adjacencyRules fromStep
     in case getStatus succeedingStep of
         Solved _ -> succeedingStep
         Terminated -> succeedingStep
         _ ->
             if not (succeedingStep |> exceeds maxSteps)
-                then succeedingStep |> solve patterns
+                then succeedingStep |> solve adjacencyRules
                 else succeedingStep |> (updateStatus <| ReachedLimit maxSteps)
 
 
-advance : UniquePatterns -> Step -> Step
-advance patterns (Step _ _ outputSize _ as step) =
+advance : Adjacency a -> Step -> Step
+advance adjacencyRules (Step _ _ outputSize _ as step) =
     case getStatus step of
         Initial ->
-            initWave patterns outputSize
+            initWave (Dict.keys adjacencyRules) outputSize
                 |> InProgress NotFocused
                 |> nextStep (getSeed step) step
         InProgress _ wave ->
-            case observe (getSeed step) patterns wave of
+            case observe (getSeed step) adjacencyRules wave of
                 ( Collapsed, oSeed ) ->
                     nextStep oSeed step <| Solved wave
                 ( Contradiction, oSeed ) ->
                     nextStep oSeed step <| Terminated
-                ( Focus position pattern, oSeed ) ->
+                ( Focus position atom, oSeed ) ->
                     case wave
-                            |> propagate patterns position pattern of
+                            |> propagate adjacencyRules position atom of
                         newWave ->
                             nextStep oSeed step <| InProgress (FocusedAt position) newWave
         _ -> step
@@ -99,10 +108,10 @@ advance patterns (Step _ _ outputSize _ as step) =
 
 observe
     :  Random.Seed
-    -> UniquePatterns
+    -> Adjacency a
     -> Wave
     -> ( Observation, Random.Seed )
-observe seed uniquePatterns wave =
+observe seed adjacencyRules wave =
     if wave |> hasAContradiction then
         ( Contradiction, seed )
     else if wave |> isCollapsed then
@@ -110,7 +119,7 @@ observe seed uniquePatterns wave =
     else
         let
             ( result, eSeed ) =
-                wave |> findLowestEntropy seed uniquePatterns
+                wave |> findLowestEntropy seed adjacencyRules
             ( coord, cSeed ) =
                 case result of
                     Just c -> ( c, eSeed )
@@ -124,10 +133,10 @@ observe seed uniquePatterns wave =
                             (always Nothing)
                             (\first tail ->
                                 let
-                                    patternChoiceGenerator =
-                                        randomPattern uniquePatterns first tail
+                                    atomChoiceGenerator =
+                                        randomAtom adjacencyRules first tail
                                 in
-                                    Random.step patternChoiceGenerator cSeed
+                                    Random.step atomChoiceGenerator cSeed
                                         |> Tuple.mapFirst (Focus coord)
                                         |> Just
                             )
@@ -136,14 +145,14 @@ observe seed uniquePatterns wave =
 
 
 propagate
-    :  UniquePatterns
+    :  Adjacency a
     -> Coord
-    -> PatternId
+    -> AtomId
     -> Wave
     -> Wave
-propagate uniquePatterns focus pattern wave =
+propagate adjacencyRules focus atom wave =
     let
-        probe : Coord -> Matches PatternId -> Wave -> Wave
+        probe : Coord -> Matches AtomId -> Wave -> Wave
         probe atPos newMatches prevWave =
             let
 
@@ -169,7 +178,7 @@ propagate uniquePatterns focus pattern wave =
                                                         |> Maybe.withDefault Matches.none
                                                 newMatchesAtDir =
                                                     newMatches
-                                                        |> matchesAtDir uniquePatterns dir
+                                                        |> matchesAtDir adjacencyRules dir
                                                         |> Matches.and curMatchesAtDir
                                             in
                                                 curWave |> probe moved newMatchesAtDir
@@ -186,12 +195,12 @@ propagate uniquePatterns focus pattern wave =
                             |> probeNeighbours
     in
         wave
-            |> probe focus (Matches.single pattern)
+            |> probe focus (Matches.single atom)
 
 
-initWave : UniquePatterns -> Size -> Wave
-initWave uniquePatterns size =
-    Plane.filled size <| Matches.fromList <| Dict.keys uniquePatterns
+initWave : List AtomId -> Size -> Wave
+initWave items size =
+    Plane.filled size <| Matches.fromList items
 
 
 produce
@@ -200,7 +209,7 @@ produce
     -> Solution
 produce patterns (Step _ _ outputSize status) =
     let
-        loadValues : Matches PatternId -> List Patterns.AtomId
+        loadValues : Matches AtomId -> List AtomId
         loadValues matches =
             matches
                 |> Matches.toList
@@ -211,11 +220,11 @@ produce patterns (Step _ _ outputSize status) =
                     )
                 |> List.filterMap identity
                 -- if pattern wasn't found or contains no value at this point, it is skipped
-        fromWave : Wave -> Plane (List Patterns.AtomId)
+        fromWave : Wave -> Plane (List AtomId)
         fromWave wave = wave |> Plane.map loadValues
     in
         fromWave <| case status of
-            Initial -> initWave patterns outputSize
+            Initial -> initWave (Dict.keys patterns) outputSize
             InProgress _ wave -> wave
             Solved wave -> wave
             Terminated -> Plane.empty outputSize
@@ -226,23 +235,23 @@ noiseCoefficient : Float
 noiseCoefficient = 0.1
 
 
-entropyOf : Random.Seed -> UniquePatterns -> Matches PatternId -> ( Maybe Float, Random.Seed )
-entropyOf seed uniquePatterns matches =
+entropyOf : Random.Seed -> Adjacency a -> Matches AtomId -> ( Maybe Float, Random.Seed )
+entropyOf seed adjacencyRules matches =
     case Matches.count matches of
         0 -> ( Nothing, seed ) -- contradiction
         1 -> ( Just 0, seed )
         count ->
             let
-                patternFrequency : PatternId -> Frequency
-                patternFrequency patternId =
-                    Dict.get patternId uniquePatterns |>
+                atomWeight : AtomId -> Weight
+                atomWeight atomId =
+                    Dict.get atomId adjacencyRules |>
                         Maybe.map .weight |>
                         Maybe.withDefault 0
                 -- TODO: prepare frequency lists in advance, before calculation
                 weights =
                     matches
                         |> Matches.toList
-                        |> List.map patternFrequency
+                        |> List.map atomWeight
                 maxWeight =
                     List.maximum weights |> Maybe.withDefault 0
                 sumOfWeights = List.foldl (+) 0 weights
@@ -259,14 +268,14 @@ entropyOf seed uniquePatterns matches =
 
 findLowestEntropy
     :  Random.Seed
-    -> UniquePatterns
+    -> Adjacency a
     -> Wave
     -> ( Maybe Coord, Random.Seed )
-findLowestEntropy seed uniquePatterns =
+findLowestEntropy seed adjacencyRules =
     let
         withEntropy prevSeed matches f =
             matches
-                |> entropyOf prevSeed uniquePatterns
+                |> entropyOf prevSeed adjacencyRules
                 |> Tuple.mapFirst (Maybe.andThen f)
         foldingF ( curCoord, matches ) ( maybePrevLowest, prevSeed ) =
             case maybePrevLowest of
@@ -291,36 +300,36 @@ findLowestEntropy seed uniquePatterns =
             >> Tuple.mapFirst (Maybe.map Tuple.first)
 
 
-randomPattern : UniquePatterns -> PatternId -> List PatternId -> Random.Generator PatternId
-randomPattern uniquePatterns first others =
+randomAtom : Adjacency a -> AtomId -> List AtomId -> Random.Generator AtomId
+randomAtom adjacencyRules first others =
     let
-        packWithFrequency : PatternId -> ( Frequency, PatternId )
-        packWithFrequency pattern =
-            ( uniquePatterns
-                |> Dict.get pattern
+        packWithWeight : AtomId -> ( Weight, AtomId )
+        packWithWeight atomId =
+            ( adjacencyRules
+                |> Dict.get atomId
                 |> Maybe.map .weight
                 |> Maybe.withDefault 0
-            , pattern
+            , atomId
             )
     in
         Random.weighted
-            (packWithFrequency first)
-            (others |> List.map packWithFrequency)
+            (packWithWeight first)
+            (others |> List.map packWithWeight)
 
 
-matchesAtDir : UniquePatterns -> Direction -> Matches PatternId -> Matches PatternId
-matchesAtDir uniquePatterns dir matchesAtFocus =
+matchesAtDir : Adjacency a -> Direction -> Matches AtomId -> Matches AtomId
+matchesAtDir adjacencyRules dir matchesAtFocus =
     matchesAtFocus
         |> Matches.toList
-        |> List.map (getMatchesOf uniquePatterns dir)
+        |> List.map (getMatchesOf adjacencyRules dir)
         |> List.map (Maybe.withDefault Matches.none)
         |> Matches.union
 
 
-getMatchesOf : UniquePatterns -> Direction -> PatternId -> Maybe (Matches PatternId)
-getMatchesOf uniquePatterns dir pattern =
-    uniquePatterns
-        |> Dict.get pattern
+getMatchesOf : Adjacency a -> Direction -> AtomId -> Maybe (Matches AtomId)
+getMatchesOf adjacencyRules dir atom =
+    adjacencyRules
+        |> Dict.get atom
         |> Maybe.andThen
             (\{ matches } ->
                 matches |> Dict.get (Dir.offsetFor dir)
@@ -365,7 +374,7 @@ exceeds : Int -> Step -> Bool
 exceeds count (Step stepN _ _ _) = count <= stepN
 
 
-extractMatchesAt : Coord -> Step -> Maybe (Dir.Neighbours (Matches PatternId))
+extractMatchesAt : Coord -> Step -> Maybe (Dir.Neighbours (Matches AtomId))
 extractMatchesAt coord (Step _ _ _ status) =
     case status of
         Initial -> Nothing
