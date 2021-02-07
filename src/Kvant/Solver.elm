@@ -207,15 +207,20 @@ produce
     :  UniquePatterns
     -> Step
     -> Solution
-produce patterns (Step _ _ outputSize status) =
+{-  TODO :  Set a
+    -> (a -> b)
+    -> Step
+    -> Plane (List b)
+-}
+produce adjacencyRules (Step _ _ outputSize status) =
     let
         loadValues : Matches AtomId -> List AtomId
         loadValues matches =
             matches
                 |> Matches.toList
-                |> List.map (\patternId ->
-                    patterns
-                        |> Dict.get patternId
+                |> List.map (\atomId ->
+                    adjacencyRules
+                        |> Dict.get atomId
                         |> Maybe.andThen (.subject >> Plane.get (0, 0))
                     )
                 |> List.filterMap identity
@@ -224,7 +229,7 @@ produce patterns (Step _ _ outputSize status) =
         fromWave wave = wave |> Plane.map loadValues
     in
         fromWave <| case status of
-            Initial -> initWave (Dict.keys patterns) outputSize
+            Initial -> initWave (Dict.keys adjacencyRules) outputSize
             InProgress _ wave -> wave
             Solved wave -> wave
             Terminated -> Plane.empty outputSize
