@@ -22,6 +22,9 @@ import Kvant.Patterns as Patterns
 import Kvant.Neighbours exposing (Neighbours)
 import Kvant.Neighbours as Neighbours
 import Kvant.Matches as Matches
+import Kvant.Adjacency as A
+
+type alias Adjacency = A.Adjacency Int Int
 
 
 type alias Source = Array (Array Int)
@@ -42,15 +45,15 @@ type Model
 
 
 type Msg
-    = Run Solver.Options Source
-    | RunWith Solver.Options Source Random.Seed
-    | Trace Solver.Options Source
-    | TraceWith Solver.Options Source Random.Seed
+    = Run Solver.Options Adjacency
+    | RunWith Solver.Options Adjacency Random.Seed
+    | Trace Solver.Options Adjacency
+    | TraceWith Solver.Options Adjacency Random.Seed
     | Step
     | StepBack
     | StepBackWith Random.Seed
     | Stop
-    | Preprocess Solver.Options Source
+    | Preprocess Solver.Options Adjacency
     | GetMatchesAt Vec2
     | InformError String
 
@@ -78,12 +81,12 @@ fromPlane =
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        Run options source ->
+        Run options adjacency ->
             ( Empty
-            , makeSeedAnd <| RunWith options source
+            , makeSeedAnd <| RunWith options adjacency
             )
 
-        RunWith options source seed ->
+        RunWith options adjacency seed ->
             let
                 sourcePlane =
                     source
@@ -98,12 +101,12 @@ update msg model =
                 , onResult solution
                 )
 
-        Trace options source ->
+        Trace options adjacency ->
             ( Empty
-            , makeSeedAnd <| TraceWith options source
+            , makeSeedAnd <| TraceWith options adjacency
             )
 
-        TraceWith options source seed ->
+        TraceWith options adjacency seed ->
             let
                 sourcePlane =
                     source
@@ -234,24 +237,31 @@ update msg model =
             )
 
 
+{-
+type Command a = Command String (D.Decoder a)
+type CommandResponse a = CommandResponse String (a -> E.Value)
+-}
+
+
+
 subscriptions : Model -> Sub Msg
 subscriptions _ =
     Sub.batch
-        [ run <| \{options, source} ->
+        [ run <| \{options, adjacency} ->
             case options |> D.decodeValue Options.decode of
-                Ok decodedOptions -> Run decodedOptions source
-                Err _ -> Run defaultOptions source -- FIXME: show error
+                Ok decodedOptions -> Run decodedOptions adjacency
+                Err _ -> Run defaultOptions adjacency -- FIXME: show error
 
-        , trace <| \{options, source} ->
+        , trace <| \{options, adjacency} ->
             case options |> D.decodeValue Options.decode of
-                Ok decodedOptions -> Trace decodedOptions source
-                Err _ -> Trace defaultOptions source -- FIXME: show error
+                Ok decodedOptions -> Trace decodedOptions adjacency
+                Err _ -> Trace defaultOptions adjacency -- FIXME: show error
         , step <| always Step
         , back <| always StepBack
         , stop <| always Stop
-        , preprocess <| \{options, source} ->
+        , preprocess <| \{options, adjacency} ->
             case options |> D.decodeValue Options.decode of
-                Ok decodedOptions -> Preprocess decodedOptions source
+                Ok decodedOptions -> Preprocess decodedOptions adjacency
                 Err error -> InformError <| D.errorToString error
         , matchesAt GetMatchesAt
         ]
@@ -275,11 +285,19 @@ makeSeedAnd makeMsg =
         Time.now
 
 
-port run : ({ options : E.Value, source : Source } -> msg) -> Sub msg
+{-
+port execute : ({ cmd : String, payload : E.Value } -> msg) -> Sub msg
+
+port respond : { cmd : String, payload : E.Value } -> Cmd msg
+-}
+
+
+{- FIXME: remove -}
+port run : ({ options : E.Value, adjacency : E.Value } -> msg) -> Sub msg
 
 port stop : (() -> msg) -> Sub msg
 
-port trace : ({ options : E.Value, source : Source } -> msg) -> Sub msg
+port trace : ({ options : E.Value, adjacency : E.Value } -> msg) -> Sub msg
 
 port step : (() -> msg) -> Sub msg
 
@@ -296,5 +314,7 @@ port onStep : StepResult -> Cmd msg
 port onPatterns : E.Value -> Cmd msg
 
 port onMatches : E.Value -> Cmd msg
+{- FIXME: remove -}
 
 port onError : String -> Cmd msg
+
