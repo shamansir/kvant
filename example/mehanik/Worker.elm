@@ -12,8 +12,7 @@ import Kvant.Vec2 exposing (Vec2)
 import Kvant.Core exposing (Wfc)
 import Kvant.Core as Wfc
 import Kvant.Solver as Solver
-import Kvant.Solver.Options as Solver
-import Kvant.Solver.Options exposing (Approach(..))
+import Kvant.Solver.Options as Options
 import Kvant.Plane exposing (..)
 import Kvant.Json.Options as Options
 import Kvant.Json.Patterns as Patterns
@@ -23,6 +22,7 @@ import Kvant.Neighbours exposing (Neighbours)
 import Kvant.Neighbours as Neighbours
 import Kvant.Matches as Matches
 import Kvant.Adjacency as A
+
 
 type alias Adjacency = A.Adjacency Int Int
 
@@ -45,15 +45,15 @@ type Model
 
 
 type Msg
-    = Run Solver.Options Adjacency
-    | RunWith Solver.Options Adjacency Random.Seed
-    | Trace Solver.Options Adjacency
-    | TraceWith Solver.Options Adjacency Random.Seed
+    = Run Options.Output Adjacency
+    | RunWith Options.Output Adjacency Random.Seed
+    | Trace Options.Output Adjacency
+    | TraceWith Options.Output Adjacency Random.Seed
     | Step
     | StepBack
     | StepBackWith Random.Seed
     | Stop
-    | Preprocess Solver.Options Adjacency
+    | Preprocess Options.Overlapping Adjacency
     | GetMatchesAt Vec2
     | InformError String
 

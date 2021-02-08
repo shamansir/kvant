@@ -10,10 +10,8 @@ import Random
 import Dict
 
 import Kvant.Vec2 exposing (..)
-import Kvant.Plane exposing (Plane, Size)
-import Kvant.Solver as Solver exposing (Step(..), Solution, Adjacency)
-import Kvant.Solver.Options as Solver exposing (Approach(..))
-import Kvant.Patterns as Patterns
+import Kvant.Plane exposing (Size)
+import Kvant.Solver as Solver exposing (Step(..), Adjacency)
 import Kvant.Matches exposing (..)
 -- import Kvant.Patterns exposing (UniquePatterns)
 -- import Kvant.Adjacency exposing (Adjacency)
