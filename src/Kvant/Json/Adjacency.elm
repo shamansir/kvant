@@ -14,15 +14,23 @@ import Kvant.Matches as Matches exposing (Matches)
 -- TODO: merge in one `Adjacency Int Int`
 -- so that for Patterns and Tiles the principle would be the same
 
+encode : Adjacency Int Int -> E.Value
+encode = encodeWith E.int E.int
 
-encode : (comparable -> E.Value) -> (a -> E.Value) -> Adjacency comparable a -> E.Value
-encode keyEncode itemEncode =
+
+encodeWith : (comparable -> E.Value) -> (a -> E.Value) -> Adjacency comparable a -> E.Value
+encodeWith keyEncode itemEncode =
     Dict.toList
         >> E.list (encodeItem keyEncode itemEncode)
 
 
-decode : D.Decoder comparable -> D.Decoder a -> D.Decoder (Adjacency comparable a)
-decode decodeKey decodeItem =
+decode : D.Decoder (Adjacency Int Int)
+decode =
+    decodeWith D.int D.int
+
+
+decodeWith : D.Decoder comparable -> D.Decoder a -> D.Decoder (Adjacency comparable a)
+decodeWith decodeKey decodeItem =
     D.list (decodeItems decodeKey decodeItem)
         |> D.map Dict.fromList
 

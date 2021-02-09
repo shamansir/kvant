@@ -8,8 +8,8 @@ import Json.Decode as D
 import Json.Encode as E
 
 
-decodeOverlappingOptions : D.Decoder Options.Overlapping
-decodeOverlappingOptions =
+decodePatternSearchOptions : D.Decoder Options.PatternSearch
+decodePatternSearchOptions =
     D.map3
         (\psize iboundary symmetry ->
             { patternSize = psize
@@ -58,8 +58,8 @@ decodeOutputOptions =
         (D.field "outputHeight" D.int)
 
 
-encodeOverlappingOptions : Options.Overlapping -> E.Value
-encodeOverlappingOptions opts =
+encodePatternSearchOptions : Options.PatternSearch -> E.Value
+encodePatternSearchOptions opts =
     E.object
         [
 

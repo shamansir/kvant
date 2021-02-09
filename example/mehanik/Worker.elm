@@ -17,6 +17,7 @@ import Kvant.Plane exposing (..)
 import Kvant.Json.Options as Options
 import Kvant.Json.Patterns as Patterns
 import Kvant.Json.Matches as Matches
+import Kvant.Json.Adjacency as Adjacency
 import Kvant.Patterns as Patterns
 import Kvant.Neighbours exposing (Neighbours)
 import Kvant.Neighbours as Neighbours
@@ -53,22 +54,21 @@ type Msg
     | StepBack
     | StepBackWith Random.Seed
     | Stop
-    | Preprocess Options.Overlapping Adjacency
+    | Preprocess Options.PatternSearch Source
     | GetMatchesAt Vec2
     | InformError String
 
 
-defaultOptions : Solver.Options
-defaultOptions =
-    { approach =
-        Overlapping
-            { patternSize = (2, 2)
-            , inputBoundary = Bounded
-            , symmetry = NoSymmetry
-            }
-    , outputBoundary = Bounded
-    , outputSize = ( 10, 10 )
+defaultPatternSearchOptions : Options.PatternSearch
+defaultPatternSearchOptions =
+    { patternSize = (2, 2)
+    , boundary = Bounded
+    , symmetry = NoSymmetry
     }
+
+
+defaultOutputOptions : Options.Output
+defaultOutputOptions = ( Bounded, (10, 10) )
 
 
 -- TODO: remove
@@ -86,15 +86,11 @@ update msg model =
             , makeSeedAnd <| RunWith options adjacency
             )
 
-        RunWith options adjacency seed ->
+        RunWith ( _, size ) adjacency seed -> -- FIXME: use boundary
             let
-                sourcePlane =
-                    source
-                        |> fromArray2d
-                            (Vec2.loadSize source |> Maybe.withDefault (0, 0))
                 solution =
-                    Wfc.make options sourcePlane
-                        |> Wfc.run seed
+                    Wfc.make adjacency
+                        |> Wfc.run adjacency seed size
                         |> fromPlane
             in
                 ( Solution solution
@@ -106,33 +102,32 @@ update msg model =
             , makeSeedAnd <| TraceWith options adjacency
             )
 
-        TraceWith options adjacency seed ->
+        TraceWith ( _, size ) adjacency seed ->
             let
-                sourcePlane =
-                    source
-                        |> fromArray2d
-                            (Vec2.loadSize source |> Maybe.withDefault (0, 0))
                 tracingWfc =
-                    Wfc.makeAdvancing options sourcePlane
-                ( nextStep, traceResult ) =
+                    Wfc.makeAdvancing adjacency
+                nextStep =
                     tracingWfc
-                        |> Wfc.firstStep seed
-                        --|> Tuple.mapSecond fromPlane
+                        |> Wfc.firstStep seed size
             in
                 ( Tracing tracingWfc nextStep
-                , onStep <| fromPlane traceResult
+                , Solver.produce adjacency nextStep
+                    |> fromPlane
+                    |> onStep
                 )
 
         Step ->
             case model of
                 Tracing tracingWfc prevStep ->
                     let
-                        ( nextStep, traceResult )
+                        nextStep
                             = tracingWfc
                                 |> Wfc.step prevStep
                     in
                         ( Tracing tracingWfc nextStep
-                        , onStep <| fromPlane traceResult
+                        , Solver.produce adjacency nextStep
+                            |> fromPlane
+                            |> onStep
                         )
                     -- history |>
                     --             H.push ( lastStep, TracingStep lastTracingStep )
@@ -203,23 +198,20 @@ update msg model =
 
         Preprocess options source ->
             ( model
-            , case options.approach of
-                Overlapping overlappingOptions ->
-                    let
-                        sourcePlane =
-                            source
-                                |> fromArray2d
-                                    (Vec2.loadSize source |> Maybe.withDefault (0, 0))
-                    in
-                    sourcePlane
-                        |> Patterns.preprocess
-                            overlappingOptions.symmetry
-                            overlappingOptions.inputBoundary
-                            overlappingOptions.patternSize
-                        |> Patterns.encode
-                        |> onPatterns
-                Tiled ->
-                    Cmd.none
+            ,
+                let
+                    sourcePlane =
+                        source
+                            |> fromArray2d
+                                (Vec2.loadSize source |> Maybe.withDefault (0, 0))
+                in
+                sourcePlane
+                    |> Patterns.preprocess
+                        options.symmetry
+                        options.boundary
+                        options.patternSize
+                    |> Patterns.encode
+                    |> onPatterns
             )
 
         GetMatchesAt position ->
@@ -243,25 +235,32 @@ type CommandResponse a = CommandResponse String (a -> E.Value)
 -}
 
 
-
 subscriptions : Model -> Sub Msg
 subscriptions _ =
     Sub.batch
         [ run <| \{options, adjacency} ->
-            case options |> D.decodeValue Options.decode of
-                Ok decodedOptions -> Run decodedOptions adjacency
-                Err _ -> Run defaultOptions adjacency -- FIXME: show error
+            case ( options |> D.decodeValue Options.decodeOutputOptions
+                 , adjacency |> D.decodeValue Adjacency.decode ) of
+                ( Ok decodedOptions, Ok decodedAdjacency ) -> Run decodedOptions decodedAdjacency
+                ( Err error, Ok _ ) -> InformError <| D.errorToString error
+                ( Ok _, Err error ) -> InformError <| D.errorToString error
+                ( Err errorA, Err errorB ) ->
+                    InformError <| D.errorToString errorA ++ ". "  ++ D.errorToString errorB
 
         , trace <| \{options, adjacency} ->
-            case options |> D.decodeValue Options.decode of
-                Ok decodedOptions -> Trace decodedOptions adjacency
-                Err _ -> Trace defaultOptions adjacency -- FIXME: show error
+            case ( options |> D.decodeValue Options.decodeOutputOptions
+                 , adjacency |> D.decodeValue Adjacency.decode ) of
+                ( Ok decodedOptions, Ok decodedAdjacency ) -> Trace decodedOptions decodedAdjacency
+                ( Err error, Ok _ ) -> InformError <| D.errorToString error
+                ( Ok _, Err error ) -> InformError <| D.errorToString error
+                ( Err errorA, Err errorB ) ->
+                    InformError <| D.errorToString errorA ++ ". "  ++ D.errorToString errorB
         , step <| always Step
         , back <| always StepBack
         , stop <| always Stop
-        , preprocess <| \{options, adjacency} ->
-            case options |> D.decodeValue Options.decode of
-                Ok decodedOptions -> Preprocess decodedOptions adjacency
+        , preprocess <| \{options, source } ->
+            case options |> D.decodeValue Options.decodePatternSearchOptions of
+                Ok decodedOptions -> Preprocess decodedOptions source
                 Err error -> InformError <| D.errorToString error
         , matchesAt GetMatchesAt
         ]
