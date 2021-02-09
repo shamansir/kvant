@@ -237,7 +237,7 @@ init =
 
 defaultOptions =
     { approach =
-        Overlapping
+        PatternSearch
             { inputBoundary = Bounded -- Periodic
             , patternSize = ( 2, 2 )
             , symmetry = FlipAndRotate
@@ -1029,7 +1029,7 @@ view model =
 
         controls options  =
             case options.approach of
-                Overlapping { patternSize, inputBoundary, symmetry } ->
+                PatternSearch { patternSize, inputBoundary, symmetry } ->
 
                     div
                         []
@@ -1402,8 +1402,8 @@ changeN n options =
     { options
     | approach =
         case options.approach of
-            Overlapping overlappingOpts ->
-                Overlapping
+            PatternSearch overlappingOpts ->
+                PatternSearch
                     { overlappingOpts
                     | patternSize = n
                     }
@@ -1415,8 +1415,8 @@ changeSymmetry symmetry options =
     { options
     | approach =
         case options.approach of
-            Overlapping overlappingOpts ->
-                Overlapping
+            PatternSearch overlappingOpts ->
+                PatternSearch
                     { overlappingOpts
                     | symmetry = symmetry
                     }
@@ -1429,8 +1429,8 @@ changeInputBoundary boundary options =
     { options
     | approach =
         case options.approach of
-            Overlapping overlappingOpts ->
-                Overlapping
+            PatternSearch overlappingOpts ->
+                PatternSearch
                     { overlappingOpts
                     | inputBoundary = boundary
                     }

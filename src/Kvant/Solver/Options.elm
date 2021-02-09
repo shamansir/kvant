@@ -6,7 +6,7 @@ import Kvant.Plane exposing (Plane(..), Size, Boundary(..), Symmetry(..))
 -- import Xml.Decode as Xml
 
 
-type alias Overlapping =
+type alias PatternSearch =
     { patternSize : Size -- FIXME: use just square patterns
     , boundary : Boundary
     , symmetry : Symmetry -- FIXME: use in search

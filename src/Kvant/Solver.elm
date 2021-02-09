@@ -28,7 +28,7 @@ type alias Weight = Float
 type alias Wave = Plane (Matches AtomId)
 
 
-type alias Solution = Plane (List AtomId)
+type alias Solution a = Plane (List a)
 
 
 type Step
@@ -203,37 +203,38 @@ initWave items size =
     Plane.filled size <| Matches.fromList items
 
 
+waveAt : List AtomId -> Step -> Wave
+waveAt atoms (Step _ _ outputSize status) =
+    case status of
+        Initial -> initWave atoms outputSize
+        InProgress _ wave -> wave
+        Solved wave -> wave
+        Terminated -> Plane.empty outputSize
+        ReachedLimit _ -> Plane.empty outputSize
+
+
 produce
-    :  UniquePatterns
+    :  Adjacency a
     -> Step
-    -> Solution
-{-  TODO :  Set a
-    -> (a -> b)
-    -> Step
-    -> Plane (List b)
--}
-produce adjacencyRules (Step _ _ outputSize status) =
+    -> Plane (List a)
+produce adjacencyRules step =
     let
-        loadValues : Matches AtomId -> List AtomId
+        loadValues : Matches AtomId -> List a
         loadValues matches =
             matches
                 |> Matches.toList
                 |> List.map (\atomId ->
                     adjacencyRules
                         |> Dict.get atomId
-                        |> Maybe.andThen (.subject >> Plane.get (0, 0))
+                        |> Maybe.map .subject
+                        -- |> Maybe.andThen (.subject >> Plane.get (0, 0))
                     )
                 |> List.filterMap identity
-                -- if pattern wasn't found or contains no value at this point, it is skipped
-        fromWave : Wave -> Plane (List AtomId)
-        fromWave wave = wave |> Plane.map loadValues
+                -- if atom wasn't found or contains no value at this point, it is skipped
+
     in
-        fromWave <| case status of
-            Initial -> initWave (Dict.keys adjacencyRules) outputSize
-            InProgress _ wave -> wave
-            Solved wave -> wave
-            Terminated -> Plane.empty outputSize
-            ReachedLimit _ -> Plane.empty outputSize
+        waveAt (Dict.keys adjacencyRules) step
+            |> Plane.map loadValues
 
 
 noiseCoefficient : Float
