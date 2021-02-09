@@ -11,6 +11,7 @@ import Json.Decode as JD
 import Xml.Decode as XD
 import Image exposing (Image)
 import Image.Color as ImageC
+import Color exposing (Color)
 
 
 import Html exposing (..)
@@ -23,9 +24,11 @@ import Kvant.Vec2 exposing (Vec2, loadSize)
 import Kvant.Vec2 as Vec2
 import Kvant.Plane as Plane
 import Kvant.Plane as Plane exposing (Boundary(..), Symmetry(..))
-import Kvant.Solver.Options exposing (Approach(..))
-import Kvant.Solver.Options as Solver
+import Kvant.Adjacency as Adjacency
+import Kvant.Solver.Options as Options
 import Kvant.Json.Options as Options
+import Kvant.Json.Adjacency as Adjacency
+import Kvant.Solver exposing (Adjacency)
 import Kvant.Patterns exposing (UniquePatterns)
 import Kvant.Json.Patterns as Patterns
 import Kvant.Neighbours exposing (Neighbours)
@@ -57,7 +60,7 @@ import Maybe
 
 type alias Model =
     { status : Status
-    , options : Solver.Options
+    , options : ( Options.PatternSearch, Options.Output )
     , example : CurrentExample
     , images : Dict ImageAlias Image
     , tiles : Dict TileGroup ( TileSet, Maybe TileGrid )
@@ -73,16 +76,29 @@ type Status
     = None
     | WaitingRunResponse
     | WaitingTracingResponse
-    | WaitingPatternsResponse Status
+    | WaitingAdjacencyResponse Status
     | WaitingMatchesResponse Status
     | Tracing
 
 
 type CurrentExample
     = NotSelected
-    | Textual ( Vec2, String ) (Maybe (Grid Char))
-    | FromImage Image (Maybe Image)
-    | FromTiles TileGroup TileMapping (Maybe (Grid (TileKey, Rotation)))
+    | Textual
+        { source : ( Vec2, String )
+        , adjacency : Maybe (Adjacency Char)
+        , wave : Maybe (Grid Char)
+        }
+    | FromImage
+        { source : Image
+        , adjacency : Maybe (Adjacency Color)
+        , wave : Maybe Image
+        }
+    | FromTiles
+        { group : TileGroup
+        , mapping : TileMapping
+        , adjacency : Maybe (Adjacency (TileKey, Rotation))
+        , wave : Maybe (Grid (TileKey, Rotation))
+        }
 
 
 type alias Grid a = Array (Array (Array a))
@@ -223,7 +239,8 @@ tiledExamples =
 init : Model
 init =
     { status = None
-    , options = defaultOptions
+    , options =
+        ( Options.defaultPatternSearch, Options.defaultOutput )
     , example = NotSelected
     , images = Dict.empty
     , tiles = Dict.empty
@@ -232,18 +249,6 @@ init =
     , workerError = Nothing
     , imagesErrors = Dict.empty
     , tilesErrors = Dict.empty
-    }
-
-
-defaultOptions =
-    { approach =
-        PatternSearch
-            { inputBoundary = Bounded -- Periodic
-            , patternSize = ( 2, 2 )
-            , symmetry = FlipAndRotate
-            }
-    , outputSize = ( 10, 10 )
-    , outputBoundary = Bounded
     }
 
 
@@ -272,57 +277,95 @@ update msg model =
                 NotSelected ->
                     ( model, Cmd.none )
 
-                Textual source _  ->
-                    (
-                        { model
-                        | matches = Nothing
-                        , status = WaitingRunResponse
-                        }
-                    , runInWorker
-                        { options =
-                            Options.encode model.options
-                        , source =
-                            source
-                                |> TextPlane.boundedStringToGrid
-                                |> List.map (List.map Char.toCode)
-                                |> List.map Array.fromList
-                                |> Array.fromList
-                        }
-                    )
+                Textual { adjacency }  ->
+                    case adjacency of
+                        Just theAdjacency ->
 
-                FromImage source _ ->
-                    (
-                        { model
-                        | matches = Nothing
-                        , status = WaitingRunResponse
-                        }
-                    , runInWorker
-                        { options =
-                            Options.encode model.options
-                        , source =
-                            source
-                                |> ImageC.toArray2d
-                                |> Array.map (Array.map colorToPixel)
-                        }
-                    )
-
-                FromTiles tileGroup mapping _ ->
-                    (
-                        { model
-                        | matches = Nothing
-                        , status = WaitingRunResponse
-                        }
-                    , case model.tiles |> Dict.get tileGroup of
-                        Just ( _, Just grid ) ->
-                            runInWorker
-                                { options =
-                                    Options.encode model.options
-                                , source =
-                                    grid
-                                        |> Array.map (Array.map <| toIndexInSet mapping)
+                            (
+                                { model
+                                | matches = Nothing
+                                , status = WaitingRunResponse
                                 }
-                        _ -> Cmd.none
-                    )
+                            , runInWorker
+                                { options =
+                                    model.options
+                                        |> Tuple.second
+                                        |> Options.encodeOutput
+                                 , adjacency =
+                                    theAdjacency
+                                        |> Adjacency.map Char.toCode
+                                        |> Adjacency.encode
+
+                                {-
+                                , source =
+                                    source
+                                        |> TextPlane.boundedStringToGrid
+                                        |> List.map (List.map Char.toCode)
+                                        |> List.map Array.fromList
+                                        |> Array.fromList
+                                -}
+                                }
+                            )
+
+                        Nothing -> ( model, Cmd.none )
+
+                FromImage { adjacency } ->
+                    case adjacency of
+                        Just theAdjacency ->
+
+                            (
+                                { model
+                                | matches = Nothing
+                                , status = WaitingRunResponse
+                                }
+                            , runInWorker
+                                { options =
+                                    model.options
+                                        |> Tuple.second
+                                        |> Options.encodeOutput
+                                 , adjacency =
+                                    theAdjacency
+                                        |> Adjacency.map colorToPixel
+                                        |> Adjacency.encode
+                                {-
+                                , source =
+                                    source
+                                        |> ImageC.toArray2d
+                                        |> Array.map (Array.map colorToPixel)
+                                }
+                                -}
+                                }
+                            )
+                        Nothing -> ( model, Cmd.none )
+
+                FromTiles { mapping, adjacency } ->
+                    case adjacency of
+                        Just theAdjacency ->
+
+                            (
+                                { model
+                                | matches = Nothing
+                                , status = WaitingRunResponse
+                                }
+                            , runInWorker
+                                    { options =
+                                        model.options
+                                            |> Tuple.second
+                                            |> Options.encodeOutput
+                                    , adjacency =
+                                        theAdjacency
+                                            |> Adjacency.map (toIndexInSet mapping)
+                                            |> Adjacency.encode
+                                    {-
+                                    , source =
+                                        grid
+                                            |> Array.map (Array.map <| toIndexInSet mapping)
+                                    }
+                                    -}
+                                    }
+                            )
+
+                        Nothing -> ( model, Cmd.none )
 
         Trace ->
             case model.example of
@@ -330,58 +373,95 @@ update msg model =
                 NotSelected ->
                     ( model, Cmd.none )
 
-                Textual source _ ->
-                    (
-                        { model
-                        | matches = Nothing
-                        , status = WaitingTracingResponse
-                        }
-                    ,
-                        traceInWorker
-                            { options =
-                                Options.encode model.options
-                            , source =
-                                source
-                                    |> TextPlane.boundedStringToGrid
-                                    |> List.map (List.map Char.toCode)
-                                    |> List.map Array.fromList
-                                    |> Array.fromList
-                            }
-                    )
-
-                FromImage source _ ->
-                    (
-                        { model
-                        | matches = Nothing
-                        , status = WaitingTracingResponse
-                        }
-                    , traceInWorker
-                        { options =
-                            Options.encode model.options
-                        , source =
-                            source
-                                |> ImageC.toArray2d
-                                |> Array.map (Array.map colorToPixel)
-                        }
-                    )
-
-                FromTiles tileGroup mapping _ ->
-                    (
-                        { model
-                        | matches = Nothing
-                        , status = WaitingTracingResponse
-                        }
-                    , case model.tiles |> Dict.get tileGroup of
-                        Just (_, Just grid ) ->
-                            runInWorker
-                                { options =
-                                    Options.encode model.options
-                                , source =
-                                    grid
-                                        |> Array.map (Array.map <| toIndexInSet mapping)
+                Textual { adjacency } ->
+                    case adjacency of
+                        Just theAdjacency ->
+                            (
+                                { model
+                                | matches = Nothing
+                                , status = WaitingTracingResponse
                                 }
-                        _ -> Cmd.none
-                    )
+                            , traceInWorker
+                                { options =
+                                    model.options
+                                        |> Tuple.second
+                                        |> Options.encodeOutput
+                                 , adjacency =
+                                    theAdjacency
+                                        |> Adjacency.map Char.toCode
+                                        |> Adjacency.encode
+
+                                {-
+                                , source =
+                                    source
+                                        |> TextPlane.boundedStringToGrid
+                                        |> List.map (List.map Char.toCode)
+                                        |> List.map Array.fromList
+                                        |> Array.fromList
+                                -}
+                                }
+                            )
+                        Nothing -> ( model, Cmd.none )
+
+                FromImage { adjacency } ->
+                    case adjacency of
+                        Just theAdjacency ->
+
+                            (
+                                { model
+                                | matches = Nothing
+                                , status = WaitingTracingResponse
+                                }
+                            , traceInWorker
+                                { options =
+                                    model.options
+                                        |> Tuple.second
+                                        |> Options.encodeOutput
+                                 , adjacency =
+                                    theAdjacency
+                                        |> Adjacency.map colorToPixel
+                                        |> Adjacency.encode
+                                {-
+                                , source =
+                                    source
+                                        |> ImageC.toArray2d
+                                        |> Array.map (Array.map colorToPixel)
+                                }
+                                -}
+                                }
+                            )
+
+                        Nothing -> ( model, Cmd.none )
+
+                FromTiles { adjacency, mapping } ->
+
+                    case adjacency of
+                        Just theAdjacency ->
+
+                            (
+                                { model
+                                | matches = Nothing
+                                , status = WaitingRunResponse
+                                }
+                            , runInWorker
+                                    { options =
+                                        model.options
+                                            |> Tuple.second
+                                            |> Options.encodeOutput
+                                    , adjacency =
+                                        theAdjacency
+                                            |> Adjacency.map (toIndexInSet mapping)
+                                            |> Adjacency.encode
+                                    {-
+                                    , source =
+                                        grid
+                                            |> Array.map (Array.map <| toIndexInSet mapping)
+                                    }
+                                    -}
+                                    }
+                            )
+
+                        Nothing -> ( model, Cmd.none )
 
         Step ->
             (
@@ -410,12 +490,12 @@ update msg model =
                     case model.example of
                         NotSelected ->
                             NotSelected
-                        Textual source _ ->
-                            Textual source Nothing
-                        FromImage image _ ->
-                            FromImage image Nothing
-                        FromTiles group mapping _ ->
-                            FromTiles group mapping Nothing
+                        Textual spec ->
+                            Textual { spec | wave = Nothing }
+                        FromImage spec ->
+                            FromImage { spec | wave = Nothing }
+                        FromTiles spec ->
+                            FromTiles { spec | wave = Nothing }
                 }
             , stopWorker ()
             )
@@ -426,15 +506,17 @@ update msg model =
                 NotSelected ->
                     ( model, Cmd.none )
 
-                Textual source _  ->
+                Textual { source }  ->
                     (
                         { model
                         | status =
-                            WaitingPatternsResponse model.status
+                            WaitingAdjacencyResponse model.status
                         }
                     , preprocessInWorker
                         { options =
-                            Options.encode model.options
+                            model.options
+                                |> Tuple.first
+                                |> Options.encodePatternSearch
                         , source =
                             source
                                 |> TextPlane.boundedStringToGrid
@@ -444,15 +526,17 @@ update msg model =
                         }
                     )
 
-                FromImage source _ ->
+                FromImage { source } ->
                     (
                         { model
                         | status =
-                            WaitingPatternsResponse model.status
+                            WaitingAdjacencyResponse model.status
                         }
                     , preprocessInWorker
                         { options =
-                            Options.encode model.options
+                            model.options
+                                |> Tuple.first
+                                |> Options.encodePatternSearch
                         , source =
                             source
                                 |> ImageC.toArray2d
@@ -460,17 +544,19 @@ update msg model =
                         }
                     )
 
-                FromTiles tileGroup mapping _ ->
+                FromTiles { group, mapping } ->
                     (
                         { model
                         | status =
-                            WaitingPatternsResponse model.status
+                            WaitingAdjacencyResponse model.status
                         }
-                    , case model.tiles |> Dict.get tileGroup of
+                    , case model.tiles |> Dict.get group of
                         Just (_, Just grid) ->
                             preprocessInWorker
                                 { options =
-                                    Options.encode model.options
+                                    model.options
+                                        |> Tuple.first
+                                        |> Options.encodePatternSearch
                                 , source =
                                     grid
                                         |> Array.map (Array.map <| toIndexInSet mapping)
@@ -506,7 +592,12 @@ update msg model =
                 { model
                 | status = None
                 , options = forText model.options
-                , example = Textual source Nothing
+                , example =
+                    Textual
+                        { source = source
+                        , adjacency = Nothing
+                        , wave = Nothing
+                        }
                 , patterns = Nothing
                 , matches = Nothing
                 }
@@ -518,7 +609,12 @@ update msg model =
                 { model
                 | status = None
                 , options = forImage model.options
-                , example = FromImage image Nothing
+                , example =
+                    FromImage
+                        { source = image
+                        , adjacency = Nothing
+                        , wave = Nothing
+                        }
                 , patterns = Nothing
                 , matches = Nothing
                 }
@@ -532,14 +628,16 @@ update msg model =
                 , options = forTiles model.options
                 , example =
                     FromTiles
-                        group
-                        (case model.tiles |> Dict.get group of
-                            Just (tileSet, _) ->
-                                buildMapping tileSet
-                            _ ->
-                                noMapping
-                        )
-                        Nothing
+                        { group = group
+                        , mapping =
+                            case model.tiles |> Dict.get group of
+                                Just (tileSet, _) ->
+                                    buildMapping tileSet
+                                _ ->
+                                    noMapping
+                        , adjacency = Nothing
+                        , wave = Nothing
+                        }
                 , patterns = Nothing
                 , matches = Nothing
                 }
@@ -672,7 +770,7 @@ update msg model =
                         None -> None
                         WaitingRunResponse -> None
                         WaitingTracingResponse -> Tracing
-                        WaitingPatternsResponse prevStatus -> prevStatus
+                        WaitingAdjacencyResponse prevStatus -> prevStatus
                         WaitingMatchesResponse prevStatus -> prevStatus
                         Tracing -> Tracing
                 , example
@@ -681,20 +779,21 @@ update msg model =
                         NotSelected ->
                             NotSelected
 
-                        Textual source _ ->
+                        Textual spec  ->
                             Textual
-                                source
-                                (
+                                { spec
+                                | wave =
                                     grid
                                         |> Array.map
                                             (Array.map <| Array.map Char.fromCode)
                                         |> Just
-                                )
+                                }
 
-                        FromImage image _ ->
+
+                        FromImage spec ->
                             FromImage
-                                image
-                                (
+                                { spec
+                                | wave =
                                     grid
                                         |> Array.map
                                             (Array.map
@@ -703,25 +802,25 @@ update msg model =
                                                     >> ImagePlane.merge)
                                         |> ImageC.fromArray2d
                                         |> Just
+                                }
 
-                                )
-
-                        FromTiles group mapping _ ->
+                        FromTiles spec ->
                             FromTiles
-                                group
-                                mapping
-                                ( case model.tiles |> Dict.get group of
-                                    Just _ ->
-                                        grid
-                                            |> Array.map
-                                                (Array.map
-                                                    <| Array.map
-                                                    <| fromIndexInSet mapping
-                                                )
-                                            |> Just
-                                    _ ->
-                                        Nothing  -- FIXME: TODO
-                                )
+                                { spec
+                                | wave =
+                                    ( case model.tiles |> Dict.get spec.group of
+                                        Just _ ->
+                                            grid
+                                                |> Array.map
+                                                    (Array.map
+                                                        <| Array.map
+                                                        <| fromIndexInSet spec.mapping
+                                                    )
+                                                |> Just
+                                        _ ->
+                                            Nothing  -- FIXME: TODO
+                                    )
+                                }
 
                 }
             , Cmd.none
@@ -769,7 +868,7 @@ view model =
         viewExample =
             case model.example of
 
-                Textual source wave ->
+                Textual { source, wave } ->
                     div
                         []
                         [ viewSource TextRenderer.make source
@@ -784,7 +883,7 @@ view model =
                             |> Maybe.withDefault (div [] [])
                         ]
 
-                FromImage source wave ->
+                FromImage { source, wave } ->
                     div
                         []
                         [ viewSource ImageRenderer.make source
@@ -800,7 +899,7 @@ view model =
                         ]
                     --Example.view ImageRenderer.make exampleModel
 
-                FromTiles group _ wave ->
+                FromTiles { group, wave } ->
                     case model.tiles |> Dict.get group of
                         Just ( ( format, tiles ), maybeGrid ) ->
                             div []
@@ -844,12 +943,12 @@ view model =
 
         viewPattern patternId pattern =
             case model.example of
-                Textual _ _ ->
+                Textual _ ->
                     (TextRenderer.make |> Tuple.second) <| Plane.map Char.fromCode <| pattern
-                FromImage _ _ ->
+                FromImage _ ->
                     (ImageRenderer.make |> Tuple.second)
                         <| Plane.map ImagePlane.pixelToColor <| pattern
-                FromTiles group mapping _ ->
+                FromTiles { group,  mapping } ->
                     case model.tiles |> Dict.get group of
                         Just ( ( format, _ ), _ ) ->
                             (TilesRenderer.make (toTileUrl format group) |> Tuple.second)
@@ -1453,9 +1552,9 @@ changeOutputSize f options =
     }
 
 
-port runInWorker : { options : JE.Value, source : Array (Array Int) } -> Cmd msg
+port runInWorker : { options : JE.Value, adjacency : JE.Value } -> Cmd msg
 
-port traceInWorker : { options : JE.Value, source : Array (Array Int) } -> Cmd msg
+port traceInWorker : { options : JE.Value, adjacency : JE.Value } -> Cmd msg
 
 port stepInWorker : () -> Cmd msg
 
