@@ -1,5 +1,6 @@
 module Kvant.Core exposing
     ( Wfc
+    , map
     , make, makeAdvancing
     , run
     , step, stepAtOnce
@@ -11,17 +12,22 @@ import Random
 import Kvant.Vec2 exposing (..)
 import Kvant.Plane exposing (Size)
 import Kvant.Solver as Solver exposing (Step(..), Adjacency, Solution)
+import Kvant.Adjacency as A
 import Kvant.Matches exposing (..)
 -- import Kvant.Patterns exposing (UniquePatterns)
 -- import Kvant.Adjacency exposing (Adjacency)
 
 
-type Wfc = -- FIXME: Store `Adjacency` inside
-    Wfc ( Solver.Step -> Solver.Step )
+type Wfc a =
+    Wfc (Adjacency a) ( Solver.Step -> Solver.Step )
 
 
-makeWith : (Adjacency a -> Step -> Step) -> Adjacency a -> Wfc
-makeWith doStep =
+map : ( a -> b ) -> Wfc a -> Wfc b
+map f (Wfc adjacency doStep) = Wfc (adjacency |> A.map f) doStep
+
+
+makeWith : (Adjacency a -> Step -> Step) -> Adjacency a -> Wfc a
+makeWith doStep adjacency =
     {- let
         uniquePatterns =
             case options.approach of
@@ -31,31 +37,30 @@ makeWith doStep =
                 Tiled ->
                     Dict.empty
     in -}
-    Wfc << doStep
+    Wfc adjacency <| doStep adjacency
 
 
-make : Adjacency a -> Wfc
+make : Adjacency a -> Wfc a
 make = makeWith Solver.solve
 
 
-makeAdvancing : Adjacency a -> Wfc
+makeAdvancing : Adjacency a -> Wfc a
 makeAdvancing = makeWith Solver.advance
 
 
--- FIXME: do not require adjacency for running
-run : Adjacency a -> Random.Seed -> Size -> Wfc -> Solution a
-run adjacency seed size (Wfc doStep as wfc) =
+run : Random.Seed -> Size -> Wfc a -> Solution a
+run seed size (Wfc adjacency doStep as wfc) =
     -- FIXME: we do two steps actually, because with the first step the `Solver` inits the wave
     --        (see `Initial` status) and proceeds with solving only after that
     doStep (wfc |> firstStep seed size)
         |> Solver.produce adjacency
 
 
-step : Step -> Wfc -> Step
-step stepToPerform (Wfc wfc) = wfc stepToPerform
+step : Step -> Wfc a -> Step
+step stepToPerform (Wfc _ doStep) = doStep stepToPerform
 
 
-stepAtOnce : List Step -> Wfc -> Maybe Step
+stepAtOnce : List Step -> Wfc a -> Maybe Step
 stepAtOnce steps wfc =
     steps
         |> List.foldl
@@ -65,7 +70,7 @@ stepAtOnce steps wfc =
             Nothing
 
 
-firstStep : Random.Seed -> Size -> Wfc -> Step
+firstStep : Random.Seed -> Size -> Wfc a -> Step
 firstStep seed size =
     step <| Solver.firstStep size seed
 -- FIXME: do not perform, just return?
