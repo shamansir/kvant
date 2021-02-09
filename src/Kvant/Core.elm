@@ -5,7 +5,9 @@ module Kvant.Core exposing
     , run
     , step, stepAtOnce
     , firstStep
+    , produce
     )
+
 
 import Random
 
@@ -49,15 +51,20 @@ makeAdvancing = makeWith Solver.advance
 
 
 run : Random.Seed -> Size -> Wfc a -> Solution a
-run seed size (Wfc adjacency doStep as wfc) =
+run seed size wfc =
     -- FIXME: we do two steps actually, because with the first step the `Solver` inits the wave
     --        (see `Initial` status) and proceeds with solving only after that
-    doStep (wfc |> firstStep seed size)
-        |> Solver.produce adjacency
+    let
+        produceFrom =
+            firstStep seed size
+                |> step wfc
+                |> step wfc
+    in
+        produce produceFrom wfc
 
 
-step : Step -> Wfc a -> Step
-step stepToPerform (Wfc _ doStep) = doStep stepToPerform
+step : Wfc a -> Step -> Step
+step (Wfc _ doStep) stepToPerform  = doStep stepToPerform
 
 
 stepAtOnce : List Step -> Wfc a -> Maybe Step
@@ -65,12 +72,17 @@ stepAtOnce steps wfc =
     steps
         |> List.foldl
             (\nextStep _ ->
-                wfc |> step nextStep |> Just
+                nextStep |> step wfc |> Just
             )
             Nothing
 
 
-firstStep : Random.Seed -> Size -> Wfc a -> Step
+firstStep : Random.Seed -> Size -> Step
 firstStep seed size =
-    step <| Solver.firstStep size seed
+    Solver.firstStep size seed
 -- FIXME: do not perform, just return?
+
+
+produce : Step -> Wfc a -> Solution a
+produce fromStep (Wfc adjacency _) =
+    Solver.produce adjacency fromStep

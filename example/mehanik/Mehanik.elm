@@ -1410,6 +1410,7 @@ changeN n options =
             _ -> options.approach
     }
 
+
 changeSymmetry : Symmetry -> Solver.Options -> Solver.Options
 changeSymmetry symmetry options =
     { options

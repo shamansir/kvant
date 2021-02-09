@@ -42,7 +42,7 @@ type alias RunResult = StepResult
 type Model
     = Empty
     | Solution StepResult
-    | Tracing Wfc Solver.Step -- ( History Vec2 )
+    | Tracing (Wfc Int) Solver.Step -- ( History Vec2 )
 
 
 type Msg
@@ -90,7 +90,7 @@ update msg model =
             let
                 solution =
                     Wfc.make adjacency
-                        |> Wfc.run adjacency seed size
+                        |> Wfc.run seed size
                         |> fromPlane
             in
                 ( Solution solution
@@ -99,7 +99,8 @@ update msg model =
 
         Trace options adjacency ->
             ( Empty
-            , makeSeedAnd <| TraceWith options adjacency
+            , makeSeedAnd
+                <| TraceWith options adjacency
             )
 
         TraceWith ( _, size ) adjacency seed ->
@@ -107,11 +108,12 @@ update msg model =
                 tracingWfc =
                     Wfc.makeAdvancing adjacency
                 nextStep =
-                    tracingWfc
-                        |> Wfc.firstStep seed size
+                    Wfc.firstStep seed size
+                        |> Wfc.step tracingWfc
             in
                 ( Tracing tracingWfc nextStep
-                , Solver.produce adjacency nextStep
+                , tracingWfc
+                    |> Wfc.produce nextStep
                     |> fromPlane
                     |> onStep
                 )
@@ -121,11 +123,12 @@ update msg model =
                 Tracing tracingWfc prevStep ->
                     let
                         nextStep
-                            = tracingWfc
-                                |> Wfc.step prevStep
+                            = prevStep
+                                |> Wfc.step tracingWfc
                     in
                         ( Tracing tracingWfc nextStep
-                        , Solver.produce adjacency nextStep
+                        , tracingWfc
+                            |> Wfc.produce nextStep
                             |> fromPlane
                             |> onStep
                         )
