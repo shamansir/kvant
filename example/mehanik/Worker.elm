@@ -59,18 +59,6 @@ type Msg
     | InformError String
 
 
-defaultPatternSearchOptions : Options.PatternSearch
-defaultPatternSearchOptions =
-    { patternSize = (2, 2)
-    , boundary = Bounded
-    , symmetry = NoSymmetry
-    }
-
-
-defaultOutputOptions : Options.Output
-defaultOutputOptions = ( Bounded, (10, 10) )
-
-
 -- TODO: remove
 fromPlane : Plane (List Int) -> Array (Array (Array Int))
 fromPlane =
@@ -242,7 +230,7 @@ subscriptions : Model -> Sub Msg
 subscriptions _ =
     Sub.batch
         [ run <| \{options, adjacency} ->
-            case ( options |> D.decodeValue Options.decodeOutputOptions
+            case ( options |> D.decodeValue Options.decodeOutput
                  , adjacency |> D.decodeValue Adjacency.decode ) of
                 ( Ok decodedOptions, Ok decodedAdjacency ) -> Run decodedOptions decodedAdjacency
                 ( Err error, Ok _ ) -> InformError <| D.errorToString error
@@ -251,7 +239,7 @@ subscriptions _ =
                     InformError <| D.errorToString errorA ++ ". "  ++ D.errorToString errorB
 
         , trace <| \{options, adjacency} ->
-            case ( options |> D.decodeValue Options.decodeOutputOptions
+            case ( options |> D.decodeValue Options.decodeOutput
                  , adjacency |> D.decodeValue Adjacency.decode ) of
                 ( Ok decodedOptions, Ok decodedAdjacency ) -> Trace decodedOptions decodedAdjacency
                 ( Err error, Ok _ ) -> InformError <| D.errorToString error
@@ -262,7 +250,7 @@ subscriptions _ =
         , back <| always StepBack
         , stop <| always Stop
         , preprocess <| \{options, source } ->
-            case options |> D.decodeValue Options.decodePatternSearchOptions of
+            case options |> D.decodeValue Options.decodePatternSearch of
                 Ok decodedOptions -> Preprocess decodedOptions source
                 Err error -> InformError <| D.errorToString error
         , matchesAt GetMatchesAt

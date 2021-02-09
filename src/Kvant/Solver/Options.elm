@@ -17,3 +17,14 @@ type alias PatternSearch =
 type alias Output = ( Boundary, Size )
 
 
+
+defaultPatternSearch : PatternSearch
+defaultPatternSearch =
+    { patternSize = (2, 2)
+    , boundary = Bounded
+    , symmetry = NoSymmetry
+    }
+
+
+defaultOutput : Output
+defaultOutput = ( Bounded, (10, 10) )

@@ -14,7 +14,7 @@ import Kvant.Json.Adjacency as Adjacency
 
 decode : D.Decoder T.TileAdjacency
 decode =
-    Adjacency.decode decodeTileKey decodeTileKey
+    Adjacency.encodeWith decodeTileKey decodeTileKey
 
 
 decodeTileKey : D.Decoder ( T.TileKey, T.Rotation )
@@ -27,7 +27,7 @@ decodeTileKey =
 
 encode : T.TileAdjacency -> E.Value
 encode =
-    Adjacency.encode encodeTileKey encodeTileKey
+    Adjacency.encodeWith encodeTileKey encodeTileKey
 
 
 encodeTileKey : ( T.TileKey, T.Rotation ) -> E.Value

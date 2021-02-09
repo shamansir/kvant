@@ -8,8 +8,8 @@ import Json.Decode as D
 import Json.Encode as E
 
 
-decodePatternSearchOptions : D.Decoder Options.PatternSearch
-decodePatternSearchOptions =
+decodePatternSearch : D.Decoder Options.PatternSearch
+decodePatternSearch =
     D.map3
         (\psize iboundary symmetry ->
             { patternSize = psize
@@ -40,8 +40,8 @@ decodePatternSearchOptions =
         )
 
 
-decodeOutputOptions : D.Decoder Options.Output
-decodeOutputOptions =
+decodeOutput : D.Decoder Options.Output
+decodeOutput =
     D.map3
         (\oboundary width height ->
             ( oboundary, ( width, height ) )
@@ -58,8 +58,8 @@ decodeOutputOptions =
         (D.field "outputHeight" D.int)
 
 
-encodePatternSearchOptions : Options.PatternSearch -> E.Value
-encodePatternSearchOptions opts =
+encodePatternSearch : Options.PatternSearch -> E.Value
+encodePatternSearch opts =
     E.object
         [
 
@@ -89,8 +89,8 @@ encodePatternSearchOptions opts =
         ]
 
 
-encodeOutputOptions : Options.Output -> E.Value
-encodeOutputOptions ( boundary, size ) =
+encodeOutput : Options.Output -> E.Value
+encodeOutput ( boundary, size ) =
     E.object
         [
             ( "outputBoundary"
