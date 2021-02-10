@@ -587,12 +587,36 @@ update msg model =
             (
                 { model
                 | matches =
-                    getPatternAdjacency model.example
-                        |> Maybe.andThen (Dict.get atomId)
-                        |> Maybe.map (.matches >> Dict.toList)
-                        |> Maybe.map (List.map (Tuple.mapFirst Neighbours.toDirection))
-                        |> Maybe.map Neighbours.fromList
-                        |> Maybe.map (Neighbours.map (Maybe.withDefault Matches.none))
+                    let
+                        fromAdjacency adjacency =
+                            adjacency
+                                |> Dict.get atomId
+                                |> Maybe.map (.matches >> Dict.toList)
+                                |> Maybe.map (List.map (Tuple.mapFirst Neighbours.toDirection))
+                                |> Maybe.map Neighbours.fromList
+                                |> Maybe.map (Neighbours.map (Maybe.withDefault Matches.none))
+                    in
+                        case model.example of
+                            FromTiles spec ->
+                                case spec.adjacency of
+                                    Just (Right patternAdjacency)
+                                        -> fromAdjacency patternAdjacency
+                                    Just (Left tileAdjacency)
+                                        -> fromAdjacency
+                                                <| Adjacency.mapKey (toIndexInSet spec.mapping)
+                                                <| Adjacency.map (toIndexInSet spec.mapping)
+                                                <| tileAdjacency
+                                    Nothing ->
+                                        model.matches
+                            Textual { adjacency } ->
+                                adjacency
+                                    |> Maybe.map fromAdjacency
+                                    |> Maybe.withDefault model.matches
+                            FromImage { adjacency } ->
+                                adjacency
+                                    |> Maybe.map fromAdjacency
+                                    |> Maybe.withDefault model.matches
+                            NotSelected -> model.matches
                 }
             , Cmd.none
             )
@@ -947,14 +971,15 @@ view model =
                         ]
                     --Example.view ImageRenderer.make exampleModel
 
-                FromTiles { group, wave } ->
+                FromTiles { group, wave, mapping } ->
                     case model.tiles |> Dict.get group of
                         Just ( ( format, tiles ), maybeGrid ) ->
                             div []
                                 [ hr [] []
-                                , viewTiles format group
+                                , viewTiles mapping format group
                                     <| case currentTiles of
-                                            Just adjacencyTiles -> Dict.keys adjacencyTiles
+                                            Just adjacencyTiles ->
+                                                Dict.keys adjacencyTiles
                                             Nothing ->
                                                 tiles
                                                     |> List.map .key
@@ -1028,13 +1053,13 @@ view model =
                 <| Dict.toList
                 <| patterns
 
-        viewTiles format group tiles =
+        viewTiles mapping format group tiles =
             div
                 [ style "display" "flex"
                 , style "overflow" "scroll"
                 ]
                 <| List.map
-                    (\tileUrl ->
+                    (\tileKey ->
                         div
                             [ style "transform" "scale(0.5)"
                             , style "margin" "5px"
@@ -1042,16 +1067,65 @@ view model =
                             , style "padding" "3px"
                             , style "border" "1px solid lightgray"
                             , style "border-radius" "3px"
-                            --, onClick <| ShowMatchesFor tileId
+                            , onClick
+                                <| ShowMatchesFor
+                                <| Maybe.withDefault -1
+                                <| Dict.get tileKey
+                                <| Tuple.second
+                                <| mapping
                             ]
-                            [ TilesRenderer.tile tileUrl ]
+                            [ TilesRenderer.tile1 (toTileUrl format group) tileKey ]
                     )
-                    <| List.map (toTileUrl format group)
                     <| tiles
 
         currentPatterns = getPatternAdjacency model.example
 
         currentTiles = getTileAdjacency model.example
+
+        viewMatch =
+            case model.example of
+                FromTiles spec ->
+                    case spec.adjacency of
+                        Just (Left _) ->
+                            let
+
+                                format =
+                                    model.tiles
+                                        |> Dict.get spec.group
+                                        |> Maybe.map (Tuple.first >> Tuple.first)
+                                        |> Maybe.withDefault "png"
+
+                            in
+                                \matchId ->
+
+                                    case currentTiles
+                                        |> Maybe.andThen
+                                            (Dict.get <| fromIndexInSet spec.mapping matchId) of
+                                        Just { subject } ->
+                                            TilesRenderer.tile1
+                                                (toTileUrl format spec.group)
+                                                subject
+                                        Nothing -> div [] []
+
+                        Just (Right _) ->
+
+                            \matchId ->
+                                case currentPatterns
+                                    |> Maybe.andThen (Dict.get matchId) of
+                                    Just { subject } ->
+                                        viewPattern matchId subject
+                                    Nothing -> div [] []
+
+                        Nothing -> always <| div [] []
+
+                _ ->
+                    \matchId ->
+                        case currentPatterns
+                            |> Maybe.andThen (Dict.get matchId) of
+                            Just { subject } ->
+                                viewPattern matchId subject
+                            Nothing -> div [] []
+
 
         viewMatches neighbours =
             [ [ Dir.NW, Dir.N, Dir.NE ]
@@ -1080,20 +1154,16 @@ view model =
                                                     _ -> list
                                                 )
                                             <| List.map
-                                                (\patternId ->
-                                                case currentPatterns |> Maybe.andThen (Dict.get patternId) of
-                                                        Just { subject } ->
-                                                            div
-                                                                [ style "transform" "scale(0.8)"
-                                                                , style "margin" "0px 10px"
-                                                                , style "padding" "3px"
-                                                                , style "border" "1px solid lightgray"
-                                                                , style "border-radius" "3px"
-                                                                ]
-                                                                [ viewPattern patternId subject
-                                                                ]
-                                                        Nothing ->
-                                                            div [] []
+                                                (\matchId ->
+                                                    div
+                                                        [ style "transform" "scale(0.8)"
+                                                        , style "margin" "0px 10px"
+                                                        , style "padding" "3px"
+                                                        , style "border" "1px solid lightgray"
+                                                        , style "border-radius" "3px"
+                                                        ]
+                                                        [ viewMatch matchId
+                                                        ]
                                                 )
                                             <| Matches.toList
                                             <| Neighbours.get dir neighbours

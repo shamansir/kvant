@@ -32,9 +32,22 @@ tile path =
         [ ]
 
 
+rotationToAngle : Rotation -> Float
+rotationToAngle rotation =
+    case rotation of
+        0 -> 0
+        1 -> 90
+        2 -> 180
+        3 -> 270
+        _ -> 360
+
+
 tile1 : (( TileKey, Rotation ) -> String) -> ( TileKey, Rotation ) -> Html msg
-tile1 toPath key =
-    tile <| toPath key
+tile1 toPath ( key, rotation ) =
+    div
+        [ style "transform"
+            <| "rotate(" ++ String.fromFloat (rotationToAngle rotation) ++ "deg)" ]
+        [ tile <| toPath ( key, rotation ) ]
 
 
 tileAndCount : (( TileKey, Rotation ) -> String) -> ( ( TileKey, Rotation ), Int ) -> Html msg
