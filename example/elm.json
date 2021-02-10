@@ -21,6 +21,7 @@
             "elm-community/list-extra": "8.2.4",
             "joakin/elm-canvas": "4.2.1",
             "justgook/elm-image": "4.0.0",
+            "toastal/either": "3.5.2",
             "wernerdegroot/listzipper": "4.0.0",
             "ymtszw/elm-xml-decode": "3.2.1"
         },
