@@ -32,12 +32,12 @@ self.addEventListener('message', function(e) {
     switch (data.cmd) {
         case 'run':
             app.ports.run.send(
-                { options: data.options, source : data.source, adjacency : data.adjacency }
+                { options: data.options, adjacency : data.adjacency }
             );
             break;
         case 'trace':
             app.ports.trace.send(
-                { options: data.options, source : data.source, adjacency : data.adjacency }
+                { options: data.options, adjacency : data.adjacency }
             );
             break;
         case 'step':
@@ -51,7 +51,7 @@ self.addEventListener('message', function(e) {
             break;
         case 'preprocess':
             app.ports.preprocess.send(
-                { options: data.options, source : data.source, adjacency : data.adjacency }
+                { options: data.options, source : data.source }
             );
             break;
         case 'matches':

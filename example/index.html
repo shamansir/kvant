@@ -21,14 +21,14 @@
 
     var jsWorker = new Worker('./worker-runner.js');
 
-    mehanik.ports.runInWorker.subscribe(({ options, source, adjacency }) => {
+    mehanik.ports.runInWorker.subscribe(({ options, adjacency }) => {
         jsWorker.postMessage(
-            { 'cmd': 'run', 'source': source, 'options': options, 'adjacency': adjacency }
+            { 'cmd': 'run', 'options': options, 'adjacency': adjacency }
         );
     });
-    mehanik.ports.traceInWorker.subscribe(({ options, source, adjacency }) => {
+    mehanik.ports.traceInWorker.subscribe(({ options, adjacency }) => {
         jsWorker.postMessage(
-            { 'cmd': 'trace', 'source': source, 'options': options, 'adjacency': adjacency }
+            { 'cmd': 'trace', 'options': options, 'adjacency': adjacency }
         );
     });
     mehanik.ports.stepInWorker.subscribe((_) => {
@@ -40,9 +40,9 @@
     mehanik.ports.stopWorker.subscribe((_) => {
         jsWorker.postMessage({ 'cmd': 'stop' });
     });
-    mehanik.ports.preprocessInWorker.subscribe(({ options, source, adjacency }) => {
+    mehanik.ports.preprocessInWorker.subscribe(({ options, source }) => {
         jsWorker.postMessage(
-            { 'cmd': 'preprocess', 'source': source, 'options': options, 'adjacency': adjacency }
+            { 'cmd': 'preprocess', 'options': options, 'source': source }
         );
     });
     mehanik.ports.getMatchesAt.subscribe(position => {
@@ -58,7 +58,7 @@
             case 'step':
                 mehanik.ports.gotWorkerResult.send(data.wave);
             case 'patterns':
-                mehanik.ports.gotPatternsFromWorker.send(data.patterns);
+                mehanik.ports.gotAdjacencyFromWorker.send(data.patterns);
             case 'matches':
                 mehanik.ports.gotMatchesFromWorker.send(data.matches);
             default: return;
