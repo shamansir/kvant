@@ -856,7 +856,12 @@ update msg model =
                                                         |> Just
 
                                                 Just (Left _) ->
-                                                    Nothing
+
+                                                    grid
+                                                        |> adaptGrid
+                                                            (Array.map
+                                                            <| fromIndexInSet spec.mapping)
+                                                        |> Just
 
                                                 Nothing ->
                                                     Nothing
@@ -1447,8 +1452,8 @@ adaptGrid f = Array.map <| Array.map f
 
 
 applyWave : AtomId -> (Array AtomId -> b) -> Grid PatternId -> Adjacency Pattern -> Array (Array b)
-applyWave default f grid adjacency =
-    grid
+applyWave default f wave adjacency =
+    wave
         |> mapGrid
             (\patternId ->
                 adjacency
@@ -1457,6 +1462,7 @@ applyWave default f grid adjacency =
                     |> Maybe.withDefault default
             )
         |> adaptGrid f
+
 
 viewSource
     :  Renderer fmt a (Html msg)

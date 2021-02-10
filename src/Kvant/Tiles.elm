@@ -266,7 +266,7 @@ buildAdjacencyRules tiles rules =
         |> Dict.map
             (\(tileKey, rotation) tile ->
                 { subject = ( tileKey, rotation )
-                , weight = tile.weight |> Maybe.withDefault 0
+                , weight = tile.weight |> Maybe.withDefault 1
                 , matches = ( tile, rotation ) |> findMatches tiles rules
                 }
             )

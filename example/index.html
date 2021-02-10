@@ -22,6 +22,7 @@
     var jsWorker = new Worker('./worker-runner.js');
 
     mehanik.ports.runInWorker.subscribe(({ options, adjacency }) => {
+        console.log('adjacency', adjacency);
         jsWorker.postMessage(
             { 'cmd': 'run', 'options': options, 'adjacency': adjacency }
         );
