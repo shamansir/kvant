@@ -57,6 +57,7 @@ import Example.Instance.Image.Plane as ImagePlane exposing
 import Example.Instance.Tiles.Plane as TilesPlane
 import Example.Render exposing (Renderer)
 import Maybe
+import Task
 
 
 type alias Options =  ( Options.PatternSearch, Options.Output )
@@ -607,7 +608,7 @@ update msg model =
                         }
                 , matches = Nothing
                 }
-            , Cmd.none
+            , preprocessInWorker_
             )
 
         SwitchToImageExample image ->
@@ -623,7 +624,7 @@ update msg model =
                         }
                 , matches = Nothing
                 }
-            , Cmd.none
+            , preprocessInWorker_
             )
 
         SwitchToTiledExample group ->
@@ -640,12 +641,16 @@ update msg model =
                                     buildMapping tileSet
                                 _ ->
                                     noMapping
-                        , adjacency = Nothing
+                        , adjacency = Nothing -- FIXME: TODO
                         , wave = Nothing
                         }
                 , matches = Nothing
                 }
-            , Cmd.none
+            , case model.tiles |> Dict.get group of
+                Just (_, Just _) ->
+                    preprocessInWorker_
+                _ ->
+                    Cmd.none
             )
 
         ChangeN n ->
@@ -837,7 +842,7 @@ update msg model =
                     case model.status of
                         WaitingAdjacencyResponse prevStatus -> prevStatus
                         _ -> None
-                -- FIXME: TODO
+                , example = model.example |> setPatternAdjacency adjacency
                 }
             , Cmd.none
             )
@@ -1506,6 +1511,16 @@ getPatternAdjacency example =
         FromTiles { adjacency } -> adjacency |> Maybe.andThen (Either.unwrap Nothing Just)
 
 
+setPatternAdjacency : Adjacency Pattern -> CurrentExample -> CurrentExample
+setPatternAdjacency adjacency example =
+    case example of
+        NotSelected -> NotSelected
+        Textual spec -> Textual { spec | adjacency = Just adjacency }
+        FromImage spec -> FromImage { spec | adjacency = Just adjacency }
+        FromTiles spec ->
+            FromTiles { spec | adjacency = Just <| Right adjacency }
+
+
 encodePatternAdjacencyForPort : Adjacency Pattern -> JE.Value
 encodePatternAdjacencyForPort =
     Adjacency.reflective >> Adjacency.encode
@@ -1514,6 +1529,12 @@ encodePatternAdjacencyForPort =
 encodeTiledAdjacencyForPort : Adjacency ( TileKey, Rotation ) -> JE.Value
 encodeTiledAdjacencyForPort =
     Adjacency.reflective >> Adjacency.encode
+
+
+preprocessInWorker_ : Cmd Msg
+preprocessInWorker_ =
+    Task.succeed Preprocess
+        |> Task.perform identity
 
 
 changeN : Plane.Size -> Options -> Options
