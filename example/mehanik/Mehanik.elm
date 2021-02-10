@@ -951,13 +951,14 @@ view model =
                     case model.tiles |> Dict.get group of
                         Just ( ( format, tiles ), maybeGrid ) ->
                             div []
-                                [ div
-                                    []
-                                    <| List.map TilesRenderer.tile
-                                    <| List.map (toTileUrl format group)
-                                    <| List.map (\key -> ( key, 0 ))  -- FIXME
-                                    <| List.map .key
-                                    <| tiles
+                                [ hr [] []
+                                , viewTiles format group
+                                    <| case currentTiles of
+                                            Just adjacencyTiles -> Dict.keys adjacencyTiles
+                                            Nothing ->
+                                                tiles
+                                                    |> List.map .key
+                                                    |> List.map (\key -> ( key, 0 ))  -- FIXME
                                 , hr [] []
                                 , viewNeighboursLoadingArea ( 10, 10 ) -- FIXME: size of a tile
                                     <| Maybe.withDefault (0, 0)
@@ -1027,7 +1028,30 @@ view model =
                 <| Dict.toList
                 <| patterns
 
+        viewTiles format group tiles =
+            div
+                [ style "display" "flex"
+                , style "overflow" "scroll"
+                ]
+                <| List.map
+                    (\tileUrl ->
+                        div
+                            [ style "transform" "scale(0.5)"
+                            , style "margin" "5px"
+                            , style "cursor" "pointer"
+                            , style "padding" "3px"
+                            , style "border" "1px solid lightgray"
+                            , style "border-radius" "3px"
+                            --, onClick <| ShowMatchesFor tileId
+                            ]
+                            [ TilesRenderer.tile tileUrl ]
+                    )
+                    <| List.map (toTileUrl format group)
+                    <| tiles
+
         currentPatterns = getPatternAdjacency model.example
+
+        currentTiles = getTileAdjacency model.example
 
         viewMatches neighbours =
             [ [ Dir.NW, Dir.N, Dir.NE ]
@@ -1576,6 +1600,17 @@ getPatternAdjacency example =
         Textual { adjacency } -> adjacency
         FromImage { adjacency } -> adjacency
         FromTiles { adjacency } -> adjacency |> Maybe.andThen (Either.unwrap Nothing Just)
+
+
+getTileAdjacency : CurrentExample -> Maybe TileAdjacency
+getTileAdjacency example =
+    case example of
+        NotSelected -> Nothing
+        Textual _ -> Nothing
+        FromImage _ -> Nothing
+        FromTiles { adjacency } ->
+            adjacency
+                |> Maybe.andThen (Either.swap >> Either.unwrap Nothing Just)
 
 
 setPatternAdjacency : Adjacency Pattern -> CurrentExample -> CurrentExample
