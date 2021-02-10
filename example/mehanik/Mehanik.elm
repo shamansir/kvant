@@ -788,14 +788,21 @@ update msg model =
                         NotSelected ->
                             NotSelected
 
-                        Textual spec  ->
+                        Textual spec ->
                             Textual
                                 { spec
                                 | wave =
-                                    grid
-                                        |> Array.map
-                                            (Array.map <| Array.map Char.fromCode)
-                                        |> Just
+                                    spec.adjacency
+                                        |> Maybe.map
+                                            (\adjacency ->
+
+                                                applyWave
+                                                    -1
+                                                    (Array.map Char.fromCode)
+                                                    grid
+                                                    adjacency
+
+                                            )
                                 }
 
 
@@ -803,14 +810,20 @@ update msg model =
                             FromImage
                                 { spec
                                 | wave =
-                                    grid
-                                        |> Array.map
-                                            (Array.map
-                                                <| Array.map pixelToColor
-                                                    >> Array.toList
-                                                    >> ImagePlane.merge)
-                                        |> ImageC.fromArray2d
-                                        |> Just
+                                    spec.adjacency
+                                        |> Maybe.map
+                                            (\adjacency ->
+
+                                                applyWave
+                                                    -1
+                                                    (Array.map pixelToColor
+                                                                >> Array.toList
+                                                                >> ImagePlane.merge)
+                                                    grid
+                                                    adjacency
+                                                    |> ImageC.fromArray2d
+
+                                            )
                                 }
 
                         FromTiles spec ->
@@ -819,13 +832,21 @@ update msg model =
                                 | wave =
                                     ( case model.tiles |> Dict.get spec.group of
                                         Just _ ->
-                                            grid
-                                                |> Array.map
-                                                    (Array.map
-                                                        <| Array.map
-                                                        <| fromIndexInSet spec.mapping
-                                                    )
-                                                |> Just
+                                            case spec.adjacency of
+
+                                                Just (Right adjacency) ->
+                                                                                                                                                        applyWave
+                                                        -1
+                                                        (Array.map <| fromIndexInSet spec.mapping)
+                                                        grid
+                                                        adjacency
+                                                        |> Just
+
+                                                Just (Left _) ->
+                                                    Nothing
+
+                                                Nothing ->
+                                                    Nothing
                                         _ ->
                                             Nothing  -- FIXME: TODO
                                     )
@@ -1399,8 +1420,24 @@ main =
 
 
 mapGrid : (a -> b) -> Grid a -> Grid b
-mapGrid f = Array.map <| Array.map <| Array.map f
+mapGrid = adaptGrid << Array.map
 
+
+adaptGrid : (Array a -> b) -> Grid a -> Array (Array b)
+adaptGrid f = Array.map <| Array.map f
+
+
+applyWave : AtomId -> (Array AtomId -> b) -> Grid PatternId -> Adjacency Pattern -> Array (Array b)
+applyWave default f grid adjacency =
+    grid
+        |> mapGrid
+            (\patternId ->
+                adjacency
+                    |> Adjacency.get patternId
+                    |> Maybe.andThen (Plane.get (0, 0))
+                    |> Maybe.withDefault default
+            )
+        |> adaptGrid f
 
 viewSource
     :  Renderer fmt a (Html msg)
