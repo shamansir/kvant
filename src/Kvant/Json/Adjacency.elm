@@ -18,7 +18,7 @@ encode : Adjacency Int Int -> E.Value
 encode = encodeWith E.int E.int
 
 
-encodeWith : (comparable -> E.Value) -> (a -> E.Value) -> Adjacency comparable a -> E.Value
+encodeWith : (i -> E.Value) -> (a -> E.Value) -> Adjacency i a -> E.Value
 encodeWith keyEncode itemEncode =
     Dict.toList
         >> E.list (encodeItem keyEncode itemEncode)

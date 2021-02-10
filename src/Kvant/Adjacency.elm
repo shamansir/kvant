@@ -26,10 +26,15 @@ type alias Adjacency subj_id subj =
 
 
 map : (a -> b) -> Adjacency i a -> Adjacency i b
-map f =
+map =
+    keyedMap << always
+
+
+keyedMap : (i -> a -> b) -> Adjacency i a -> Adjacency i b
+keyedMap f =
     Dict.map
-        (\_ v ->
-            { subject = f v.subject
+        (\k v ->
+            { subject = f k v.subject
             , weight = v.weight
             , matches = v.matches
             }
@@ -42,3 +47,7 @@ mapKey f =
         >> List.map (Tuple.mapFirst f)
         >> Dict.fromList
 
+
+reflective : Adjacency i a -> Adjacency i i
+reflective =
+    keyedMap (\k _ -> k)

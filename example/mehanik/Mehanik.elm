@@ -12,6 +12,7 @@ import Xml.Decode as XD
 import Image exposing (Image)
 import Image.Color as ImageC
 import Color exposing (Color)
+import Either exposing (Either(..))
 
 
 import Html exposing (..)
@@ -37,7 +38,7 @@ import Kvant.Neighbours as Dir exposing (Direction(..))
 import Kvant.Matches exposing (Matches)
 import Kvant.Matches as Matches
 import Kvant.Json.Matches as Matches
-import Kvant.Patterns exposing (PatternId)
+import Kvant.Patterns exposing (PatternId, Pattern)
 import Kvant.Tiles exposing
     ( toIndexInSet, fromIndexInSet, buildMapping, noMapping
     , TileMapping, TileKey, TileSet, TileGrid, Rotation
@@ -58,14 +59,19 @@ import Example.Render exposing (Renderer)
 import Maybe
 
 
+type alias Options =  ( Options.PatternSearch, Options.Output )
+
+
+type alias AtomId = Int -- tile, character, pattern, color, etc...
+
+
 type alias Model =
     { status : Status
-    , options : ( Options.PatternSearch, Options.Output )
+    , options : Options
     , example : CurrentExample
     , images : Dict ImageAlias Image
     , tiles : Dict TileGroup ( TileSet, Maybe TileGrid )
-    , patterns : Maybe UniquePatterns
-    , matches : Maybe (Neighbours (Matches Int))
+    , matches : Maybe (Neighbours (Matches AtomId))
     , imagesErrors : Dict ImageAlias Http.Error
     , tilesErrors : Dict TileGroup String
     , workerError : Maybe String
@@ -85,18 +91,22 @@ type CurrentExample
     = NotSelected
     | Textual
         { source : ( Vec2, String )
-        , adjacency : Maybe (Adjacency Char)
+        , adjacency : Maybe (Adjacency Pattern)
         , wave : Maybe (Grid Char)
         }
     | FromImage
         { source : Image
-        , adjacency : Maybe (Adjacency Color)
+        , adjacency : Maybe (Adjacency Pattern)
         , wave : Maybe Image
         }
     | FromTiles
         { group : TileGroup
         , mapping : TileMapping
-        , adjacency : Maybe (Adjacency (TileKey, Rotation))
+        , adjacency : Maybe
+            (Either
+                (Adjacency (TileKey, Rotation))
+                (Adjacency Pattern)
+            )
         , wave : Maybe (Grid (TileKey, Rotation))
         }
 
@@ -125,16 +135,16 @@ type Msg
     | Stop
     | Preprocess
     | FindMatchesAt Vec2
-    | ShowMatchesFor PatternId
+    | ShowMatchesFor AtomId
     -- receiving from Http requests
     | GotImage ImageAlias Image
     | GotTiles TileGroup ( TileSet, Maybe TileGrid )
     | ImageLoadError ImageAlias Http.Error
     | TilesLoadError TileGroup String
     -- receiving from worker
-    | GotResult (Grid Int)
-    | GotPatterns UniquePatterns
-    | GotMatches Vec2 (Neighbours (Matches Int))
+    | GotResult (Grid AtomId)
+    | GotAdjacency (Adjacency Pattern)
+    | GotMatches Vec2 (Neighbours (Matches AtomId))
     -- change options
     | ChangeN Plane.Size
     | ChangeSymmetry Symmetry
@@ -244,7 +254,6 @@ init =
     , example = NotSelected
     , images = Dict.empty
     , tiles = Dict.empty
-    , patterns = Nothing
     , matches = Nothing
     , workerError = Nothing
     , imagesErrors = Dict.empty
@@ -293,8 +302,7 @@ update msg model =
                                         |> Options.encodeOutput
                                  , adjacency =
                                     theAdjacency
-                                        |> Adjacency.map Char.toCode
-                                        |> Adjacency.encode
+                                        |> encodePatternAdjacencyForPort
 
                                 {-
                                 , source =
@@ -325,8 +333,7 @@ update msg model =
                                         |> Options.encodeOutput
                                  , adjacency =
                                     theAdjacency
-                                        |> Adjacency.map colorToPixel
-                                        |> Adjacency.encode
+                                        |> encodePatternAdjacencyForPort
                                 {-
                                 , source =
                                     source
@@ -354,8 +361,9 @@ update msg model =
                                             |> Options.encodeOutput
                                     , adjacency =
                                         theAdjacency
-                                            |> Adjacency.map (toIndexInSet mapping)
-                                            |> Adjacency.encode
+                                            |> Either.unpack
+                                                encodeTiledAdjacencyForPort
+                                                encodePatternAdjacencyForPort
                                     {-
                                     , source =
                                         grid
@@ -388,8 +396,7 @@ update msg model =
                                         |> Options.encodeOutput
                                  , adjacency =
                                     theAdjacency
-                                        |> Adjacency.map Char.toCode
-                                        |> Adjacency.encode
+                                        |> encodePatternAdjacencyForPort
 
                                 {-
                                 , source =
@@ -419,8 +426,7 @@ update msg model =
                                         |> Options.encodeOutput
                                  , adjacency =
                                     theAdjacency
-                                        |> Adjacency.map colorToPixel
-                                        |> Adjacency.encode
+                                        |> encodePatternAdjacencyForPort
                                 {-
                                 , source =
                                     source
@@ -449,9 +455,10 @@ update msg model =
                                             |> Tuple.second
                                             |> Options.encodeOutput
                                     , adjacency =
-                                        theAdjacency
-                                            |> Adjacency.map (toIndexInSet mapping)
-                                            |> Adjacency.encode
+                                        theAdjacency |>
+                                            Either.unpack
+                                                encodeTiledAdjacencyForPort
+                                                encodePatternAdjacencyForPort
                                     {-
                                     , source =
                                         grid
@@ -573,12 +580,12 @@ update msg model =
             , getMatchesAt pos
             )
 
-        ShowMatchesFor patternId ->
+        ShowMatchesFor atomId ->
             (
                 { model
                 | matches =
-                    model.patterns
-                        |> Maybe.andThen (Dict.get patternId)
+                    getPatternAdjacency model.example
+                        |> Maybe.andThen (Dict.get atomId)
                         |> Maybe.map (.matches >> Dict.toList)
                         |> Maybe.map (List.map (Tuple.mapFirst Neighbours.toDirection))
                         |> Maybe.map Neighbours.fromList
@@ -598,7 +605,6 @@ update msg model =
                         , adjacency = Nothing
                         , wave = Nothing
                         }
-                , patterns = Nothing
                 , matches = Nothing
                 }
             , Cmd.none
@@ -615,7 +621,6 @@ update msg model =
                         , adjacency = Nothing
                         , wave = Nothing
                         }
-                , patterns = Nothing
                 , matches = Nothing
                 }
             , Cmd.none
@@ -638,7 +643,6 @@ update msg model =
                         , adjacency = Nothing
                         , wave = Nothing
                         }
-                , patterns = Nothing
                 , matches = Nothing
                 }
             , Cmd.none
@@ -826,15 +830,14 @@ update msg model =
             , Cmd.none
             )
 
-        GotPatterns patterns ->
+        GotAdjacency adjacency ->
             (
                 { model
                 | status =
                     case model.status of
-                        WaitingPatternsResponse prevStatus -> prevStatus
+                        WaitingAdjacencyResponse prevStatus -> prevStatus
                         _ -> None
-                , patterns =
-                    Just patterns
+                -- FIXME: TODO
                 }
             , Cmd.none
             )
@@ -977,6 +980,8 @@ view model =
                 <| Dict.toList
                 <| patterns
 
+        currentPatterns = getPatternAdjacency model.example
+
         viewMatches neighbours =
             [ [ Dir.NW, Dir.N, Dir.NE ]
             , [ Dir.W,  Dir.X, Dir.E  ]
@@ -1005,7 +1010,7 @@ view model =
                                                 )
                                             <| List.map
                                                 (\patternId ->
-                                                case model.patterns |> Maybe.andThen (Dict.get patternId) of
+                                                case currentPatterns |> Maybe.andThen (Dict.get patternId) of
                                                         Just { subject } ->
                                                             div
                                                                 [ style "transform" "scale(0.8)"
@@ -1031,7 +1036,7 @@ view model =
                 ]
 
         viewNeighboursLoadingArea itemSize areaSize
-            = case model.patterns of
+            = case currentPatterns of
                 Just _ ->
                     viewClickableArea areaSize itemSize FindMatchesAt
                 Nothing -> div [] []
@@ -1126,142 +1131,138 @@ view model =
                     :: items
                 )
 
-        controls options  =
-            case options.approach of
-                PatternSearch { patternSize, inputBoundary, symmetry } ->
-
-                    div
+        controls (search, ( outputBoundary, outputSize ))  =
+            div
+                []
+                [ controlPanel "Pattern size"
+                    [ checkbox
+                        (case search.patternSize of (n, _) -> n == 2)
+                        "2x"
+                        <| ChangeN (2, 2)
+                    , checkbox
+                        (case search.patternSize of (n, _) -> n == 3)
+                            "3x"
+                        <| ChangeN (3, 3)
+                    ]
+                , controlPanel "Input"
+                    [ checkbox
+                        (case search.boundary of
+                            Periodic -> True
+                            Bounded -> False)
+                        "Periodic"
+                        UsePeriodicInput
+                    , checkbox
+                        (case search.boundary of
+                            Periodic -> False
+                            Bounded -> True)
+                        "Bounded"
+                        UseBoundedInput
+                    ]
+                , controlPanel "Symmetry"
+                    [ checkbox
+                        (case search.symmetry of
+                            NoSymmetry -> True
+                            _ -> False)
+                        "None"
+                        <| ChangeSymmetry NoSymmetry
+                    , checkbox
+                        (case search.symmetry of
+                            FlipOnly -> True
+                            _ -> False)
+                        "Only flip"
+                        <| ChangeSymmetry FlipOnly
+                    , checkbox
+                        (case search.symmetry of
+                            RotateOnly -> True
+                            _ -> False)
+                        "Only rotate"
+                        <| ChangeSymmetry RotateOnly
+                    , checkbox
+                        (case search.symmetry of
+                            FlipAndRotate -> True
+                            _ -> False)
+                        "Flip and rotate"
+                        <| ChangeSymmetry FlipAndRotate
+                    ]
+                , controlPanel "Output"
+                    [ checkbox
+                        (case outputBoundary of
+                            Periodic -> True
+                            Bounded -> False)
+                        "Periodic"
+                        UsePeriodicOutput
+                    , checkbox
+                        (case outputBoundary of
+                            Periodic -> False
+                            Bounded -> True)
+                        "Bounded"
+                        UseBoundedOutput
+                    ]
+                , controlPanel "Output size"
+                    [ span
                         []
-                        [ controlPanel "Pattern size"
-                            [ checkbox
-                                (case patternSize of (n, _) -> n == 2)
-                                "2x"
-                                <| ChangeN (2, 2)
-                            , checkbox
-                                (case patternSize of (n, _) -> n == 3)
-                                 "3x"
-                                <| ChangeN (3, 3)
-                            ]
-                        , controlPanel "Input"
-                            [ checkbox
-                                (case inputBoundary of
-                                    Periodic -> True
-                                    Bounded -> False)
-                                "Periodic"
-                                UsePeriodicInput
-                            , checkbox
-                                (case inputBoundary of
-                                    Periodic -> False
-                                    Bounded -> True)
-                                "Bounded"
-                                UseBoundedInput
-                            ]
-                        , controlPanel "Symmetry"
-                            [ checkbox
-                                (case symmetry of
-                                    NoSymmetry -> True
-                                    _ -> False)
-                                "None"
-                                <| ChangeSymmetry NoSymmetry
-                            , checkbox
-                                (case symmetry of
-                                    FlipOnly -> True
-                                    _ -> False)
-                                "Only flip"
-                                <| ChangeSymmetry FlipOnly
-                            , checkbox
-                                (case symmetry of
-                                    RotateOnly -> True
-                                    _ -> False)
-                                "Only rotate"
-                                <| ChangeSymmetry RotateOnly
-                            , checkbox
-                                (case symmetry of
-                                    FlipAndRotate -> True
-                                    _ -> False)
-                                "Flip and rotate"
-                                <| ChangeSymmetry FlipAndRotate
-                            ]
-                        , controlPanel "Output"
-                            [ checkbox
-                                (case options.outputBoundary of
-                                    Periodic -> True
-                                    Bounded -> False)
-                                "Periodic"
-                                UsePeriodicOutput
-                            , checkbox
-                                (case options.outputBoundary of
-                                    Periodic -> False
-                                    Bounded -> True)
-                                "Bounded"
-                                UseBoundedOutput
-                            ]
-                        , controlPanel "Output size"
-                            [ span
-                                []
-                                [ Html.text
-                                    <| "Width ("
-                                        ++ (String.fromInt <| Tuple.first <| options.outputSize)
-                                        ++ ")"]
-                            , input
-                                [ type_ "range"
-                                , H.min "8"
-                                , H.max "96"
-                                , value <| String.fromInt <| Tuple.first <| options.outputSize
-                                , onInput
-                                    <| String.toInt >> Maybe.withDefault 8 >> ChangeOutputWidth
-                                ]
-                                []
-                            , span
-                                []
-                                [ Html.text
-                                    <| "Height ("
-                                        ++ (String.fromInt <| Tuple.second <| options.outputSize)
-                                        ++ ")"]
-                            , input
-                                [ type_ "range"
-                                , H.min "8"
-                                , H.max "96"
-                                , value <| String.fromInt <| Tuple.second <| options.outputSize
-                                , onInput <|
-                                    String.toInt >> Maybe.withDefault 8 >> ChangeOutputHeight
-                                ]
-                                []
-                            ]
-                        , controlPanel ""
-                            [ input
-                                [ type_ "button"
-                                , onClick Preprocess
-                                , value "Show Patterns"
-                                , disabled <| model.status /= None
-                                ]
-                                [ text "Show Patterns"
-                                ]
-                            ]
-                        , controlPanel "" -- "Run/Trace"
-                            [ fancyButton
-                                (model.status == None)
-                                "▶️"
-                                Run
-                            , fancyButton
-                                (model.status == Tracing || model.status == None)
-                                "⏭️"
-                                (case model.status of
-                                    Tracing -> Step
-                                    None -> Trace
-                                    _ -> NoOp
-                                )
-                            , fancyButton
-                                (model.status == Tracing)
-                                "⏮️"
-                                StepBack
-                            , fancyButton
-                                (model.status == Tracing)
-                                "⏹️"
-                                Stop
-                            ]
+                        [ Html.text
+                            <| "Width ("
+                                ++ (String.fromInt <| Tuple.first <| outputSize)
+                                ++ ")"]
+                    , input
+                        [ type_ "range"
+                        , H.min "8"
+                        , H.max "96"
+                        , value <| String.fromInt <| Tuple.first <| outputSize
+                        , onInput
+                            <| String.toInt >> Maybe.withDefault 8 >> ChangeOutputWidth
                         ]
-                _ -> div [] []
+                        []
+                    , span
+                        []
+                        [ Html.text
+                            <| "Height ("
+                                ++ (String.fromInt <| Tuple.second <| outputSize)
+                                ++ ")"]
+                    , input
+                        [ type_ "range"
+                        , H.min "8"
+                        , H.max "96"
+                        , value <| String.fromInt <| Tuple.second <| outputSize
+                        , onInput <|
+                            String.toInt >> Maybe.withDefault 8 >> ChangeOutputHeight
+                        ]
+                        []
+                    ]
+                , controlPanel ""
+                    [ input
+                        [ type_ "button"
+                        , onClick Preprocess
+                        , value "Show Patterns"
+                        , disabled <| model.status /= None
+                        ]
+                        [ text "Show Patterns"
+                        ]
+                    ]
+                , controlPanel "" -- "Run/Trace"
+                    [ fancyButton
+                        (model.status == None)
+                        "▶️"
+                        Run
+                    , fancyButton
+                        (model.status == Tracing || model.status == None)
+                        "⏭️"
+                        (case model.status of
+                            Tracing -> Step
+                            None -> Trace
+                            _ -> NoOp
+                        )
+                    , fancyButton
+                        (model.status == Tracing)
+                        "⏮️"
+                        StepBack
+                    , fancyButton
+                        (model.status == Tracing)
+                        "⏹️"
+                        Stop
+                    ]
+                ]
 
         toTileUrl format group ( tile, _ ) = -- FIXME: use rotation
             "http://localhost:3000/tiled/" ++ group ++ "/" ++ tile ++ "." ++ format
@@ -1347,7 +1348,7 @@ view model =
             , case model.example of
                 NotSelected -> div [] []
                 _ -> controls model.options
-            , case model.patterns of
+            , case currentPatterns of
                 Just patterns -> viewPatterns patterns
                 Nothing -> div [] []
             , viewExample
@@ -1374,11 +1375,11 @@ main =
             \_ ->
                 Sub.batch
                     [ gotWorkerResult GotResult
-                    , gotPatternsFromWorker
+                    , gotAdjacencyFromWorker
                         (\value ->
                             case JD.decodeValue Patterns.decode value of
                                 Err error -> WorkerError <| JD.errorToString error
-                                Ok patterns -> GotPatterns patterns
+                                Ok adjacency -> GotAdjacency adjacency
                         )
                     , gotMatchesFromWorker
                         (\value ->
@@ -1496,60 +1497,63 @@ errorToString error =
             errorMessage
 
 
-changeN : Plane.Size -> Solver.Options -> Solver.Options
-changeN n options =
-    { options
-    | approach =
-        case options.approach of
-            PatternSearch overlappingOpts ->
-                PatternSearch
-                    { overlappingOpts
-                    | patternSize = n
-                    }
-            _ -> options.approach
-    }
+getPatternAdjacency : CurrentExample -> Maybe (Adjacency Pattern)
+getPatternAdjacency example =
+    case example of
+        NotSelected -> Nothing
+        Textual { adjacency } -> adjacency
+        FromImage { adjacency } -> adjacency
+        FromTiles { adjacency } -> adjacency |> Maybe.andThen (Either.unwrap Nothing Just)
 
 
-changeSymmetry : Symmetry -> Solver.Options -> Solver.Options
-changeSymmetry symmetry options =
-    { options
-    | approach =
-        case options.approach of
-            PatternSearch overlappingOpts ->
-                PatternSearch
-                    { overlappingOpts
-                    | symmetry = symmetry
-                    }
-            _ -> options.approach
-    }
+encodePatternAdjacencyForPort : Adjacency Pattern -> JE.Value
+encodePatternAdjacencyForPort =
+    Adjacency.reflective >> Adjacency.encode
 
 
-changeInputBoundary : Boundary -> Solver.Options -> Solver.Options
-changeInputBoundary boundary options =
-    { options
-    | approach =
-        case options.approach of
-            PatternSearch overlappingOpts ->
-                PatternSearch
-                    { overlappingOpts
-                    | inputBoundary = boundary
-                    }
-            _ -> options.approach
-    }
+encodeTiledAdjacencyForPort : Adjacency ( TileKey, Rotation ) -> JE.Value
+encodeTiledAdjacencyForPort =
+    Adjacency.reflective >> Adjacency.encode
 
 
-changeOutputBoundary : Boundary -> Solver.Options -> Solver.Options
-changeOutputBoundary boundary options =
-    { options
-    | outputBoundary = boundary
-    }
+changeN : Plane.Size -> Options -> Options
+changeN n ( search, output ) =
+    (
+        { search
+        | patternSize = n
+        }
+    , output
+    )
 
 
-changeOutputSize : (Plane.Size -> Plane.Size) -> Solver.Options -> Solver.Options
-changeOutputSize f options =
-    { options
-    | outputSize = f options.outputSize
-    }
+changeSymmetry : Symmetry -> Options -> Options
+changeSymmetry symmetry ( search, output ) =
+    (
+        { search
+        | symmetry = symmetry
+        }
+    , output
+    )
+
+
+changeInputBoundary : Boundary -> Options -> Options
+changeInputBoundary boundary ( search, output ) =
+    (
+        { search
+        | boundary = boundary
+        }
+    , output
+    )
+
+
+changeOutputBoundary : Boundary -> Options -> Options
+changeOutputBoundary boundary ( search, ( _, size ) ) =
+    ( search, ( boundary, size ) )
+
+
+changeOutputSize : (Plane.Size -> Plane.Size) -> Options -> Options
+changeOutputSize f ( search, ( boundary, size ) ) =
+    ( search, ( boundary, f size ) )
 
 
 port runInWorker : { options : JE.Value, adjacency : JE.Value } -> Cmd msg
@@ -1568,6 +1572,6 @@ port getMatchesAt : ( Int, Int ) -> Cmd msg
 
 port gotWorkerResult : (Array (Array (Array Int)) -> msg) -> Sub msg
 
-port gotPatternsFromWorker : (JE.Value -> msg) -> Sub msg
+port gotAdjacencyFromWorker : (JE.Value -> msg) -> Sub msg
 
 port gotMatchesFromWorker : (JE.Value -> msg) -> Sub msg
