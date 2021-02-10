@@ -41,7 +41,8 @@ import Kvant.Json.Matches as Matches
 import Kvant.Patterns exposing (PatternId, Pattern)
 import Kvant.Tiles exposing
     ( toIndexInSet, fromIndexInSet, buildMapping, noMapping
-    , TileMapping, TileKey, TileSet, TileGrid, Rotation
+    , TileMapping, TileKey, TileSet, TileGrid, Rotation, Rule
+    , TileAdjacency
     )
 import Kvant.Tiles as Tiles
 import Kvant.Xml.Tiles as Tiles
@@ -58,6 +59,7 @@ import Example.Instance.Tiles.Plane as TilesPlane
 import Example.Render exposing (Renderer)
 import Maybe
 import Task
+import Canvas.Settings.Text as Align
 
 
 type alias Options =  ( Options.PatternSearch, Options.Output )
@@ -71,7 +73,7 @@ type alias Model =
     , options : Options
     , example : CurrentExample
     , images : Dict ImageAlias Image
-    , tiles : Dict TileGroup ( TileSet, Maybe TileGrid )
+    , tiles : Dict TileGroup ( TileSet, Either (List Rule) TileGrid )
     , matches : Maybe (Neighbours (Matches AtomId))
     , imagesErrors : Dict ImageAlias Http.Error
     , tilesErrors : Dict TileGroup String
@@ -105,7 +107,7 @@ type CurrentExample
         , mapping : TileMapping
         , adjacency : Maybe
             (Either
-                (Adjacency (TileKey, Rotation))
+                TileAdjacency
                 (Adjacency Pattern)
             )
         , wave : Maybe (Grid (TileKey, Rotation))
@@ -139,7 +141,7 @@ type Msg
     | ShowMatchesFor AtomId
     -- receiving from Http requests
     | GotImage ImageAlias Image
-    | GotTiles TileGroup ( TileSet, Maybe TileGrid )
+    | GotTiles TileGroup ( TileSet, Either (List Rule) TileGrid )
     | ImageLoadError ImageAlias Http.Error
     | TilesLoadError TileGroup String
     -- receiving from worker
@@ -363,7 +365,7 @@ update msg model =
                                     , adjacency =
                                         theAdjacency
                                             |> Either.unpack
-                                                encodeTiledAdjacencyForPort
+                                                (encodeTiledAdjacencyForPort mapping)
                                                 encodePatternAdjacencyForPort
                                     {-
                                     , source =
@@ -458,7 +460,7 @@ update msg model =
                                     , adjacency =
                                         theAdjacency |>
                                             Either.unpack
-                                                encodeTiledAdjacencyForPort
+                                                (encodeTiledAdjacencyForPort mapping)
                                                 encodePatternAdjacencyForPort
                                     {-
                                     , source =
@@ -559,7 +561,7 @@ update msg model =
                             WaitingAdjacencyResponse model.status
                         }
                     , case model.tiles |> Dict.get group of
-                        Just (_, Just grid) ->
+                        Just (_, Right grid) ->
                             preprocessInWorker
                                 { options =
                                     model.options
@@ -641,13 +643,24 @@ update msg model =
                                     buildMapping tileSet
                                 _ ->
                                     noMapping
-                        , adjacency = Nothing -- FIXME: TODO
+                        , adjacency =
+                            case model.tiles |> Dict.get group of
+                                Just (_, Right _) ->
+                                    Nothing -- will be received from worker
+                                Just ( (_, tiles ), Left rules ) ->
+                                    Just
+                                        <| Left
+                                        <| Tiles.buildAdjacencyRules
+                                            tiles
+                                            rules
+                                Nothing ->
+                                    Nothing
                         , wave = Nothing
                         }
                 , matches = Nothing
                 }
             , case model.tiles |> Dict.get group of
-                Just (_, Just _) ->
+                Just (_, Right _) ->
                     preprocessInWorker_
                 _ ->
                     Cmd.none
@@ -847,6 +860,7 @@ update msg model =
 
                                                 Nothing ->
                                                     Nothing
+
                                         _ ->
                                             Nothing  -- FIXME: TODO
                                     )
@@ -944,26 +958,28 @@ view model =
                                     <| Maybe.withDefault (0, 0)
                                     <| Maybe.andThen loadSize
                                     <| wave
-                                , case maybeGrid of
-                                    Just grid ->
-                                        div
-                                            [ style "transform" "scale(0.6)"
-                                            , style "transform-origin" "0 0"
-                                            ]
-                                            [ viewSource
-                                                (TilesRenderer.make <| toTileUrl format group)
+                                , div
+                                    [ style "transform" "scale(0.6)"
+                                    , style "transform-origin" "0 0"
+                                    ]
+                                    [ case maybeGrid of
+                                        Right grid ->
+                                            viewSource
+                                                (TilesRenderer.make
+                                                    <| toTileUrl format group)
                                                 grid
-                                            , wave
-                                                |> Maybe.map
-                                                    (TilesRenderer.grid1
-                                                        <| Array.toList
-                                                            >> TilesPlane.merge
-                                                            >> TilesRenderer.tileAndCount
-                                                                    (toTileUrl format group)
-                                                    )
-                                                |> Maybe.withDefault (div [] [])
-                                            ]
-                                    _ -> div [] []
+                                        Left _ ->
+                                            div [] []  -- FIXME: TODO
+                                    , wave
+                                        |> Maybe.map
+                                            (TilesRenderer.grid1
+                                                <| Array.toList
+                                                    >> TilesPlane.merge
+                                                    >> TilesRenderer.tileAndCount
+                                                            (toTileUrl format group)
+                                            )
+                                        |> Maybe.withDefault (div [] [])
+                                    ]
                                 ]
 
                         Nothing -> div [] []
@@ -1256,16 +1272,19 @@ view model =
                         ]
                         []
                     ]
-                , controlPanel ""
-                    [ input
-                        [ type_ "button"
-                        , onClick Preprocess
-                        , value "Show Patterns"
-                        , disabled <| model.status /= None
-                        ]
-                        [ text "Show Patterns"
-                        ]
-                    ]
+                , case currentPatterns of
+                    Just _ ->
+                        controlPanel ""
+                            [ input
+                                [ type_ "button"
+                                , onClick Preprocess
+                                , value "Show Patterns"
+                                , disabled <| model.status /= None
+                                ]
+                                [ text "Show Patterns"
+                                ]
+                            ]
+                    Nothing -> div [] []
                 , controlPanel "" -- "Run/Trace"
                     [ fancyButton
                         (model.status == None)
@@ -1479,7 +1498,12 @@ requestRules tileGroup =
                         Result.map2
                             Tuple.pair
                             ( XD.run Tiles.decode xmlString )
-                            ( XD.run (XD.maybe Adjacency.decodeGrid) xmlString )
+                            ( case XD.run Adjacency.decodeGrid xmlString of
+                                Ok grid -> Ok <| Right grid
+                                Err error ->
+                                    XD.run Adjacency.decodeRules xmlString
+                                        |> Result.map Left
+                            )
                     )
                 >> runResult (TilesLoadError tileGroup) (GotTiles tileGroup)
                 )
@@ -1563,9 +1587,12 @@ encodePatternAdjacencyForPort =
     Adjacency.reflective >> Adjacency.encode
 
 
-encodeTiledAdjacencyForPort : Adjacency ( TileKey, Rotation ) -> JE.Value
-encodeTiledAdjacencyForPort =
-    Adjacency.reflective >> Adjacency.encode
+encodeTiledAdjacencyForPort : TileMapping -> TileAdjacency -> JE.Value
+encodeTiledAdjacencyForPort ( _, keyToId ) =
+    let
+        convert key = keyToId |> Dict.get key |> Maybe.withDefault -1
+    in
+        Adjacency.mapKey convert >> Adjacency.map convert >> Adjacency.encode
 
 
 preprocessInWorker_ : Cmd Msg

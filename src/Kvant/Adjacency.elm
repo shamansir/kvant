@@ -3,6 +3,7 @@ module Kvant.Adjacency exposing (..)
 import Dict exposing (Dict)
 
 import Kvant.Matches exposing (Matches)
+import Kvant.Matches as Matches
 import Kvant.Plane exposing (Offset)
 
 
@@ -41,10 +42,18 @@ keyedMap f =
         )
 
 
-mapKey : (comparable -> comparable) -> Adjacency comparable a -> Adjacency comparable a
+mapKey : (comparableA -> comparableB) -> Adjacency comparableA a -> Adjacency comparableB a
 mapKey f =
     Dict.toList
         >> List.map (Tuple.mapFirst f)
+        >> List.map
+            (Tuple.mapSecond <|
+                \v ->
+                    { subject = v.subject
+                    , weight = v.weight
+                    , matches = v.matches |> Dict.map (always <| Matches.map f)
+                    }
+            )
         >> Dict.fromList
 
 
