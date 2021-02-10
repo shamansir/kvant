@@ -51,3 +51,7 @@ mapKey f =
 reflective : Adjacency i a -> Adjacency i i
 reflective =
     keyedMap (\k _ -> k)
+
+
+get : comparable -> Adjacency comparable a -> Maybe a
+get key = Dict.get key >> Maybe.map .subject
