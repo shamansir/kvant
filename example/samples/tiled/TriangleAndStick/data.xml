@@ -1,0 +1,16 @@
+<set size="7">
+	<tiles format="svg">
+		<tile name="stick" symmetry="I"/>
+		<tile name="triangle" symmetry="A"/>
+		<tile name="whitespace" symmetry="X"/>
+	</tiles>
+	<neighbors>
+		<neighbor left="triangle 3" right="stick 1" />
+        <neighbor left="stick 1" right="triangle 1" />
+        <neighbor left="triangle 3" right="triangle 1" />
+        <neighbor left="stick 1" right="stick 1" />
+        <neighbor left="whitespace" right="triangle 3" />
+        <neighbor left="triangle 1" right="whitespace" />
+        <neighbor left="whitespace" right="whitespace" />
+	</neighbors>
+</set>
