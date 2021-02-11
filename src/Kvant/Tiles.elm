@@ -29,7 +29,7 @@ maxRotations = 4
 
 
 type Symmetry
-    = I | X | L | T | S -- | Q -- S meaning Slope, Q means none
+    = I | X | L | T | S | A -- | Q -- S meaning Slope, Q means none
 
 
 type alias TileInfo =
@@ -120,6 +120,7 @@ symmetryFromString str =
         "L" -> Just L
         "T" -> Just T
         "\\" -> Just S
+        "A" -> Just A
         _ -> Nothing
 
 
@@ -131,6 +132,7 @@ symmetryToString symmetry =
         L -> "L"
         T -> "T"
         S -> "\\"
+        A -> "A"
 
 
 keyRotFromString : String -> ( TileKey, Rotation )
@@ -172,6 +174,11 @@ symmetryToIndices symmetry =
                    2
                 1  0  2
                    1
+        A -> -- a.k.a `\`
+            Cardinal
+                   1
+                1  0  1
+                   0
         -- Q ->
         --     Cardinal
         --            4

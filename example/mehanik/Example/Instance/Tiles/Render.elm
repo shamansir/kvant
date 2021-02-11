@@ -46,7 +46,10 @@ tile1 : (( TileKey, Rotation ) -> String) -> ( TileKey, Rotation ) -> Html msg
 tile1 toPath ( key, rotation ) =
     div
         [ style "transform"
-            <| "rotate(" ++ String.fromFloat (rotationToAngle rotation) ++ "deg)" ]
+            <| "rotate(" ++ String.fromFloat (rotationToAngle rotation) ++ "deg)"
+        , style "max-height" "50px"
+        , style "max-width" "50px"
+        ]
         [ tile <| toPath ( key, rotation ) ]
 
 

@@ -240,6 +240,7 @@ pixelatedExamples =
 
 tiledExamples =
     [ "Kotlin"
+    , "TriangleAndStick"
     , "Castle"
     , "Circles"
     , "Circuit"
@@ -594,7 +595,8 @@ update msg model =
                                 |> Maybe.map (.matches >> Dict.toList)
                                 |> Maybe.map (List.map (Tuple.mapFirst Neighbours.toDirection))
                                 |> Maybe.map Neighbours.fromList
-                                |> Maybe.map (Neighbours.map (Maybe.withDefault Matches.none))
+                                |> Maybe.map (Neighbours.map <| Maybe.withDefault Matches.none)
+                                |> Maybe.map (Neighbours.set Dir.X <| Matches.single atomId)
                     in
                         case model.example of
                             FromTiles spec ->
