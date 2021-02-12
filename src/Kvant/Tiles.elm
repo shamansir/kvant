@@ -162,9 +162,9 @@ rotateTo : Direction -> Rotation -> Rotation
 rotateTo dir rotation =
     case dir of
         D.N -> rotation |> next
-        D.W -> rotation |> next |> next
+        D.E -> rotation |> next |> next
         D.S -> rotation |> next |> next |> next
-        D.E -> rotation
+        D.W -> rotation
         _ -> rotation
 
 
@@ -175,17 +175,12 @@ rotateTileTo =
 
 allowedByRule : Rule -> ( TileKey, Rotation ) -> ( TileKey, Rotation ) -> Bool
 allowedByRule { left, right } ( tileAtLeft, rotationAtLeft ) ( tileAtRight, rotationAtRight )
-    = case ( left, right ) |> Debug.log "rule" of
+    = case ( left, right ) of
         ( ( requiredAtLeft, requiredRotationAtLeft ), ( requiredAtRight, requiredRotationAtRight ) ) ->
-            let
-                _ = Debug.log "left" ( tileAtLeft, rotationAtLeft )
-                _ = Debug.log "right" ( tileAtRight, rotationAtRight )
-            in (requiredAtLeft == tileAtLeft
+            requiredAtLeft == tileAtLeft
                 && requiredAtRight == tileAtRight
                 && requiredRotationAtLeft == rotationAtLeft
-                && requiredRotationAtRight == rotationAtRight)
-                |> Debug.log "result"
-
+                && requiredRotationAtRight == rotationAtRight
 
 
 allowedByRules : List Rule -> Direction -> ( TileKey, Rotation ) -> ( TileKey, Rotation ) -> Bool
@@ -221,9 +216,9 @@ findMatches tiles rules ( currentTile, currentRotation ) =
                                                 if
                                                     allowedByRules
                                                         rules
-                                                        (Debug.log "dir" dir)
-                                                        ( otherTile.key, otherRotation )
+                                                        dir
                                                         ( currentTile.key, currentRotation )
+                                                        ( otherTile.key, otherRotation )
                                                     -- || matchesBySymmetry
                                                     --     (dir |> rotate currentRotation)
                                                     --     (currentTile.symmetry |> Maybe.withDefault X)
@@ -243,6 +238,18 @@ findMatches tiles rules ( currentTile, currentRotation ) =
             (Neighbours.fill [])
         |> Neighbours.map Matches.fromList
         |> Neighbours.toDict
+
+
+uniqueTurns : List TileInfo -> List (TileInfo, Rotation)
+uniqueTurns tiles =
+    tiles
+        |> List.concatMap
+            (\info ->
+                info.symmetry
+                    |> Maybe.withDefault X
+                    |> uniqueRotationsBySymmetry
+                    |> List.map (Tuple.pair info)
+            )
 
 
 buildAdjacencyRules : List TileInfo -> List Rule -> TileAdjacency
