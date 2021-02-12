@@ -168,20 +168,36 @@ rotateTo dir rotation =
         _ -> rotation
 
 
-allowedByRule : Rule -> Direction -> ( TileKey, Rotation ) -> ( TileKey, Rotation ) -> Bool
-allowedByRule { left, right } dir ( tileAtLeft, rotationAtLeft ) ( tileAtRight, rotationAtRight )
-    = case ( left, right ) of
-        ( ( requiredAtLeft, requiredRotationAtLeft ), ( requiredAtRight, requiredRotationAtRight ) ) -> requiredAtLeft == tileAtLeft
-             && requiredAtRight == tileAtRight
-             && rotateTo dir requiredRotationAtLeft == rotateTo dir rotationAtLeft
-             && rotateTo dir requiredRotationAtRight == rotateTo dir rotationAtRight
+rotateTileTo : Direction -> ( TileKey, Rotation ) -> ( TileKey, Rotation )
+rotateTileTo =
+    Tuple.mapSecond << rotateTo
+
+
+allowedByRule : Rule -> ( TileKey, Rotation ) -> ( TileKey, Rotation ) -> Bool
+allowedByRule { left, right } ( tileAtLeft, rotationAtLeft ) ( tileAtRight, rotationAtRight )
+    = case ( left, right ) |> Debug.log "rule" of
+        ( ( requiredAtLeft, requiredRotationAtLeft ), ( requiredAtRight, requiredRotationAtRight ) ) ->
+            let
+                _ = Debug.log "left" ( tileAtLeft, rotationAtLeft )
+                _ = Debug.log "right" ( tileAtRight, rotationAtRight )
+            in (requiredAtLeft == tileAtLeft
+                && requiredAtRight == tileAtRight
+                && requiredRotationAtLeft == rotationAtLeft
+                && requiredRotationAtRight == rotationAtRight)
+                |> Debug.log "result"
 
 
 
 allowedByRules : List Rule -> Direction -> ( TileKey, Rotation ) -> ( TileKey, Rotation ) -> Bool
-allowedByRules rules dir leftTile rightTile
-    = (rules
-        |> List.filter (\rule -> allowedByRule rule dir leftTile rightTile)
+allowedByRules rules dir leftTile rightTile =
+    (rules
+        |> List.filter
+            (\rule ->
+                allowedByRule
+                    rule
+                    (rotateTileTo dir leftTile)
+                    (rotateTileTo dir rightTile)
+            )
         |> List.length) > 0
 
 
@@ -199,21 +215,27 @@ findMatches tiles rules ( currentTile, currentRotation ) =
                         = tiles
                             |> List.foldl
                                 (\otherTile neighbours_ ->
-                                    if
-                                        allowedByRules
-                                            rules
-                                            dir
-                                            ( otherTile.key, currentRotation )
-                                            ( currentTile.key, currentRotation )
-                                        || matchesBySymmetry
-                                            (dir |> rotate currentRotation)
-                                            (currentTile.symmetry |> Maybe.withDefault X)
-                                            (otherTile.symmetry |> Maybe.withDefault X)
+                                    List.range 0 (maxRotations - 1)
+                                        |> List.foldl
+                                            (\otherRotation neighbours__ ->
+                                                if
+                                                    allowedByRules
+                                                        rules
+                                                        (Debug.log "dir" dir)
+                                                        ( otherTile.key, otherRotation )
+                                                        ( currentTile.key, currentRotation )
+                                                    -- || matchesBySymmetry
+                                                    --     (dir |> rotate currentRotation)
+                                                    --     (currentTile.symmetry |> Maybe.withDefault X)
+                                                    --     (otherTile.symmetry |> Maybe.withDefault X)
 
-                                        then neighbours_
-                                            |> Neighbours.at dir
-                                                ((::) ( otherTile.key, currentRotation ))
-                                        else neighbours_
+                                                    then neighbours__
+                                                        |> Neighbours.at dir
+                                                            ((::) ( otherTile.key, otherRotation ))
+                                                    else neighbours__
+                                            )
+                                            neighbours_
+
                                 )
                                 neighbours
                 in bySymmetry
