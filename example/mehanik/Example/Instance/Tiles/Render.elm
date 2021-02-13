@@ -8,7 +8,7 @@ import Html.Attributes exposing (..)
 
 import Kvant.Vec2 exposing (..)
 import Kvant.Plane as Plane
-import Kvant.Tiles exposing (TileKey, Rotation, noTile, TileGrid)
+import Kvant.Tiles exposing (TileKey, Rotation, noTile, TileGrid, rotationToString)
 
 import Example.Render exposing (Renderer)
 
@@ -50,7 +50,9 @@ tile1 toPath ( key, rotation ) =
         , style "max-height" "50px"
         , style "max-width" "50px"
         ]
-        [ tile <| toPath ( key, rotation ) ]
+        [ span [ style "position" "absolute" ] [ text <| rotationToString rotation ]
+        , tile <| toPath ( key, rotation )
+        ]
 
 
 tileAndCount : (( TileKey, Rotation ) -> String) -> ( ( TileKey, Rotation ), Int ) -> Html msg

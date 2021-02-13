@@ -271,7 +271,7 @@ mergeBySymmetry tile adjacencySoFar =
             |> List.foldl
                 (\anotherRotation adjacency_ ->
                     Maybe.map2
-                        (Adjacency.merge)
+                        Adjacency.merge
                         (adjacency_
                             |> Dict.get ( key, currentRotation )
                             |> Maybe.map .matches)
@@ -459,3 +459,13 @@ equalBySymmetry symmetry rotA rotB =
 --     = List.foldl
 --         (info)
 --         []
+
+
+rotationToString : Rotation -> String
+rotationToString rotation =
+    case rotation of
+        0 -> "0°"
+        1 -> "90°"
+        2 -> "180°"
+        3 -> "270°"
+        _ -> "?°"
