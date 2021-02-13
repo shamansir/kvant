@@ -5,6 +5,7 @@ import Dict exposing (Dict)
 import Kvant.Matches exposing (Matches)
 import Kvant.Matches as Matches
 import Kvant.Plane exposing (Offset)
+import Kvant.Neighbours as Neighbours
 
 
 type alias Repetition = Int
@@ -64,3 +65,22 @@ reflective =
 
 get : comparable -> Adjacency comparable a -> Maybe a
 get key = Dict.get key >> Maybe.map .subject
+
+
+noMatches : Dict Offset (Matches subj_id)
+noMatches =
+    Neighbours.fill Matches.none |> Neighbours.toDict
+
+
+merge
+    :  Dict Offset (Matches comparable)
+    -> Dict Offset (Matches comparable)
+    -> Dict Offset (Matches comparable)
+merge matchesA matchesB =
+    Dict.merge
+        Dict.insert
+        (\key v1 v2 -> Dict.insert key <| Matches.or v1 v2)
+        Dict.insert
+        matchesA
+        matchesB
+        Dict.empty

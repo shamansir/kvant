@@ -7,7 +7,7 @@ import Set exposing (Set)
 
 
 import Kvant.Plane exposing (Plane, Offset)
-import Kvant.Adjacency exposing (Adjacency)
+import Kvant.Adjacency as Adjacency exposing (Adjacency)
 import Kvant.Neighbours exposing (Cardinal(..), Direction)
 import Kvant.Neighbours as Neighbours
 import Kvant.Neighbours as D exposing (Direction(..))
@@ -206,7 +206,7 @@ findMatches tiles rules ( currentTile, currentRotation ) =
         |> List.foldl
             (\dir neighbours ->
                 let
-                    bySymmetry
+                    byRules
                         = tiles
                             |> List.foldl
                                 (\otherTile neighbours_ ->
@@ -219,11 +219,11 @@ findMatches tiles rules ( currentTile, currentRotation ) =
                                                         dir
                                                         ( currentTile.key, currentRotation )
                                                         ( otherTile.key, otherRotation )
-                                                    -- || matchesBySymmetry
-                                                    --     (dir |> rotate currentRotation)
-                                                    --     (currentTile.symmetry |> Maybe.withDefault X)
-                                                    --     (otherTile.symmetry |> Maybe.withDefault X)
-
+                                                    || allowedByRules
+                                                        rules
+                                                        (D.opposite dir)
+                                                        ( otherTile.key, otherRotation )
+                                                        ( currentTile.key, currentRotation )
                                                     then neighbours__
                                                         |> Neighbours.at dir
                                                             ((::) ( otherTile.key, otherRotation ))
@@ -233,7 +233,7 @@ findMatches tiles rules ( currentTile, currentRotation ) =
 
                                 )
                                 neighbours
-                in bySymmetry
+                in byRules
             )
             (Neighbours.fill [])
         |> Neighbours.map Matches.fromList
@@ -252,22 +252,75 @@ uniqueTurns tiles =
             )
 
 
+mergeBySymmetry
+    :   { subject: ( Symmetry, ( TileKey, Rotation ) )
+        , weight : Float
+        , matches : Dict Offset (Matches ( TileKey, Rotation ) )
+        }
+    -> Adjacency
+            ( TileKey, Rotation )
+            ( Symmetry, ( TileKey, Rotation ) )
+    -> Adjacency
+            ( TileKey, Rotation )
+            ( Symmetry, ( TileKey, Rotation ) )
+mergeBySymmetry tile adjacencySoFar =
+    let
+        ( symmetry, ( key, currentRotation ) ) = tile.subject
+    in
+        similarRotationsBySymmetry currentRotation symmetry
+            |> List.foldl
+                (\anotherRotation adjacency_ ->
+                    Maybe.map2
+                        (Adjacency.merge)
+                        (adjacency_
+                            |> Dict.get ( key, currentRotation )
+                            |> Maybe.map .matches)
+                        (adjacency_
+                            |> Dict.get ( key, anotherRotation )
+                            |> Maybe.map .matches)
+                    |> Maybe.map
+                        (\mergedMatches ->
+                            adjacency_ |>
+                                Dict.insert
+                                    ( key, currentRotation )
+                                    { subject = tile.subject
+                                    , weight = tile.weight
+                                    , matches = mergedMatches
+                                    }
+                        )
+                    |> Maybe.withDefault adjacency_
+                )
+                adjacencySoFar
+
+
 buildAdjacencyRules : List TileInfo -> List Rule -> TileAdjacency
 buildAdjacencyRules tiles rules =
-    tiles
-        |> List.concatMap
-            (\tile ->
-                List.range 0 (maxRotations - 1)
-                    |> List.map (\rotation ->
-                            ( ( tile.key, rotation ), tile )
-                        )
-            )
-        |> Dict.fromList
+    let
+        rulesApplied =
+            tiles
+                |> List.concatMap
+                    (\tile ->
+                        List.range 0 (maxRotations - 1)
+                            |> List.map (\rotation ->
+                                    ( ( tile.key, rotation ), tile )
+                                )
+                    )
+                |> Dict.fromList
+                |> Dict.map
+                    (\(tileKey, rotation) tile ->
+                        { subject = ( tile.symmetry |> Maybe.withDefault Q, ( tileKey, rotation ) )
+                        , weight = tile.weight |> Maybe.withDefault 1
+                        , matches = ( tile, rotation ) |> findMatches tiles rules
+                        }
+                    )
+    in
+        rulesApplied
+        |> Dict.foldl (always mergeBySymmetry) rulesApplied
         |> Dict.map
-            (\(tileKey, rotation) tile ->
-                { subject = ( tileKey, rotation )
-                , weight = tile.weight |> Maybe.withDefault 1
-                , matches = ( tile, rotation ) |> findMatches tiles rules
+            (\_ tile ->
+                { subject = Tuple.second tile.subject
+                , weight = tile.weight
+                , matches = tile.matches
                 }
             )
 
@@ -361,6 +414,28 @@ uniqueRotationsBySymmetry symmetry =
         X -> [ 0 ]
         S -> [ 0, 1 ]
         _ -> [ 0, 1, 2, 3 ]
+
+
+similarRotationsBySymmetry : Rotation -> Symmetry -> List Rotation
+similarRotationsBySymmetry rotation symmetry =
+    case ( rotation, symmetry ) of
+
+        ( 0, I ) -> [ 2 ]
+        ( 1, I ) -> [ 3 ]
+        ( 2, I ) -> [ 0 ]
+        ( 3, I ) -> [ 1 ]
+
+        ( 0, X ) -> [ 1, 2, 3 ]
+        ( 1, X ) -> [ 0, 2, 3 ]
+        ( 2, X ) -> [ 0, 1, 3 ]
+        ( 3, X ) -> [ 0, 1, 2 ]
+
+        ( 0, S ) -> [ 2 ]
+        ( 1, S ) -> [ 3 ]
+        ( 2, S ) -> [ 0 ]
+        ( 3, S ) -> [ 1 ]
+
+        _ -> [ ]
 
 
 equalBySymmetry : Symmetry -> Rotation -> Rotation -> Bool
