@@ -2,9 +2,10 @@ module Kvant.Neighbours
     exposing (..)
 
 
-import Kvant.Vec2 exposing (..)
 import Dict exposing (Dict)
 
+import Kvant.Vec2 exposing (..)
+import Kvant.Direction as Dir exposing (Direction(..))
 
 
 type Neighbours a =
@@ -19,13 +20,6 @@ type Cardinal a =
           a
         a a a -- we could exclude center
           a
-
-
-type Direction
-    = NW | N | NE
-    |  W | X | E
-    | SW | S | SE
-
 
 none : Neighbours (List a)
 none =
@@ -74,20 +68,6 @@ create f =
         (f SW) (f S) (f SE)
 
 
-allDirections : List Direction
-allDirections =
-    [ NW, N, NE, W, X, E, SW, S, SE ]
-
-
-cardinal : List Direction
-cardinal = [ N, E, S, W ]
-
-
-directionsAround : List Direction
-directionsAround =
-    allDirections |> List.filter ((/=) X)
-
-
 get : Direction -> Neighbours a -> a
 get dir neighbours =
     let
@@ -133,7 +113,7 @@ collect focus customMove f =
 
 toList : Neighbours a -> List (Direction, a)
 toList neighbours =
-    allDirections
+    Dir.all
         |> List.map (\dir -> (dir, get dir neighbours))
 
 
@@ -149,7 +129,7 @@ fromList =
 toDict : Neighbours a -> Dict Vec2 a
 toDict =
     toList
-        >> List.map (Tuple.mapFirst offsetFor)
+        >> List.map (Tuple.mapFirst Dir.toOffset)
         >> Dict.fromList
 
 
@@ -160,7 +140,7 @@ flatten = toList >> List.map Tuple.second
 centerAndOthers : Neighbours a -> (a, List (Direction, a))
 centerAndOthers neighbours =
     ( get X neighbours
-    , directionsAround
+    , Dir.around
         |> List.map (\dir -> (dir, get dir neighbours)) )
 
 
@@ -193,7 +173,7 @@ tryLoad default =
     load default
         << List.map2
             Tuple.pair
-            allDirections
+            Dir.all
 
 
 -- FIXME: we also need `equals` here
@@ -214,85 +194,22 @@ byCoord focus customMove neighbours =
 
 
 offsets : Neighbours Vec2
-offsets = create offsetFor
-
-
-offsetFor : Direction -> Vec2
-offsetFor direction =
-    case direction of
-        NW -> ( -1, -1 )
-        N  -> (  0, -1 )
-        NE -> (  1, -1 )
-        W  -> ( -1,  0 )
-        X  -> (  0,  0 )
-        E  -> (  1,  0 )
-        SW -> ( -1,  1 )
-        S  -> (  0,  1 )
-        SE -> (  1,  1 )
-
-
-opposite : Direction -> Direction
-opposite direction =
-    case direction of
-        NW -> SE
-        N  -> S
-        NE -> SW
-        W  -> E
-        X  -> X
-        E  -> W
-        SW -> NE
-        S  -> N
-        SE -> NW
-
-
-move : Vec2 -> Direction -> Vec2
-move (x, y) direction =
-    case offsetFor direction of
-        ( offX, offY ) -> ( x + offX, y + offY )
+offsets = create Dir.toOffset
 
 
 withOffsets : Neighbours a -> Neighbours (Vec2, a)
-withOffsets = mapBy (offsetFor >> Tuple.pair)
+withOffsets = mapBy (Dir.toOffset >> Tuple.pair)
 
 
 collectFlat : Vec2 -> (Vec2 -> Maybe a) -> Neighbours (Maybe a)
-collectFlat focus = collect focus move
-
-
-dirToString : Direction -> String
-dirToString direction =
-    case direction of
-        NW -> "NW"
-        N  -> "N"
-        NE -> "NE"
-        W  -> "W"
-        X  -> "X"
-        E  -> "E"
-        SW -> "SW"
-        S  -> "S"
-        SE -> "SE"
-
-
-dirFromString : String -> Maybe Direction
-dirFromString str =
-    case str of
-        "NW" -> Just NW
-        "N"  -> Just N
-        "NE" -> Just NE
-        "W"  -> Just W
-        "X"  -> Just X
-        "E"  -> Just E
-        "SW" -> Just SW
-        "S"  -> Just S
-        "SE" -> Just SE
-        _    -> Nothing
+collectFlat focus = collect focus Dir.move
 
 
 toString : (a -> String) -> Neighbours a -> String
 toString itemToString =
     foldl
         (\dir item strings ->
-            (dirToString dir ++ " : " ++ itemToString item) :: strings
+            (Dir.toString dir ++ " : " ++ itemToString item) :: strings
         )
         []
         >> String.join " "
@@ -305,33 +222,6 @@ toString itemToString =
 
 
 -- decode : D.Decoder a -> D.Decoder (Neighbours a)
-
-
-toDirection : Vec2 -> Direction
-toDirection (x, y) =
-    if (x < 0) && (y < 0) then NE
-    else if (x == 0) && (y < 0) then N
-    else if (x > 0) && (y < 0) then NW
-    else if (x < 0) && (y == 0) then E
-    else if (x == 0) && (y == 0) then X
-    else if (x > 0) && (y == 0) then W
-    else if (x < 0) && (y > 0) then SE
-    else if (x == 0) && (y > 0) then S
-    else SW
-
-
-fromDirection : Direction -> Vec2 -- FIXME: same as offsetFor
-fromDirection direction =
-    case direction of
-        NE -> ( -1, -1 )
-        N  -> (  0, -1 )
-        NW -> (  1, -1 )
-        E  -> ( -1,  0 )
-        X  -> (  0,  0 )
-        W  -> (  1,  0 )
-        SE -> ( -1,  1 )
-        S  -> (  0,  1 )
-        SW -> (  1,  1 )
 
 
 toCardinal : Neighbours a -> Cardinal a
@@ -361,14 +251,3 @@ getCardinal dir (Cardinal n w x e s) =
         E -> e
         S -> s
         _ -> x
-
-
-isCardinal : Direction -> Bool
-isCardinal dir =
-    case dir of
-        N -> True
-        W -> True
-        X -> False
-        E -> True
-        S -> True
-        _ -> False

@@ -7,6 +7,7 @@ import Array
 
 import Kvant.Tiles exposing (TileKey, Rotation, keyRotFromString, TileGrid, Rule)
 import Kvant.Adjacency exposing (Repetition)
+import Kvant.Rotation exposing (Rotation)
 
 
 decodeGrid : D.Decoder TileGrid

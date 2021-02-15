@@ -11,8 +11,8 @@ import Kvant.Matches as Matches
 import Kvant.Plane exposing (Plane(..), Coord, Size)
 import Kvant.Plane as Plane
 import Kvant.Patterns exposing (UniquePatterns)
-import Kvant.Neighbours as Neighbours
-import Kvant.Neighbours as Dir exposing (Direction(..))
+import Kvant.Neighbours exposing (Neighbours)
+import Kvant.Direction as Dir exposing (Direction(..))
 import Kvant.Adjacency as A
 
 
@@ -162,7 +162,7 @@ propagate adjacencyRules focus atom wave =
                         |> Maybe.withDefault Matches.none
 
                 probeNeighbours withWave =
-                    Neighbours.cardinal
+                    Dir.cardinal
                         |> List.foldl
                             (\dir curWave ->
 
@@ -338,7 +338,7 @@ getMatchesOf adjacencyRules dir atom =
         |> Dict.get atom
         |> Maybe.andThen
             (\{ matches } ->
-                matches |> Dict.get (Dir.offsetFor dir)
+                matches |> Dict.get (Dir.toOffset dir)
             )
 
 
@@ -380,7 +380,7 @@ exceeds : Int -> Step -> Bool
 exceeds count (Step stepN _ _ _) = count <= stepN
 
 
-extractMatchesAt : Coord -> Step -> Maybe (Dir.Neighbours (Matches AtomId))
+extractMatchesAt : Coord -> Step -> Maybe (Neighbours (Matches AtomId))
 extractMatchesAt coord (Step _ _ _ status) =
     case status of
         Initial -> Nothing

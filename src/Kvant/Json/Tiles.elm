@@ -8,16 +8,20 @@ import Json.Decode as D
 
 import Kvant.Vec2 as Vec2
 import Kvant.Tiles as T
+import Kvant.Rotation as T
+import Kvant.Rotation as Rotation
 import Kvant.Plane as Plane
 import Kvant.Json.Adjacency as Adjacency
+import Kvant.Adjacency as Adjacency
 
 
 decode : D.Decoder T.TileAdjacency
 decode =
     Adjacency.decodeWith decodeTileKey decodeTileKey
+        |> D.map (Adjacency.map <| Tuple.mapSecond Rotation.fromId)
 
 
-decodeTileKey : D.Decoder ( T.TileKey, T.Rotation )
+decodeTileKey : D.Decoder ( T.TileKey, T.RotationId )
 decodeTileKey =
     D.map2
         Tuple.pair
@@ -27,10 +31,12 @@ decodeTileKey =
 
 encode : T.TileAdjacency -> E.Value
 encode =
-    Adjacency.encodeWith encodeTileKey encodeTileKey
+    Adjacency.map (Tuple.mapSecond Rotation.toId)
+        >> Adjacency.encodeWith encodeTileKey encodeTileKey
 
 
-encodeTileKey : ( T.TileKey, T.Rotation ) -> E.Value
+
+encodeTileKey : ( T.TileKey, T.RotationId ) -> E.Value
 encodeTileKey ( key, rotation ) =
     E.object
         [ ( "key", E.string key )
