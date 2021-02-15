@@ -9,6 +9,7 @@ import Kvant.Matches exposing (..)
 import Kvant.Matches as Matches
 import Kvant.Neighbours as Neighbours
 import Kvant.Neighbours exposing (Neighbours)
+import Kvant.Direction as Dir exposing (Direction)
 
 
 encode : Matches Int -> E.Value
@@ -22,12 +23,12 @@ encodeNeighbours neighbours =
         |> Neighbours.toList
         |> List.map
             (\(dir, matches) ->
-                case Neighbours.offsetFor dir of
+                case Dir.toOffset dir of
                     ( x, y ) ->
                         E.object
                             [ ( "x", E.int x )
                             , ( "y", E.int y )
-                            , ( "dir", E.string <| Neighbours.dirToString dir )
+                            , ( "dir", E.string <| Dir.toString dir )
                             , ( "matches", encode matches )
                             ]
             )
@@ -48,7 +49,7 @@ decodeNeighbours =
                 maybeDir |>
                     Maybe.map (\dir -> ( dir, matches) )
             )
-            (D.field "dir" D.string |> D.map Neighbours.dirFromString)
+            (D.field "dir" D.string |> D.map Dir.fromString)
             (D.field "matches" decode)
         )
     |> D.map (List.filterMap identity)
