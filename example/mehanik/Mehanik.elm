@@ -34,14 +34,15 @@ import Kvant.Patterns exposing (UniquePatterns)
 import Kvant.Json.Patterns as Patterns
 import Kvant.Neighbours exposing (Neighbours)
 import Kvant.Neighbours as Neighbours
-import Kvant.Neighbours as Dir exposing (Direction(..))
+import Kvant.Direction as Dir exposing (Direction(..))
 import Kvant.Matches exposing (Matches)
 import Kvant.Matches as Matches
 import Kvant.Json.Matches as Matches
 import Kvant.Patterns exposing (PatternId, Pattern)
+import Kvant.Rotation as Rotation exposing (Rotation)
 import Kvant.Tiles exposing
     ( toIndexInSet, fromIndexInSet, buildMapping, noMapping
-    , TileMapping, TileKey, TileSet, TileGrid, Rotation, Rule
+    , TileMapping, TileKey, TileSet, TileGrid, Rule
     , TileAdjacency
     )
 import Kvant.Tiles as Tiles
@@ -593,7 +594,7 @@ update msg model =
                             adjacency
                                 |> Dict.get atomId
                                 |> Maybe.map (.matches >> Dict.toList)
-                                |> Maybe.map (List.map (Tuple.mapFirst Neighbours.toDirection))
+                                |> Maybe.map (List.map (Tuple.mapFirst Dir.fromOffset))
                                 |> Maybe.map Neighbours.fromList
                                 |> Maybe.map (Neighbours.map <| Maybe.withDefault Matches.none)
                                 |> Maybe.map (Neighbours.set Dir.X <| Matches.single atomId)
@@ -605,7 +606,9 @@ update msg model =
                                         -> fromAdjacency patternAdjacency
                                     Just (Left tileAdjacency)
                                         -> fromAdjacency
-                                                <| Adjacency.mapKey (toIndexInSet spec.mapping)
+                                                <| Adjacency.mapKey
+                                                    (Tuple.mapSecond Rotation.fromId
+                                                        >> toIndexInSet spec.mapping)
                                                 <| Adjacency.map (toIndexInSet spec.mapping)
                                                 <| tileAdjacency
                                     Nothing ->
@@ -1076,7 +1079,9 @@ view model =
                                 <| Tuple.second
                                 <| mapping
                             ]
-                            [ TilesRenderer.tile1 (toTileUrl format group) tileKey ]
+                            [ TilesRenderer.tile1 (toTileUrl format group)
+                                <| Tuple.mapSecond Rotation.fromId
+                                <| tileKey ]
                     )
                     <| tiles
 
@@ -1102,7 +1107,11 @@ view model =
 
                                     case currentTiles
                                         |> Maybe.andThen
-                                            (Dict.get <| fromIndexInSet spec.mapping matchId) of
+                                            (Dict.get
+                                                <| Tuple.mapSecond Rotation.toId
+                                                <| fromIndexInSet spec.mapping
+                                                <| matchId
+                                            ) of
                                         Just { subject } ->
                                             TilesRenderer.tile1
                                                 (toTileUrl format spec.group)
@@ -1143,8 +1152,8 @@ view model =
                         <|
                             List.map (\dir ->
                                 div []
-                                    [ text <| Neighbours.dirToString dir
-                                    , text <| Vec2.toString <| Neighbours.offsetFor dir
+                                    [ text <| Dir.toString dir
+                                    , text <| Vec2.toString <| Dir.toOffset dir
                                     , div
                                             [ style "display" "flex"
                                             , style "flex-direction" "column"
@@ -1705,7 +1714,9 @@ encodeTiledAdjacencyForPort ( _, keyToId ) =
     let
         convert key = keyToId |> Dict.get key |> Maybe.withDefault -1
     in
-        Adjacency.mapKey convert >> Adjacency.map convert >> Adjacency.encode
+        Adjacency.mapKey convert
+            >> Adjacency.map (Tuple.mapSecond Rotation.toId >> convert)
+            >> Adjacency.encode
 
 
 preprocessInWorker_ : Cmd Msg
