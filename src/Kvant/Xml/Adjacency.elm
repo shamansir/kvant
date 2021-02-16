@@ -5,7 +5,8 @@ import Xml.Decode as D
 import Array
 
 
-import Kvant.Tiles exposing (TileKey, Rotation, keyRotFromString, TileGrid, Rule)
+import Kvant.Rotation exposing (Rotation)
+import Kvant.Tiles exposing (TileKey, keyRotFromString, TileGrid, Rule)
 import Kvant.Adjacency exposing (Repetition)
 import Kvant.Rotation exposing (Rotation)
 

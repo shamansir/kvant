@@ -4,9 +4,10 @@ import Array exposing (Array)
 
 
 import Kvant.Vec2 as Vec2
+import Kvant.Rotation as Rotation exposing (Rotation)
 import Kvant.Plane as Plane
 import Kvant.Plane exposing (Plane)
-import Kvant.Tiles exposing (noTile, TileKey, Rotation, TileGrid)
+import Kvant.Tiles exposing (noTile, TileKey, TileGrid)
 
 
 type alias TilesPlane = Plane (TileKey, Rotation)
@@ -22,11 +23,11 @@ make tileGrid =
 toGrid : TilesPlane -> List (List (TileKey, Rotation))
 toGrid plane =
     Plane.toList2d plane
-        |> List.map (List.map <| Maybe.withDefault ( noTile, 0 ))
+        |> List.map (List.map <| Maybe.withDefault ( noTile, Rotation.Original ))
 
 
 merge : List (TileKey, Rotation) -> ( (TileKey, Rotation), Int )
 merge tiles =
-    ( List.head tiles |> Maybe.withDefault ( noTile, 0 )
+    ( List.head tiles |> Maybe.withDefault ( noTile, Rotation.Original )
     , List.length tiles
     )

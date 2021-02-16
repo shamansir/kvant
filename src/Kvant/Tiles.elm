@@ -26,7 +26,7 @@ type alias Format = String
 
 
 type alias TileInfo =
-    { key : String
+    { key : TileKey
     , symmetry : Maybe Symmetry
     , weight : Maybe Float
     }
@@ -87,9 +87,9 @@ noMapping : TileMapping
 noMapping = ( Dict.empty, Dict.empty )
 
 
-toIndexInSet : TileMapping -> ( TileKey, RotationId ) -> Int
+toIndexInSet : TileMapping -> ( TileKey, Rotation ) -> Int
 toIndexInSet ( _, toIndex ) key =
-    Dict.get key toIndex |> Maybe.withDefault -1
+    Dict.get (key |> Tuple.mapSecond Rotation.toId) toIndex |> Maybe.withDefault -1
 
 
 fromIndexInSet : TileMapping -> Int -> ( TileKey, Rotation )
@@ -112,11 +112,14 @@ keyRotFromString : String -> ( TileKey, Rotation )
 keyRotFromString str =
     case String.split " " str of
         key::rotation::_ ->
-            ( key, String.toInt rotation |> Maybe.withDefault 0 )
+            ( key,
+                String.toInt rotation
+                    |> Maybe.map Rotation.fromId
+                    |> Maybe.withDefault Rotation.Original )
         [ key ] ->
-            ( key, 0 )
+            ( key, Rotation.Original )
         [] ->
-            ( noTile, 0 )
+            ( noTile, Rotation.Original )
 
 
 rotateTileTo : Direction -> ( TileKey, Rotation ) -> ( TileKey, Rotation )
@@ -147,6 +150,7 @@ allowedByRules rules dir leftTile rightTile =
         |> List.length) > 0
 
 
+{-
 findMatches
     :  List TileInfo
     -> List Rule
@@ -188,9 +192,10 @@ findMatches tiles rules ( currentTile, currentRotation ) =
             )
             (Neighbours.fill [])
         |> Neighbours.map Matches.fromList
-        |> Neighbours.toDict
+        |> Neighbours.toDict -}
 
 
+{-
 mergeBySymmetry
     :   { subject: ( Symmetry, ( TileKey, Rotation ) )
         , weight : Float
@@ -229,42 +234,92 @@ mergeBySymmetry tile adjacencySoFar =
                         )
                     |> Maybe.withDefault adjacency_
                 )
-                adjacencySoFar
+                adjacencySoFar -}
+
+
+getPossibleVariants : List TileInfo -> Dict (TileKey, RotationId) TileInfo
+getPossibleVariants _ =
+    Dict.empty
+
+
+applySymmetry : List TileInfo -> List Rule -> List Rule
+applySymmetry tiles rules =
+    let
+        tilesDict = tiles |> List.map (\t -> ( t.key, t ) ) |> Dict.fromList
+    in
+        rules
+            |> List.map
+                (\{ left, right } ->
+                    { left =
+                        case left of
+                            ( key, curRotation ) ->
+
+                                ( key
+                                , Rotation.apply
+                                    (tilesDict
+                                        |> Dict.get key
+                                        |> Maybe.andThen .symmetry
+                                        |> Maybe.withDefault Symmetry.default)
+                                    curRotation
+                                )
+                    , right =
+                        case right of
+                            ( key, curRotation ) ->
+
+                                ( key
+                                , Rotation.apply
+                                    (tilesDict
+                                        |> Dict.get key
+                                        |> Maybe.andThen .symmetry
+                                        |> Maybe.withDefault Symmetry.default)
+                                    curRotation
+                                )
+                    }
+                )
 
 
 buildAdjacencyRules : List TileInfo -> List Rule -> TileAdjacency
 buildAdjacencyRules tiles rules =
     let
+        tilesDict = tiles |> List.map (\t -> ( t.key, t ) ) |> Dict.fromList
+        getWeight tileKey =
+            tilesDict |> Dict.get tileKey |> Maybe.andThen .weight |> Maybe.withDefault 1
+        addMatchesFromRule atLeft matches =
+            matches -- FIXME: TODO
+
         rulesApplied =
-            tiles
-                |> List.concatMap
-                    (\tile ->
-                        List.range 0 (maxRotations - 1)
-                            |> List.map (\rotation ->
-                                    ( ( tile.key, rotation ), tile )
-                                )
-                    )
-                |> Dict.fromList
-                |> Dict.map
-                    (\(tileKey, rotationId) tile ->
-                        { subject =
-                            ( tile.symmetry |> Maybe.withDefault Symmetry.default
-                            , ( tileKey, rotationId )
-                            )
-                        , weight = tile.weight |> Maybe.withDefault 1
-                        , matches = ( tile, rotation ) |> findMatches tiles rules
-                        }
-                    )
+            rules
+                |> applySymmetry tiles
+                |> List.foldl
+                        (\rule adjacency ->
+                            case rule.right of
+                                ( key, rotation ) ->
+                                    let
+                                        targetKey = ( key, Rotation.toId rotation )
+                                    in
+                                        adjacency
+                                            |> Dict.update targetKey
+                                                (\maybeTile ->
+                                                    case maybeTile of
+                                                        Just curTile ->
+                                                            { curTile
+                                                            | matches =
+                                                                curTile.matches
+                                                                    |> addMatchesFromRule rule.left
+                                                            } |> Just
+                                                        Nothing ->
+                                                            { subject = ( key,rotation )
+                                                            , weight = getWeight key
+                                                            , matches =
+                                                                Adjacency.noMatches
+                                                                    |> addMatchesFromRule rule.left
+                                                            } |> Just
+                                                )
+                        )
+                        Dict.empty
+
     in
-        rulesApplied
-        |> Dict.foldl (always mergeBySymmetry) rulesApplied
-        |> Dict.map
-            (\_ tile ->
-                { subject = Tuple.second tile.subject
-                , weight = tile.weight
-                , matches = tile.matches
-                }
-            )
+        Dict.empty
 
 
 {-

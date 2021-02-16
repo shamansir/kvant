@@ -8,7 +8,8 @@ import Html.Attributes exposing (..)
 
 import Kvant.Vec2 exposing (..)
 import Kvant.Plane as Plane
-import Kvant.Tiles exposing (TileKey, Rotation, noTile, TileGrid, rotationToString)
+import Kvant.Tiles exposing (TileKey, noTile, TileGrid)
+import Kvant.Rotation as Rotation exposing (Rotation)
 
 import Example.Render exposing (Renderer)
 
@@ -17,7 +18,7 @@ make : (( TileKey, Rotation ) -> String) -> Renderer TileGrid ( TileKey, Rotatio
 make toPath =
     ( Array.toList >> List.map Array.toList >> grid (tile1 toPath)
     , Plane.toList2d
-        >> List.map (List.map <| Maybe.withDefault (noTile, 0))
+        >> List.map (List.map <| Maybe.withDefault (noTile, Rotation.Original))
         >> grid (tile1 toPath)
     )
 
@@ -32,25 +33,15 @@ tile path =
         [ ]
 
 
-rotationToAngle : Rotation -> Float
-rotationToAngle rotation =
-    case rotation of
-        0 -> 0
-        1 -> 90
-        2 -> 180
-        3 -> 270
-        _ -> 360
-
-
 tile1 : (( TileKey, Rotation ) -> String) -> ( TileKey, Rotation ) -> Html msg
 tile1 toPath ( key, rotation ) =
     div
         [ style "transform"
-            <| "rotate(" ++ String.fromFloat (rotationToAngle rotation) ++ "deg)"
+            <| "rotate(" ++ String.fromFloat (Rotation.toAngle rotation) ++ "deg)"
         , style "max-height" "50px"
         , style "max-width" "50px"
         ]
-        [ span [ style "position" "absolute" ] [ text <| rotationToString rotation ]
+        [ span [ style "position" "absolute" ] [ text <| Rotation.toString rotation ]
         , tile <| toPath ( key, rotation )
         ]
 

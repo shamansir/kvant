@@ -71,6 +71,30 @@ uniqueFor symmetry =
         Diagonal -> [ AnyHorizontal, AnyVertical ]
 
 
+apply : Symmetry -> Rotation -> Rotation
+apply symmetry curRotation =
+    case ( symmetry, curRotation ) of
+
+        ( X, _ ) -> AnyQuarter
+
+        ( T, Original ) -> AnyHorizontal
+        ( T, Half ) -> AnyHorizontal
+        ( T, _ ) -> curRotation
+
+        ( I, Original ) -> AnyHorizontal
+        ( I, Quarter ) -> AnyVertical
+        ( I, Half ) -> AnyHorizontal
+        ( I, ThreeQuarters ) -> AnyVertical
+        ( I, _ ) -> curRotation
+
+        ( Diagonal, Original ) -> AnyHorizontal
+        ( Diagonal, Quarter ) -> AnyVertical
+        ( Diagonal, Half ) -> AnyHorizontal
+        ( Diagonal, ThreeQuarters ) -> AnyVertical
+        ( Diagonal, _ ) -> curRotation
+
+        ( L, _ ) -> curRotation
+
 
 next : Rotation -> Rotation
 next rotation =
@@ -143,3 +167,12 @@ fromId id =
         6 -> AnyQuarter
         _ -> Original
 
+
+toAngle : Rotation -> Float
+toAngle rotation =
+    case rotation |> toQuarter of
+        Original -> 0
+        Quarter -> 90
+        Half -> 180
+        ThreeQuarters -> 270
+        _ -> 0
