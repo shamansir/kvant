@@ -115,7 +115,8 @@ keyRotFromString str =
             ( key,
                 String.toInt rotation
                     |> Maybe.map Rotation.fromId
-                    |> Maybe.withDefault Rotation.Original )
+                    |> Maybe.withDefault Rotation.Original
+            )
         [ key ] ->
             ( key, Rotation.Original )
         [] ->
@@ -282,8 +283,27 @@ buildAdjacencyRules : List TileInfo -> List Rule -> TileAdjacency
 buildAdjacencyRules tiles rules =
     let
         tilesDict = tiles |> List.map (\t -> ( t.key, t ) ) |> Dict.fromList
+
         getWeight tileKey =
             tilesDict |> Dict.get tileKey |> Maybe.andThen .weight |> Maybe.withDefault 1
+        adjacencyDict =
+            List.concatMap
+                (\info  ->
+                    Rotation.uniqueFor (info.symmetry |> Maybe.withDefault Symmetry.default)
+                        |> List.map
+                            (\rotation ->
+                                ( ( info.key, Rotation.toId rotation )
+                                ,
+                                    { subject = ( info.key, rotation )
+                                    , weight = getWeight info.key
+                                    , matches = Adjacency.noMatches
+                                    }
+                                )
+                            )
+                )
+                tiles
+                |> Dict.fromList
+
         addMatchesFromRule atLeft matches =
             matches -- FIXME: TODO
 
@@ -299,27 +319,20 @@ buildAdjacencyRules tiles rules =
                                     in
                                         adjacency
                                             |> Dict.update targetKey
-                                                (\maybeTile ->
-                                                    case maybeTile of
-                                                        Just curTile ->
-                                                            { curTile
-                                                            | matches =
-                                                                curTile.matches
-                                                                    |> addMatchesFromRule rule.left
-                                                            } |> Just
-                                                        Nothing ->
-                                                            { subject = ( key,rotation )
-                                                            , weight = getWeight key
-                                                            , matches =
-                                                                Adjacency.noMatches
-                                                                    |> addMatchesFromRule rule.left
-                                                            } |> Just
+                                                (Maybe.map
+                                                    (\curTile ->
+                                                        { curTile
+                                                        | matches =
+                                                            curTile.matches
+                                                                |> addMatchesFromRule rule.left
+                                                        }
+                                                    )
+
                                                 )
                         )
-                        Dict.empty
-
+                        adjacencyDict
     in
-        Dict.empty
+        rulesApplied
 
 
 {-
