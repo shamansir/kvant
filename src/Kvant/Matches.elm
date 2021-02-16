@@ -8,7 +8,7 @@ module Kvant.Matches exposing
     , toString
     , fromMaybe
     , run
-    , exclude
+    , add, exclude
     , and, or, intersect, union
     , equal
     )
@@ -105,6 +105,10 @@ exclude val matches =
         Single v -> if v == val then none else matches
         Some (MoreThanOne list) ->
             list |> List.filter ((/=) val) |> fromList
+
+
+add : comparable -> Matches comparable -> Matches comparable
+add = or << single
 
 
 and : Matches comparable -> Matches comparable -> Matches comparable

@@ -304,35 +304,45 @@ buildAdjacencyRules tiles rules =
                 tiles
                 |> Dict.fromList
 
-        addMatchesFromRule atLeft matches =
-            matches -- FIXME: TODO
-
-        rulesApplied =
-            rules
-                |> applySymmetry tiles
+        addMatchesFromRule ( key, rotation ) matches =
+            D.cardinal
                 |> List.foldl
-                        (\rule adjacency ->
-                            case rule.right of
-                                ( key, rotation ) ->
-                                    let
-                                        targetKey = ( key, Rotation.toId rotation )
-                                    in
-                                        adjacency
-                                            |> Dict.update targetKey
-                                                (Maybe.map
-                                                    (\curTile ->
-                                                        { curTile
-                                                        | matches =
-                                                            curTile.matches
-                                                                |> addMatchesFromRule rule.left
-                                                        }
-                                                    )
+                    (\dir curMatches ->
+                        curMatches
+                            |> Dict.update
+                                (D.toOffset dir)
+                                (Maybe.map <|
+                                    Matches.add
+                                        ( key
+                                        , rotation |> Rotation.to dir |> Rotation.toId
+                                        )
+                                )
 
-                                                )
-                        )
-                        adjacencyDict
+                    )
+                    matches
     in
-        rulesApplied
+        rules
+            |> applySymmetry tiles
+            |> List.foldl
+                    (\rule adjacency ->
+                        case rule.right of
+                            ( key, rotation ) ->
+                                let
+                                    targetKey = ( key, Rotation.toId rotation )
+                                in
+                                    adjacency
+                                        |> Dict.update targetKey
+                                            (Maybe.map
+                                                (\curTile ->
+                                                    { curTile
+                                                    | matches =
+                                                        curTile.matches
+                                                            |> addMatchesFromRule rule.left
+                                                    }
+                                                )
+                                            )
+                    )
+                    adjacencyDict
 
 
 {-
