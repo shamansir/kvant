@@ -151,9 +151,9 @@ findMatches
     :  List TileInfo
     -> List Rule
     -> ( TileInfo, Rotation )
-    -> Dict Offset (Matches (TileKey, Rotation))
+    -> Dict Offset (Matches (TileKey, RotationId))
 findMatches tiles rules ( currentTile, currentRotation ) =
-    Neighbours.cardinal
+    D.cardinal
         |> List.foldl
             (\dir neighbours ->
                 let
@@ -194,13 +194,13 @@ findMatches tiles rules ( currentTile, currentRotation ) =
 mergeBySymmetry
     :   { subject: ( Symmetry, ( TileKey, Rotation ) )
         , weight : Float
-        , matches : Dict Offset (Matches ( TileKey, Rotation ) )
+        , matches : Dict Offset ( Matches ( TileKey, RotationId ) )
         }
     -> Adjacency
-            ( TileKey, Rotation )
+            ( TileKey, RotationId )
             ( Symmetry, ( TileKey, Rotation ) )
     -> Adjacency
-            ( TileKey, Rotation )
+            ( TileKey, RotationId )
             ( Symmetry, ( TileKey, Rotation ) )
 mergeBySymmetry tile adjacencySoFar =
     let
@@ -246,8 +246,11 @@ buildAdjacencyRules tiles rules =
                     )
                 |> Dict.fromList
                 |> Dict.map
-                    (\(tileKey, rotation) tile ->
-                        { subject = ( tile.symmetry |> Maybe.withDefault Q, ( tileKey, rotation ) )
+                    (\(tileKey, rotationId) tile ->
+                        { subject =
+                            ( tile.symmetry |> Maybe.withDefault Symmetry.default
+                            , ( tileKey, rotationId )
+                            )
                         , weight = tile.weight |> Maybe.withDefault 1
                         , matches = ( tile, rotation ) |> findMatches tiles rules
                         }
