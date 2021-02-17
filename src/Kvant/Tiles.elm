@@ -344,116 +344,52 @@ buildAdjacencyRules tiles rules =
             |> List.foldl
                     (\rule adjacency ->
 
-                        ( case rule.right of
-                            ( key, rotation ) ->
+                        ( case ( rule.left, rule.right ) of
+                            ( ( lKey, lRotation ), ( rKey, rRotation ) ) ->
+
                                 D.cardinal
-                                    |> List.map (\dir -> Rotation.to dir rotation)
                                 --Rotation.uniqueFor symmetry
                                     |> List.foldl
-                                        (\otherRotation adjacency_ ->
+                                        (\dir adjacency_ ->
                                             adjacency_
+
                                             |> Dict.update
-                                                ( key, Rotation.toId otherRotation )
+                                                ( rKey, Rotation.toId <| Rotation.to dir rRotation )
                                                 (Maybe.map
                                                     (\curTile ->
                                                         { curTile
                                                         | matches =
                                                             curTile.matches
                                                                 |> addMatchesFromRule
-                                                                    (Rotation.toDirection otherRotation)
+                                                                    dir
                                                                     rule.left
                                                         }
                                                     )
                                                 )
+
+                                            |> Dict.update
+                                                ( lKey
+                                                , Rotation.toId
+                                                    <| Rotation.to (D.opposite dir) lRotation
+                                                )
+                                                (Maybe.map
+                                                    (\curTile ->
+                                                        { curTile
+                                                        | matches =
+                                                            curTile.matches
+                                                                |> addMatchesFromRule
+                                                                    (D.opposite dir)
+                                                                    rule.right
+                                                        }
+                                                    )
+                                                )
+
                                         )
                                         adjacency
                             )
 
-                            |> (\adjacency_ ->
-                                case ( rule.left, rule.right ) of
-                                    ( ( lKey, lRotation ), ( rKey, rRotation ) ) ->
-                                        D.cardinal
-                                            |> List.map (\dir -> Rotation.to dir rRotation)
-                                        -- Rotation.uniqueFor (getSymmetry key)
-                                            |> List.foldl
-                                                (\otherRotation adjacency__ ->
-                                                    adjacency__
-                                                    |> Dict.update
-                                                        ( lKey
-                                                        , Rotation.toId
-                                                            <| Rotation.apply (getSymmetry lKey)
-                                                            <| otherRotation
-                                                        )
-                                                        (Maybe.map
-                                                            (\curTile ->
-                                                                { curTile
-                                                                | matches =
-                                                                    curTile.matches
-                                                                        |> addMatchesFromRule
-                                                                            ({-D.opposite
-                                                                                <| -} Rotation.toDirection
-                                                                                -- <| Rotation.toQuarter
-                                                                                <| otherRotation)
-                                                                            ( rKey, rRotation |> Rotation.opposite)
-                                                                }
-                                                            )
-                                                        )
-                                                )
-                                                adjacency_
-                                )
-
                     )
                     adjacencyDict
-
-
-{-
-symmetryToIndices : Symmetry -> Cardinal Int
-symmetryToIndices symmetry =
-    case symmetry of
-        X ->
-            Cardinal
-                   1
-                1  0  1
-                   1
-        I ->
-            Cardinal
-                   2
-                1  0  1
-                   2
-        L ->
-            Cardinal
-                   2
-                1  0  2
-                   1
-        T ->
-            Cardinal
-                   2
-                1  0  1
-                   1
-        S -> -- a.k.a `\`
-            Cardinal
-                   2
-                1  0  2
-                   1
-        A ->
-            Cardinal
-                   1
-                1  0  1
-                   0
-        Q -> -- a.k.a `\`
-            Cardinal
-                   1
-                2  0  4
-                   3
-        -}
-
-
-{-
-matchesBySymmetry : Direction -> Symmetry -> Symmetry -> Bool
-matchesBySymmetry dir symmetryA symmetryB =
-    (Neighbours.getCardinal dir <| symmetryToIndices symmetryA)
-    == (Neighbours.getCardinal (Neighbours.opposite dir) <| symmetryToIndices symmetryB)
--}
 
 
 
