@@ -318,26 +318,12 @@ buildAdjacencyRules tiles rules =
                     (D.toOffset dir)
                     (Maybe.map <|
                         Matches.add
-                            ( key
-                            , rotation |> Rotation.to dir |> Rotation.toId
+                            (
+                                ( key
+                                , rotation |> Rotation.toId
+                                ) |> Debug.log "add"
                             )
                     )
-            {-}
-            D.cardinal
-                |> List.foldl
-                    (\dir curMatches ->
-                        curMatches
-                            |> Dict.update
-                                (D.toOffset dir)
-                                (Maybe.map <|
-                                    Matches.add
-                                        ( key
-                                        , rotation |> Rotation.to dir |> Rotation.toId
-                                        )
-                                )
-
-                    )
-                    matches -}
     in
         rules
             |> applySymmetry tiles
@@ -354,7 +340,9 @@ buildAdjacencyRules tiles rules =
                                             adjacency_
 
                                             |> Dict.update
-                                                ( rKey, Rotation.toId <| Rotation.to dir rRotation )
+                                                ( rKey
+                                                , Rotation.toId <| Rotation.to dir rRotation
+                                                )
                                                 (Maybe.map
                                                     (\curTile ->
                                                         { curTile
@@ -362,7 +350,11 @@ buildAdjacencyRules tiles rules =
                                                             curTile.matches
                                                                 |> addMatchesFromRule
                                                                     dir
-                                                                    rule.left
+                                                                    ( lKey
+                                                                    , Rotation.to dir lRotation
+                                                                        |> Debug.log "before apply"
+                                                                        |> Rotation.apply (getSymmetry lKey)
+                                                                    )
                                                         }
                                                     )
                                                 )
@@ -379,7 +371,10 @@ buildAdjacencyRules tiles rules =
                                                             curTile.matches
                                                                 |> addMatchesFromRule
                                                                     (D.opposite dir)
-                                                                    rule.right
+                                                                    ( rKey
+                                                                    , Rotation.to (D.opposite dir) rRotation
+                                                                        |> Rotation.apply (getSymmetry rKey)
+                                                                    )
                                                         }
                                                     )
                                                 )
