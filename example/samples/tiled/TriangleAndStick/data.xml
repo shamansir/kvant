@@ -15,5 +15,6 @@
         <neighbor left="whitespace" right="whitespace" />
         <neighbor left="stick" right="whitespace" /> -->
         <neighbor left="whitespace" right="triangle" />
+        <!-- <neighbor left="triangle" right="whitespace" /> -->
     </neighbors>
 </set>
