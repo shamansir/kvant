@@ -89,15 +89,15 @@ toOffset direction =
 
 fromOffset : Vec2 -> Direction
 fromOffset (x, y) =
-    if (x < 0) && (y < 0) then NE
+    if (x < 0) && (y < 0) then NW
     else if (x == 0) && (y < 0) then N
-    else if (x > 0) && (y < 0) then NW
-    else if (x < 0) && (y == 0) then E
+    else if (x > 0) && (y < 0) then NE
+    else if (x < 0) && (y == 0) then W
     else if (x == 0) && (y == 0) then X
-    else if (x > 0) && (y == 0) then W
-    else if (x < 0) && (y > 0) then SE
+    else if (x > 0) && (y == 0) then E
+    else if (x < 0) && (y > 0) then SW
     else if (x == 0) && (y > 0) then S
-    else SW
+    else SE
 
 
 isCardinal : Direction -> Bool

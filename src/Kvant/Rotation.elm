@@ -119,6 +119,18 @@ to dir rotation =
         _ -> rotation
 
 
+toDirection : Rotation -> Direction
+toDirection rotation =
+    case rotation of
+        Original -> D.W
+        Quarter -> D.N
+        Half -> D.E
+        ThreeQuarters -> D.S
+        AnyHorizontal -> D.N
+        AnyVertical -> D.W
+        AnyQuarter -> D.W
+
+
 toQuarter : Rotation -> Rotation
 toQuarter rotation =
     case rotation of

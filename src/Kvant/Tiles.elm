@@ -285,7 +285,15 @@ buildAdjacencyRules tiles rules =
         tilesDict = tiles |> List.map (\t -> ( t.key, t ) ) |> Dict.fromList
 
         getWeight tileKey =
-            tilesDict |> Dict.get tileKey |> Maybe.andThen .weight |> Maybe.withDefault 1
+            tilesDict
+                |> Dict.get tileKey
+                |> Maybe.andThen .weight
+                |> Maybe.withDefault 1
+        getSymmetry tileKey =
+            tilesDict
+                |> Dict.get tileKey
+                |> Maybe.andThen .symmetry
+                |> Maybe.withDefault Symmetry.default
         adjacencyDict =
             List.concatMap
                 (\info  ->
@@ -304,7 +312,17 @@ buildAdjacencyRules tiles rules =
                 tiles
                 |> Dict.fromList
 
-        addMatchesFromRule ( key, rotation ) matches =
+        addMatchesFromRule dir ( key, rotation ) matches =
+            matches
+                |> Dict.update
+                    (D.toOffset dir)
+                    (Maybe.map <|
+                        Matches.add
+                            ( key
+                            , rotation |> Rotation.to dir |> Rotation.toId
+                            )
+                    )
+            {-}
             D.cardinal
                 |> List.foldl
                     (\dir curMatches ->
@@ -319,7 +337,7 @@ buildAdjacencyRules tiles rules =
                                 )
 
                     )
-                    matches
+                    matches -}
     in
         rules
             |> applySymmetry tiles
@@ -329,18 +347,29 @@ buildAdjacencyRules tiles rules =
                             ( key, rotation ) ->
                                 let
                                     targetKey = ( key, Rotation.toId rotation )
+                                    symmetry = getSymmetry key
                                 in
-                                    adjacency
-                                        |> Dict.update targetKey
-                                            (Maybe.map
-                                                (\curTile ->
-                                                    { curTile
-                                                    | matches =
-                                                        curTile.matches
-                                                            |> addMatchesFromRule rule.left
-                                                    }
-                                                )
+                                    D.cardinal
+                                        |> List.map (\dir -> Rotation.to dir rotation)
+                                    --Rotation.uniqueFor symmetry
+                                        |> List.foldl
+                                            (\otherRotation adjacency_ ->
+                                                adjacency_
+                                                |> Dict.update ( key, Rotation.toId otherRotation )
+                                                    (Maybe.map
+                                                        (\curTile ->
+                                                            { curTile
+                                                            | matches =
+                                                                curTile.matches
+                                                                    |> addMatchesFromRule
+                                                                        (Rotation.toDirection otherRotation)
+                                                                        rule.left
+                                                            }
+                                                        )
+                                                    )
                                             )
+                                            adjacency
+
                     )
                     adjacencyDict
 
