@@ -1,7 +1,7 @@
 <set size="7">
     <tiles format="svg">
         <tile name="stick" symmetry="I"/>
-        <tile name="triangle" symmetry="A"/>
+        <tile name="triangle" symmetry="T"/>
         <tile name="whitespace" symmetry="X"/>
     </tiles>
     <neighbors>

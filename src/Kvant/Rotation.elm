@@ -65,7 +65,8 @@ uniqueFor : Symmetry -> List Rotation
 uniqueFor symmetry =
     case symmetry of
         I -> [ AnyHorizontal, AnyVertical ]
-        T -> [ AnyHorizontal, Quarter, ThreeQuarters ]
+        T -> [ Original, Quarter, Half, ThreeQuarters ]
+        -- T -> [ AnyHorizontal, Quarter, ThreeQuarters ]
         X -> [ AnyQuarter ]
         L -> [ Original, Quarter, Half, ThreeQuarters ]
         Diagonal -> [ AnyHorizontal, AnyVertical ]
@@ -77,8 +78,8 @@ apply symmetry curRotation =
 
         ( X, _ ) -> AnyQuarter
 
-        ( T, Original ) -> AnyVertical
-        ( T, Half ) -> AnyVertical
+        -- ( T, Original ) -> AnyVertical
+        -- ( T, Half ) -> AnyVertical
         ( T, _ ) -> curRotation
 
         ( I, Original ) -> AnyVertical
