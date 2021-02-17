@@ -108,6 +108,17 @@ next rotation =
         AnyQuarter -> AnyQuarter
 
 
+opposite : Rotation -> Rotation
+opposite rotation =
+    case rotation of
+        Original -> Half
+        Quarter -> ThreeQuarters
+        Half -> Original
+        ThreeQuarters -> Quarter
+        AnyHorizontal -> rotation
+        AnyVertical -> rotation
+        AnyQuarter -> rotation
+
 
 to : Direction -> Rotation -> Rotation
 to dir rotation =
