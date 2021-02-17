@@ -77,20 +77,20 @@ apply symmetry curRotation =
 
         ( X, _ ) -> AnyQuarter
 
-        ( T, Original ) -> AnyHorizontal
-        ( T, Half ) -> AnyHorizontal
+        ( T, Original ) -> AnyVertical
+        ( T, Half ) -> AnyVertical
         ( T, _ ) -> curRotation
 
-        ( I, Original ) -> AnyHorizontal
-        ( I, Quarter ) -> AnyVertical
-        ( I, Half ) -> AnyHorizontal
-        ( I, ThreeQuarters ) -> AnyVertical
+        ( I, Original ) -> AnyVertical
+        ( I, Quarter ) -> AnyHorizontal
+        ( I, Half ) -> AnyVertical
+        ( I, ThreeQuarters ) -> AnyHorizontal
         ( I, _ ) -> curRotation
 
-        ( Diagonal, Original ) -> AnyHorizontal
-        ( Diagonal, Quarter ) -> AnyVertical
-        ( Diagonal, Half ) -> AnyHorizontal
-        ( Diagonal, ThreeQuarters ) -> AnyVertical
+        ( Diagonal, Original ) -> AnyVertical
+        ( Diagonal, Quarter ) -> AnyHorizontal
+        ( Diagonal, Half ) -> AnyVertical
+        ( Diagonal, ThreeQuarters ) -> AnyHorizontal
         ( Diagonal, _ ) -> curRotation
 
         ( L, _ ) -> curRotation
