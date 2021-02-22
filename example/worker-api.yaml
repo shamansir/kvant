@@ -1,0 +1,260 @@
+openapi: 3.0.0
+# servers:
+#   - description: SwaggerHub API Auto Mocking
+#     url: https://virtserver.swaggerhub.com/shaman_sir/KvantWorker/1.0.0
+info:
+  description: API For Kvant Worker
+  version: "1.0.0"
+  title: Kvant Worker
+  contact:
+    email: anthony.kotenko@jetbrains.com
+  license:
+    name: Apache 2.0
+    url: 'http://www.apache.org/licenses/LICENSE-2.0.html'
+paths:
+  /run:
+    post:
+      summary: Try to solve completely, but once.
+      operationId: run
+      description: Given the adjacency and output options, runs the solving process. Responds with the _wave_, the array of array of arrays of possible options, so that for every (X, Y) (where Y is the index in the most outer array and X is the index in the next one, which is one step deeper) there is an array of possibilities. In case of successful result, all the values are one-sized arrays. If there was a contradiction, some arrays could be empty. Unlike `/trace`, performs several steps at once, as much as possible to respond with a solution.
+      responses:
+        '200':
+          description: Solution Found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StepResult'
+              example:
+                [ [ [0, 1, 7, 6], [0, 1], [0], [7, 6] ]
+                , [ [0, 7, 1], [1], [7], [6, 0] ]
+                , [ [7], [0, 1], [0], [7, 6] ]
+                , [ [6, 1], [0, 1], [0], [7, 6] ]
+                ]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Run'
+        description: Output options and adjacency
+  /trace:
+    post:
+      summary: Start tracing the solving process, so that proceeding further is possible with `step`.
+      operationId: trace
+      description: Given the adjacency and output options, starts the tracing process. Responds with the first _wave_, the array of array of arrays of possible options, so that for every (X, Y) (where Y is the index in the most outer array and X is the index in the next one, which is one step deeper) there is an array of possibilities. If there was a contradiction, some arrays could be empty. To proceed further, call `/step`, no parameters required.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Run'
+        description: Output options and adjacency
+      responses:
+        '200':
+          description: The first wave is found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StepResult'
+              example:
+                [ [ [0, 1, 7, 6], [0, 1], [0], [7, 6] ]
+                , [ [0, 7, 1], [1], [7], [6, 0] ]
+                , [ [7], [0, 1], [0], [7, 6] ]
+                , [ [6, 1], [0, 1], [0], [7, 6] ]
+                ]
+  /step:
+    post:
+      summary: Continue tracing the solving process.
+      operationId: step
+      description: Perform next step when _tracing_ was started using `/trace`. Responds with the next _wave_, the array of array of arrays of possible options, so that for every (X, Y) (where Y is the index in the most outer array and X is the index in the next one, which is one step deeper) there is an array of possibilities. If there was a contradiction, some arrays could be empty. To proceed further, call `/step`, no parameters required.
+      responses:
+        '200':
+          description: Solution Found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StepResult'
+              example:
+                [ [ [0, 1, 7, 6], [0, 1], [0], [7, 6] ]
+                , [ [0, 7, 1], [1], [7], [6, 0] ]
+                , [ [7], [0, 1], [0], [7, 6] ]
+                , [ [6, 1], [0, 1], [0], [7, 6] ]
+                ]
+  /back:
+    post:
+      summary: Step back tracing the solving process.
+      operationId: back
+      description: Revert the last step when _tracing_ was started using `/trace`. Responds with the previous _wave_, the array of array of arrays of possible options, so that for every (X, Y) (where Y is the index in the most outer array and X is the index in the next one, which is one step deeper) there is an array of possibilities. If there was a contradiction, some arrays could be empty. To proceed further, call `/step`, no parameters required.
+      responses:
+        '200':
+          description: Solution Found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StepResult'
+              example:
+                [ [ [0, 1, 7, 6], [0, 1], [0], [7, 6] ]
+                , [ [0, 7, 1], [1], [7], [6, 0] ]
+                , [ [7], [0, 1], [0], [7, 6] ]
+                , [ [6, 1], [0, 1], [0], [7, 6] ]
+                ]
+  /stop:
+    post:
+      summary: Stop the tracing.
+      operationId: stop
+      description: Stop the tracing process.
+      responses:
+        '200':
+          description: Nothing, the stoping was successful.
+  /preprocess:
+    post:
+      summary: Process the source grid and give the adjacency in response.
+      operationId: preprocess
+      description: Take the grid of values, find patterns in it, and return the adjacency table together with the patterns themselves.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Preprocess'
+        description: Output options and adjacency
+      responses:
+        '200':
+          description: Solution Found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Adjacency'
+  /at:
+    post:
+      summary: Get the matches at (X, Y) in the wave.
+      operationId: at
+      description: When solving, get the matches at the given position in the last _wave_ state.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - x
+                - y
+              properties:
+                x:
+                  type: number
+                y:
+                  type: number
+        description: The position
+      responses:
+        '200':
+          description: Matches Found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Adjacency'
+components:
+  schemas:
+    Adjacency:
+      type: array
+      items:
+        required:
+          - id
+          - subject
+          - weight
+          - matches
+        properties:
+          id:
+            type: integer
+            example: 10
+          subject:
+            type: integer
+            example: 10
+          weight:
+            type: number
+            example: 0.7
+          matches:
+            type: array
+            items:
+              required:
+                - x
+                - y
+                - matches
+              properties:
+                x:
+                  type: number
+                  example: -1
+                  enum: [-1, 0, 1]
+                y:
+                  type: number
+                  example: -1
+                  enum: [-1, 0, 1]
+                matches:
+                  type: array
+                  items:
+                    type: integer
+
+    Run:
+      type: object
+      required:
+        - adjacency
+        - options
+      properties:
+        adjacency:
+          $ref: '#/components/schemas/Adjacency'
+        options:
+          $ref: '#/components/schemas/OutputOptions'
+    Preprocess:
+      type: object
+      required:
+        - source
+        - options
+      properties:
+        options:
+          $ref: '#/components/schemas/PatternSearchOptions'
+        source:
+          type: array
+          items:
+            type: array
+            items:
+              type: integer
+    OutputOptions:
+      type: object
+      required:
+        - outputBoundary
+        - outputWidth
+        - outputHeight
+      properties:
+        outputWidth:
+          type: integer
+        outputHeight:
+          type: integer
+        outputBoundary:
+          type: string
+          enum: [ 'bounded', 'periodic' ]
+          default: 'bounded'
+    PatternSearchOptions:
+      type: object
+      required:
+        - patternSize
+        - inputBoundary
+        - symmetry
+      properties:
+        patternSize:
+          type: integer
+          default: 2
+        symmetry:
+          type: string
+          enum: [ 'none', 'flip-only', 'rotate-only', 'flip-and-rotate' ]
+          default: 'flip-and-rotate'
+        inputBoundary:
+          type: string
+          enum: [ 'bounded', 'periodic' ]
+          default: 'bounded'
+    StepResult:
+      type: array
+      items:
+        type: array
+        items:
+          type: array
+          items:
+            type: integer
+servers:
+  # Added by API Auto Mocking Plugin
+  - description: SwaggerHub API Auto Mocking
+    url: https://virtserver.swaggerhub.com/shamansir/KvantWorker/1.0.0
