@@ -151,96 +151,10 @@ allowedByRules rules dir leftTile rightTile =
         |> List.length) > 0
 
 
-{-
-findMatches
-    :  List TileInfo
-    -> List Rule
-    -> ( TileInfo, Rotation )
-    -> Dict Offset (Matches (TileKey, RotationId))
-findMatches tiles rules ( currentTile, currentRotation ) =
-    D.cardinal
-        |> List.foldl
-            (\dir neighbours ->
-                let
-                    byRules
-                        = tiles
-                            |> List.foldl
-                                (\otherTile neighbours_ ->
-                                    List.range 0 (maxRotations - 1)
-                                        |> List.foldl
-                                            (\otherRotation neighbours__ ->
-                                                if
-                                                    allowedByRules
-                                                        rules
-                                                        dir
-                                                        ( currentTile.key, currentRotation )
-                                                        ( otherTile.key, otherRotation )
-                                                    || allowedByRules
-                                                        rules
-                                                        (D.opposite dir)
-                                                        ( otherTile.key, otherRotation )
-                                                        ( currentTile.key, currentRotation )
-                                                    then neighbours__
-                                                        |> Neighbours.at dir
-                                                            ((::) ( otherTile.key, otherRotation ))
-                                                    else neighbours__
-                                            )
-                                            neighbours_
 
-                                )
-                                neighbours
-                in byRules
-            )
-            (Neighbours.fill [])
-        |> Neighbours.map Matches.fromList
-        |> Neighbours.toDict -}
-
-
-{-
-mergeBySymmetry
-    :   { subject: ( Symmetry, ( TileKey, Rotation ) )
-        , weight : Float
-        , matches : Dict Offset ( Matches ( TileKey, RotationId ) )
-        }
-    -> Adjacency
-            ( TileKey, RotationId )
-            ( Symmetry, ( TileKey, Rotation ) )
-    -> Adjacency
-            ( TileKey, RotationId )
-            ( Symmetry, ( TileKey, Rotation ) )
-mergeBySymmetry tile adjacencySoFar =
-    let
-        ( symmetry, ( key, currentRotation ) ) = tile.subject
-    in
-        similarRotationsBySymmetry currentRotation symmetry
-            |> List.foldl
-                (\anotherRotation adjacency_ ->
-                    Maybe.map2
-                        Adjacency.merge
-                        (adjacency_
-                            |> Dict.get ( key, currentRotation )
-                            |> Maybe.map .matches)
-                        (adjacency_
-                            |> Dict.get ( key, anotherRotation )
-                            |> Maybe.map .matches)
-                    |> Maybe.map
-                        (\mergedMatches ->
-                            adjacency_ |>
-                                Dict.insert
-                                    ( key, currentRotation )
-                                    { subject = tile.subject
-                                    , weight = tile.weight
-                                    , matches = mergedMatches
-                                    }
-                        )
-                    |> Maybe.withDefault adjacency_
-                )
-                adjacencySoFar -}
-
-
-getPossibleVariants : List TileInfo -> Dict (TileKey, RotationId) TileInfo
+{- getPossibleVariants : List TileInfo -> Dict (TileKey, RotationId) TileInfo
 getPossibleVariants _ =
-    Dict.empty
+    Dict.empty -}
 
 
 applySymmetry : List TileInfo -> List Rule -> List Rule
@@ -330,19 +244,20 @@ buildAdjacencyRules tiles rules =
             |> List.foldl
                     (\rule adjacency ->
 
-                        ( case ( rule.left, rule.right ) of
+                        case ( rule.left, rule.right ) of
                             ( ( lKey, lRotation ), ( rKey, rRotation ) ) ->
 
                                 D.cardinal
-                                --Rotation.uniqueFor symmetry
-                                    |> List.foldl
-                                        (\dir adjacency_ ->
-                                            adjacency_
 
-                                            |> Dict.update
+                                    |> List.foldl
+                                        (\dir ->
+
+                                            Dict.update
+
                                                 ( rKey
                                                 , Rotation.toId <| Rotation.to dir rRotation
                                                 )
+
                                                 (Maybe.map
                                                     (\curTile ->
                                                         { curTile
@@ -358,11 +273,13 @@ buildAdjacencyRules tiles rules =
                                                     )
                                                 )
 
-                                            |> Dict.update
+                                            >> Dict.update
+
                                                 ( lKey
                                                 , Rotation.toId
                                                     <| Rotation.to (D.opposite dir) lRotation
                                                 )
+
                                                 (Maybe.map
                                                     (\curTile ->
                                                         { curTile
@@ -380,7 +297,6 @@ buildAdjacencyRules tiles rules =
 
                                         )
                                         adjacency
-                            )
 
                     )
                     adjacencyDict

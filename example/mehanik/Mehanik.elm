@@ -49,18 +49,23 @@ import Kvant.Tiles as Tiles
 import Kvant.Xml.Tiles as Tiles
 import Kvant.Xml.Adjacency as Adjacency
 
+import Mehanik.Chars as Chars
+import Mehanik.Chars as Text
+import Mehanik.Colors as Colors
+import Mehanik.Colors as Image
+--import Mehanik.Patterns as Patterns
+import Mehanik.Tiles as Tiles
+import Mehanik.Grid as Grid
+import Mehanik.Generic exposing (..)
+import Mehanik.Patterns as Patterns
 
-import Example.Instance.Text.Render as TextRenderer
-import Example.Instance.Image.Render as ImageRenderer
-import Example.Instance.Tiles.Render as TilesRenderer
-import Example.Instance.Text.Plane as TextPlane
-import Example.Instance.Image.Plane as ImagePlane exposing
-    (colorToPixel, pixelToColor)
-import Example.Instance.Tiles.Plane as TilesPlane
-import Example.Render exposing (Renderer)
+
+-- import Mehanik.Renderer exposing (Renderer)
+-- import Mehanik.Grid exposing (applyWave)
 import Maybe
 import Task
-import Canvas.Settings.Text as Align
+
+import Mehanik.Controls exposing (..)
 
 
 type alias Options =  ( Options.PatternSearch, Options.Output )
@@ -308,15 +313,6 @@ update msg model =
                                  , adjacency =
                                     theAdjacency
                                         |> encodePatternAdjacencyForPort
-
-                                {-
-                                , source =
-                                    source
-                                        |> TextPlane.boundedStringToGrid
-                                        |> List.map (List.map Char.toCode)
-                                        |> List.map Array.fromList
-                                        |> Array.fromList
-                                -}
                                 }
                             )
 
@@ -339,13 +335,6 @@ update msg model =
                                  , adjacency =
                                     theAdjacency
                                         |> encodePatternAdjacencyForPort
-                                {-
-                                , source =
-                                    source
-                                        |> ImageC.toArray2d
-                                        |> Array.map (Array.map colorToPixel)
-                                }
-                                -}
                                 }
                             )
                         Nothing -> ( model, Cmd.none )
@@ -369,12 +358,6 @@ update msg model =
                                             |> Either.unpack
                                                 (encodeTiledAdjacencyForPort mapping)
                                                 encodePatternAdjacencyForPort
-                                    {-
-                                    , source =
-                                        grid
-                                            |> Array.map (Array.map <| toIndexInSet mapping)
-                                    }
-                                    -}
                                     }
                             )
 
@@ -402,15 +385,6 @@ update msg model =
                                  , adjacency =
                                     theAdjacency
                                         |> encodePatternAdjacencyForPort
-
-                                {-
-                                , source =
-                                    source
-                                        |> TextPlane.boundedStringToGrid
-                                        |> List.map (List.map Char.toCode)
-                                        |> List.map Array.fromList
-                                        |> Array.fromList
-                                -}
                                 }
                             )
                         Nothing -> ( model, Cmd.none )
@@ -432,13 +406,6 @@ update msg model =
                                  , adjacency =
                                     theAdjacency
                                         |> encodePatternAdjacencyForPort
-                                {-
-                                , source =
-                                    source
-                                        |> ImageC.toArray2d
-                                        |> Array.map (Array.map colorToPixel)
-                                }
-                                -}
                                 }
                             )
 
@@ -464,12 +431,6 @@ update msg model =
                                             Either.unpack
                                                 (encodeTiledAdjacencyForPort mapping)
                                                 encodePatternAdjacencyForPort
-                                    {-
-                                    , source =
-                                        grid
-                                            |> Array.map (Array.map <| toIndexInSet mapping)
-                                    }
-                                    -}
                                     }
                             )
 
@@ -531,7 +492,7 @@ update msg model =
                                 |> Options.encodePatternSearch
                         , source =
                             source
-                                |> TextPlane.boundedStringToGrid
+                                |> Chars.boundedStringToGrid
                                 |> List.map (List.map Char.toCode)
                                 |> List.map Array.fromList
                                 |> Array.fromList
@@ -552,7 +513,7 @@ update msg model =
                         , source =
                             source
                                 |> ImageC.toArray2d
-                                |> Array.map (Array.map colorToPixel)
+                                |> Array.map (Array.map Colors.colorToPixel)
                         }
                     )
 
@@ -664,14 +625,18 @@ update msg model =
                 | status = None
                 , options = forTiles model.options
                 , example =
+
                     FromTiles
+
                         { group = group
+
                         , mapping =
                             case model.tiles |> Dict.get group of
                                 Just (tileSet, _) ->
                                     buildMapping tileSet
                                 _ ->
                                     noMapping
+
                         , adjacency =
                             case model.tiles |> Dict.get group of
                                 Just (_, Right _) ->
@@ -684,10 +649,13 @@ update msg model =
                                             rules
                                 Nothing ->
                                     Nothing
+
                         , wave = Nothing
                         }
+
                 , matches = Nothing
                 }
+
             , case model.tiles |> Dict.get group of
                 Just (_, Right _) ->
                     preprocessInWorker_
@@ -817,6 +785,7 @@ update msg model =
             (
                 { model
                 | status =
+
                     case model.status of
                         None -> None
                         WaitingRunResponse -> None
@@ -824,8 +793,10 @@ update msg model =
                         WaitingAdjacencyResponse prevStatus -> prevStatus
                         WaitingMatchesResponse prevStatus -> prevStatus
                         Tracing -> Tracing
-                , example
-                    = case model.example of
+
+                , example =
+
+                    case model.example of
 
                         NotSelected ->
                             NotSelected
@@ -838,7 +809,7 @@ update msg model =
                                         |> Maybe.map
                                             (\adjacency ->
 
-                                                applyWave
+                                                Patterns.applyWave
                                                     -1
                                                     (Array.map Char.fromCode)
                                                     grid
@@ -856,11 +827,11 @@ update msg model =
                                         |> Maybe.map
                                             (\adjacency ->
 
-                                                applyWave
+                                                Patterns.applyWave
                                                     -1
-                                                    (Array.map pixelToColor
+                                                    (Array.map Colors.pixelToColor
                                                                 >> Array.toList
-                                                                >> ImagePlane.merge)
+                                                                >> Colors.merge)
                                                     grid
                                                     adjacency
                                                     |> ImageC.fromArray2d
@@ -877,7 +848,7 @@ update msg model =
                                             case spec.adjacency of
 
                                                 Just (Right adjacency) ->
-                                                                                                                                                        applyWave
+                                                                                                                                                        Patterns.applyWave
                                                         -1
                                                         (Array.map <| fromIndexInSet spec.mapping)
                                                         grid
@@ -887,7 +858,7 @@ update msg model =
                                                 Just (Left _) ->
 
                                                     grid
-                                                        |> adaptGrid
+                                                        |> Grid.adaptGrid
                                                             (Array.map
                                                             <| fromIndexInSet spec.mapping)
                                                         |> Just
@@ -948,7 +919,7 @@ view model =
                 Textual { source, wave } ->
                     div
                         []
-                        [ viewSource TextRenderer.make source
+                        [ Text.renderInput source
                         , hr [] []
                         , viewNeighboursLoadingArea ( 25, 25 )
                             <| Maybe.withDefault (0, 0)
@@ -956,14 +927,14 @@ view model =
                             <| wave
                         , wave
                             |> Maybe.map
-                                (viewGrid <| Array.toList >> TextPlane.merge >> TextRenderer.char)
+                                (Grid.grid1 <| Array.toList >> Chars.merge >> Chars.char)
                             |> Maybe.withDefault (div [] [])
                         ]
 
                 FromImage { source, wave } ->
                     div
                         []
-                        [ viewSource ImageRenderer.make source
+                        [ Image.renderInput source
                         , hr [] []
                         , viewNeighboursLoadingArea ( 10, 10 )
                             <| Maybe.withDefault (0, 0)
@@ -971,7 +942,7 @@ view model =
                             <| Maybe.map Image.dimensions
                             <| wave
                         , wave
-                            |> Maybe.map ImageRenderer.drawImage
+                            |> Maybe.map Colors.drawImage
                             |> Maybe.withDefault (div [] [])
                         ]
                     --Example.view ImageRenderer.make exampleModel
@@ -981,7 +952,7 @@ view model =
                         Just ( ( format, tiles ), maybeGrid ) ->
                             div []
                                 [ hr [] []
-                                , viewTiles mapping format group
+                                , Tiles.viewTiles toTileUrl ShowMatchesFor mapping format group
                                     <| case currentTiles of
                                             Just adjacencyTiles ->
                                                 Dict.keys adjacencyTiles
@@ -1000,18 +971,17 @@ view model =
                                     ]
                                     [ case maybeGrid of
                                         Right grid ->
-                                            viewSource
-                                                (TilesRenderer.make
-                                                    <| toTileUrl format group)
+                                            Tiles.renderInput
+                                                (toTileUrl format group)
                                                 grid
                                         Left _ ->
                                             div [] []  -- FIXME: TODO
                                     , wave
                                         |> Maybe.map
-                                            (TilesRenderer.grid1
+                                            (Grid.grid1
                                                 <| Array.toList
-                                                    >> TilesPlane.merge
-                                                    >> TilesRenderer.tileAndCount
+                                                    >> Tiles.merge
+                                                    >> Tiles.tileAndCount
                                                             (toTileUrl format group)
                                             )
                                         |> Maybe.withDefault (div [] [])
@@ -1025,65 +995,19 @@ view model =
         viewPattern patternId pattern =
             case model.example of
                 Textual _ ->
-                    (TextRenderer.make |> Tuple.second) <| Plane.map Char.fromCode <| pattern
+                    -- FIXME:
+                    Text.renderPlane <| Plane.map Char.fromCode <| pattern
                 FromImage _ ->
-                    (ImageRenderer.make |> Tuple.second)
-                        <| Plane.map ImagePlane.pixelToColor <| pattern
+                    -- FIXME:
+                    Image.renderPlane
+                        <| Plane.map Image.pixelToColor <| pattern
                 FromTiles { group,  mapping } ->
                     case model.tiles |> Dict.get group of
                         Just ( ( format, _ ), _ ) ->
-                            (TilesRenderer.make (toTileUrl format group) |> Tuple.second)
+                            Tiles.renderPlane (toTileUrl format group)
                                 <| Plane.map (fromIndexInSet mapping) <| pattern
                         Nothing -> div [] []
                 _ -> div [] []
-
-        viewPatterns patterns =
-            div
-                [ style "display" "flex"
-                , style "overflow" "scroll"
-                ]
-                <| List.map
-                    (\(patternId, { subject } ) ->
-                        div
-                            [ style "transform" "scale(0.5)"
-                            , style "margin" "5px"
-                            , style "cursor" "pointer"
-                            , style "padding" "3px"
-                            , style "border" "1px solid lightgray"
-                            , style "border-radius" "3px"
-                            , onClick <| ShowMatchesFor patternId
-                            ]
-                            [ viewPattern patternId subject ]
-                    )
-                <| Dict.toList
-                <| patterns
-
-        viewTiles mapping format group tiles =
-            div
-                [ style "display" "flex"
-                , style "overflow" "scroll"
-                ]
-                <| List.map
-                    (\tileKey ->
-                        div
-                            [ style "transform" "scale(0.5)"
-                            , style "margin" "5px"
-                            , style "cursor" "pointer"
-                            , style "padding" "3px"
-                            , style "border" "1px solid lightgray"
-                            , style "border-radius" "3px"
-                            , onClick
-                                <| ShowMatchesFor
-                                <| Maybe.withDefault -1
-                                <| Dict.get tileKey
-                                <| Tuple.second
-                                <| mapping
-                            ]
-                            [ TilesRenderer.tile1 (toTileUrl format group)
-                                <| Tuple.mapSecond Rotation.fromId
-                                <| tileKey ]
-                    )
-                    <| tiles
 
         currentPatterns = getPatternAdjacency model.example
 
@@ -1113,7 +1037,7 @@ view model =
                                                 <| matchId
                                             ) of
                                         Just { subject } ->
-                                            TilesRenderer.tile1
+                                            Tiles.tile1
                                                 (toTileUrl format spec.group)
                                                 subject
                                         Nothing -> div [] []
@@ -1138,218 +1062,95 @@ view model =
                             Nothing -> div [] []
 
 
-        viewMatches neighbours =
-            [ [ Dir.NW, Dir.N, Dir.NE ]
-            , [ Dir.W,  Dir.X, Dir.E  ]
-            , [ Dir.SW, Dir.S, Dir.SE ]
-            ]
-            |> List.map
-                (\directionsRow ->
-                    div
-                        [ style "display" "flex", style "flex-direction" "row"
-                        , style "margin" "20px 20px"
-                        ]
-                        <|
-                            List.map (\dir ->
-                                div []
-                                    [ text <| Dir.toString dir
-                                    , text <| Vec2.toString <| Dir.toOffset dir
-                                    , div
-                                            [ style "display" "flex"
-                                            , style "flex-direction" "column"
-                                            , style "margin" "20px 20px"
-                                            ]
-                                            <|
-                                                (\list -> case list of
-                                                    [] -> [ text "NONE" ]
-                                                    _ -> list
-                                                )
-                                            <| List.map
-                                                (\matchId ->
-                                                    div
-                                                        [ style "transform" "scale(0.8)"
-                                                        , style "margin" "0px 10px"
-                                                        , style "padding" "3px"
-                                                        , style "border" "1px solid lightgray"
-                                                        , style "border-radius" "3px"
-                                                        ]
-                                                        [ viewMatch matchId
-                                                        ]
-                                                )
-                                            <| Matches.toList
-                                            <| Neighbours.get dir neighbours
-                                    ]
-                            ) directionsRow
-                )
-            |> div
-                [ style "display" "flex"
-                , style "flex-direction" "column"
-                , style "margin" "10px 0"
-                ]
-
         viewNeighboursLoadingArea itemSize areaSize
             = case currentPatterns of
                 Just _ ->
                     viewClickableArea areaSize itemSize FindMatchesAt
                 Nothing -> div [] []
 
-        viewClickableArea ( width, height ) ( itemWidth, itemHeight ) toMsg =
-            List.range 0 (height - 1)
-                |> List.map
-                    (\row ->
-                            List.range 0 (width - 1)
-                                |> List.map (Tuple.pair row)
-                    )
-                |> List.map
-                    (\row ->
-                        div
-                            [ style "display" "flex", style "flex-direction" "row"
-                            -- , style "width" <| String.fromInt itemWidth
-                            , style "height" <| String.fromInt itemHeight
-                            ]
-                            <|
-                                List.map (\(y, x) ->
-                                    div
-                                        [ style "width" <| String.fromInt itemWidth ++ "px"
-                                        , style "height" <| String.fromInt itemHeight ++ "px"
-                                        , style "cursor" "pointer"
-                                        , onClick <| toMsg (x, y)
-                                        ]
-                                        []
-                                ) row
-                    )
-                |> div
-                    [ style "display" "flex"
-                    , style "flex-direction" "column"
-                    , style "position" "absolute"
-                    , style "z-index" "1111"
-                    ]
-
-        fancyButton isEnabled label msg =
-            button
-                [ onClick msg
-                , style "border" "none"
-                , style "background" "none"
-                , style "cursor" "pointer"
-                , style "outline" "none"
-                , style "opacity" <| if isEnabled then "1.0" else "0.5"
-                ]
-                [ Html.text label
-                ]
-
-        checkbox isChecked label msg =
-            span
-                []
-                [input
-                    [ type_ "radio"
-                    , onClick msg
-                    , checked isChecked
-                    , disabled <| case model.status of
-                        None -> False
-                        _ -> True
-                    , style "border"
-                        <| if isChecked
-                            then "1px solid aqua"
-                            else "1px solid black"
-                    , style "padding" "5px"
-                    , style "margin" "5px"
-                    , style "background" "none"
-                    , style "cursor" "pointer"
-                    , style "outline" "none"
-                    , style "display" "inline-block"
-                    , value label
-                    ] []
-                , Html.text label
-                ]
-
-        controlPanel title items =
-            div [ style "display" "flex"
-                , style "padding" "5px"
-                , style "margin" "5px"
-                , style "border" "1px solid black"
-                , style "border-radius" "3px"
-                , style "width" "fit-content"
-                ]
-                (
-                    span
-                        [ style "font-size" "10px"
-                        , style "color" "white"
-                        , style "background" "gray"
-                        , style "padding" "3px"
-                        , style "border-radius" "3px"
-                        , style "max-height" "1em"
-                        ]
-                        [ Html.text title ]
-                    :: items
-                )
 
         controls (search, ( outputBoundary, outputSize ))  =
             div
                 []
+
                 [ controlPanel "Pattern size"
                     [ checkbox
                         (case search.patternSize of (n, _) -> n == 2)
+                        (model.status /= None)
                         "2x"
                         <| ChangeN (2, 2)
                     , checkbox
                         (case search.patternSize of (n, _) -> n == 3)
-                            "3x"
+                        (model.status /= None)
+                        "3x"
                         <| ChangeN (3, 3)
                     ]
+
                 , controlPanel "Input"
                     [ checkbox
                         (case search.boundary of
                             Periodic -> True
                             Bounded -> False)
+                        (model.status /= None)
                         "Periodic"
                         UsePeriodicInput
                     , checkbox
                         (case search.boundary of
                             Periodic -> False
                             Bounded -> True)
+                        (model.status /= None)
                         "Bounded"
                         UseBoundedInput
                     ]
+
                 , controlPanel "Symmetry"
                     [ checkbox
                         (case search.symmetry of
                             NoSymmetry -> True
                             _ -> False)
+                        (model.status /= None)
                         "None"
                         <| ChangeSymmetry NoSymmetry
                     , checkbox
                         (case search.symmetry of
                             FlipOnly -> True
                             _ -> False)
+                        (model.status /= None)
                         "Only flip"
                         <| ChangeSymmetry FlipOnly
                     , checkbox
                         (case search.symmetry of
                             RotateOnly -> True
                             _ -> False)
+                        (model.status /= None)
                         "Only rotate"
                         <| ChangeSymmetry RotateOnly
                     , checkbox
                         (case search.symmetry of
                             FlipAndRotate -> True
                             _ -> False)
+                        (model.status /= None)
                         "Flip and rotate"
                         <| ChangeSymmetry FlipAndRotate
                     ]
+
                 , controlPanel "Output"
                     [ checkbox
                         (case outputBoundary of
                             Periodic -> True
                             Bounded -> False)
+                        (model.status /= None)
                         "Periodic"
                         UsePeriodicOutput
                     , checkbox
                         (case outputBoundary of
                             Periodic -> False
                             Bounded -> True)
+                        (model.status /= None)
                         "Bounded"
                         UseBoundedOutput
                     ]
+
                 , controlPanel "Output size"
                     [ span
                         []
@@ -1382,6 +1183,7 @@ view model =
                         ]
                         []
                     ]
+
                 , case currentPatterns of
                     Just _ ->
                         controlPanel ""
@@ -1395,6 +1197,7 @@ view model =
                                 ]
                             ]
                     Nothing -> div [] []
+
                 , controlPanel "" -- "Run/Trace"
                     [ fancyButton
                         (model.status == None)
@@ -1417,6 +1220,7 @@ view model =
                         "⏹️"
                         Stop
                     ]
+
                 ]
 
         toTileUrl format group ( tile, _ ) = -- FIXME: use rotation
@@ -1441,16 +1245,6 @@ view model =
                     exampleFrame NoOp
                         [ Html.text <| imgAlias ++ ": Loading..." ]
 
-        exampleFrame msg =
-            div
-                [ style "margin" "5px"
-                , style "padding" "10px"
-                , style "border" "1px solid black"
-                , style "border-radius" "5px"
-                , style "background-color" "#f5f5f5"
-                , style "cursor" "pointer"
-                , onClick msg
-                ]
 
         examples
             = div
@@ -1463,7 +1257,7 @@ view model =
                     |> List.map
                         (\boundedStr ->
                             exampleFrame (SwitchToTextExample boundedStr)
-                                [ viewSource TextRenderer.make boundedStr
+                                [ Text.renderInput boundedStr
                                 ]
                         )
                     )
@@ -1504,11 +1298,17 @@ view model =
                 NotSelected -> div [] []
                 _ -> controls model.options
             , case currentPatterns of
-                Just patterns -> viewPatterns patterns
+                Just patterns ->
+                    Patterns.viewPatterns
+                        (Tuple.first >> ShowMatchesFor)
+                        (\( patternId, { subject } ) ->
+                            viewPattern patternId subject
+                        )
+                        patterns
                 Nothing -> div [] []
             , viewExample
             , case model.matches of
-                Just matches -> viewMatches matches
+                Just matches -> viewMatches viewMatch matches
                 Nothing -> div [] []
             ]
 
@@ -1546,40 +1346,6 @@ main =
         , update = update
         , view = \model -> { title = "Kvant : Mehanik", body = [ view model ] }
         }
-
-
-mapGrid : (a -> b) -> Grid a -> Grid b
-mapGrid = adaptGrid << Array.map
-
-
-adaptGrid : (Array a -> b) -> Grid a -> Array (Array b)
-adaptGrid f = Array.map <| Array.map f
-
-
-applyWave : AtomId -> (Array AtomId -> b) -> Grid PatternId -> Adjacency Pattern -> Array (Array b)
-applyWave default f wave adjacency =
-    wave
-        |> mapGrid
-            (\patternId ->
-                adjacency
-                    |> Adjacency.get patternId
-                    |> Maybe.andThen (Plane.get (0, 0))
-                    |> Maybe.withDefault default
-            )
-        |> adaptGrid f
-
-
-viewSource
-    :  Renderer fmt a (Html msg)
-    -> fmt
-    -> Html msg -- Example.Msg
-viewSource ( renderSource, _ ) source =
-    renderSource source
-
-
-viewGrid : (Array a -> Html msg) -> Array (Array (Array a)) -> Html msg
-viewGrid viewElem =
-    Array.map Array.toList >> Array.toList >> TilesRenderer.grid viewElem
 
 
 requestImage : ImageAlias -> Cmd Msg
