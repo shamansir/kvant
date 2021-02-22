@@ -1,16 +1,17 @@
-module Example.Instance.Image.Plane exposing (..)
+module Mehanik.Colors exposing (..)
 
 
-import Array exposing (Array)
 import Color exposing (Color)
-import Color
-import Image
-import Image exposing (Image, Pixel)
+import Array exposing (Array)
+import Image exposing (..)
 import Image.Color as ImageC
 import Bitwise
+import Html exposing (..)
+import Html.Attributes exposing (..)
 
-import Kvant.Vec2 exposing (..)
-import Kvant.Plane exposing (..)
+import Kvant.Vec2 as V2 exposing (Vec2)
+import Kvant.Plane as Plane exposing (Plane)
+
 
 
 type alias Pixels = Array (Array Color)
@@ -26,13 +27,13 @@ transparent = Color.rgba 0.0 0.0 0.0 0.0
 make : Pixels -> ImagePlane
 make pixels =
     makeInBounds
-        (loadSize pixels |> Maybe.withDefault (0, 0))
+        (V2.loadSize pixels |> Maybe.withDefault (0, 0))
         pixels
 
 
 makeInBounds : Vec2 -> Pixels -> ImagePlane
 makeInBounds ( width, height ) pixels =
-    fromArray2d
+    Plane.fromArray2d
         ( width, height )
         pixels
 
@@ -88,7 +89,7 @@ pixelToColor = int32ToColor
 
 toGrid : ImagePlane -> List (List Color)
 toGrid =
-    toList2d
+    Plane.toList2d
         >> List.map (List.map <| Maybe.withDefault transparent)
 
 
@@ -174,3 +175,66 @@ colorToInt32 color =
         |> Bitwise.or byte3
         |> Bitwise.or byte4
         |> Bitwise.shiftRightZfBy 0
+
+
+
+
+
+
+
+
+{- spec : HtmlSpec Vec2 Char msg
+spec =
+    { default = '?'
+    , contradiction = '∅'
+    , a = char
+    , v = Render.coord
+    , merge = merge
+    , scaled = scaled
+    , vToString = Render.coordText
+    } -}
+
+
+renderInput : Image -> Html msg
+renderInput =
+    drawImage
+
+
+renderPlane : Plane Color -> Html msg
+renderPlane =
+    Plane.toList2d
+            >> List.map (List.map <| Maybe.withDefault Color.purple)
+            >> ImageC.fromList2d
+            >> drawImage
+
+
+drawFromGrid : Array (Array (Array Int)) -> Html msg
+drawFromGrid grid =
+    grid
+        |> Array.map (Array.map (Array.toList >> List.map pixelToColor >> merge))
+        |> ImageC.fromArray2d
+        |> drawImage
+
+
+drawImagePreview : Image -> Html msg
+drawImagePreview srcImage =
+    img
+        [ src <| Image.toPngUrl srcImage
+        , style "min-width" "100px"
+        , style "min-height" "100px"
+        , style "image-rendering" "pixelated"
+        ]
+        []
+
+
+drawImage : Image -> Html msg
+drawImage srcImage =
+    case Image.dimensions srcImage of
+        { width, height } ->
+            img
+                [ src <| Image.toPngUrl srcImage
+                , style "min-width" <| String.fromInt (width * 10) ++ "px"
+                , style "min-height"<| String.fromInt (height * 10) ++ "px"
+                , style "image-rendering" "pixelated"
+                ]
+                []
