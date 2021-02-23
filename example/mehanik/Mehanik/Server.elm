@@ -15,7 +15,7 @@ import Kvant.Xml.Adjacency as Adjacency
 import Kvant.Xml.Tiles as Tiles
 
 
-serverUrl = "https://kraken.labs.jb.gg"
+serverUrl = "https://kraken.labs.jb.gg/tiles"
 sceneServer = "http://limb.labs.jb.gg"
 storageUrl = "https://d3r50642m20jlp.cloudfront.net"
 

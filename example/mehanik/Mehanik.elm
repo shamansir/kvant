@@ -1272,7 +1272,8 @@ view model =
                         )
                     )
                 ++
-                    (tiledExamples
+                    (model.tiles
+                    |> Dict.keys
                     |> List.map
                         (\group ->
                             case model.tiles |> Dict.get group of
