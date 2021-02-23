@@ -43,6 +43,7 @@ import Kvant.Rotation as Rotation exposing (Rotation)
 import Kvant.Tiles exposing
     ( toIndexInSet, fromIndexInSet, buildMapping, noMapping
     , TileMapping, TileKey, TileSet, TileGrid, Rule
+    , TileInfo, Format
     , TileAdjacency
     )
 import Kvant.Tiles as Tiles
@@ -75,12 +76,22 @@ type alias Options =  ( Options.PatternSearch, Options.Output )
 type alias AtomId = Int -- tile, character, pattern, color, etc...
 
 
+type Origin
+    = Local
+    | Remote
+
+
 type alias Model =
     { status : Status
     , options : Options
     , example : CurrentExample
     , images : Dict ImageAlias Image
-    , tiles : Dict TileSetName ( TileSet, Either (List Rule) TileGrid )
+    , tiles : Dict TileSetName
+        { format : Format
+        , tiles : List TileInfo
+        , rules : Either (List Rule) TileGrid
+        , origin : Origin
+        }
     , matches : Maybe (Neighbours (Matches AtomId))
     , imagesErrors : Dict ImageAlias Http.Error
     , tilesErrors : Dict TileSetName String
@@ -148,7 +159,7 @@ type Msg
     | ShowMatchesFor AtomId
     -- receiving from Http requests
     | GotImage ImageAlias Image
-    | GotTiles TileSetName ( TileSet, Either (List Rule) TileGrid )
+    | GotTiles Origin TileSetName ( TileSet, Either (List Rule) TileGrid )
     | GotRemoteTileSetNames (List TileSetName)
     | ImageLoadError ImageAlias Http.Error
     | TilesLoadError TileSetName String
@@ -525,8 +536,8 @@ update msg model =
                         | status =
                             WaitingAdjacencyResponse model.status
                         }
-                    , case model.tiles |> Dict.get set of
-                        Just (_, Right grid) ->
+                    , case model.tiles |> Dict.get set |> Maybe.map .rules of
+                        Just (Right grid) ->
                             preprocessInWorker
                                 { options =
                                     model.options
@@ -634,32 +645,35 @@ update msg model =
 
                         , mapping =
                             case model.tiles |> Dict.get set of
-                                Just (tileSet, _) ->
-                                    buildMapping tileSet
+                                Just { format, tiles } ->
+                                    buildMapping ( format, tiles )
                                 _ ->
                                     noMapping
 
                         , adjacency =
-                            case model.tiles |> Dict.get set of
-                                Just (_, Right _) ->
-                                    Nothing -- will be received from worker
-                                Just ( (_, tiles ), Left rules ) ->
-                                    Just
-                                        <| Left
-                                        <| Tiles.buildAdjacencyRules
-                                            tiles
-                                            rules
-                                Nothing ->
-                                    Nothing
+                            model.tiles
+                                |> Dict.get set
+                                |> Maybe.andThen
+                                    (\def ->
+                                        case def.rules of
+                                            Left rules ->
+                                                Just
+                                                    <| Left
+                                                    <| Tiles.buildAdjacencyRules
+                                                        def.tiles
+                                                        rules
+                                            Right _ ->
 
+                                                Nothing -- will be received from worker
+                                    )
                         , wave = Nothing
                         }
 
                 , matches = Nothing
                 }
 
-            , case model.tiles |> Dict.get set of
-                Just (_, Right _) ->
+            , case model.tiles |> Dict.get set |> Maybe.map .rules of
+                Just (Right _) ->
                     preprocessInWorker_
                 _ ->
                     Cmd.none
@@ -753,12 +767,17 @@ update msg model =
             , Cmd.none
             )
 
-        GotTiles tileSet tiles ->
+        GotTiles origin tileSetName ( ( format, tiles ), rules ) ->
             (
                 { model
                 | tiles =
                     model.tiles
-                        |> Dict.insert tileSet tiles
+                        |> Dict.insert tileSetName
+                            { format = format
+                            , tiles = tiles
+                            , rules = rules
+                            , origin = origin
+                            }
                 }
             , Cmd.none
             )
@@ -959,15 +978,15 @@ view model =
 
                 FromTiles { set, wave, mapping } ->
                     case model.tiles |> Dict.get set of
-                        Just ( ( format, tiles ), maybeGrid ) ->
+                        Just def ->
                             div []
                                 [ hr [] []
-                                , Tiles.viewTiles toTileUrl ShowMatchesFor mapping format set
+                                , Tiles.viewTiles toTileUrl ShowMatchesFor mapping def.format set
                                     <| case currentTiles of
                                             Just adjacencyTiles ->
                                                 Dict.keys adjacencyTiles
                                             Nothing ->
-                                                tiles
+                                                def.tiles
                                                     |> List.map .key
                                                     |> List.map (\key -> ( key, 0 ))  -- FIXME
                                 , hr [] []
@@ -979,10 +998,10 @@ view model =
                                     [ style "transform" "scale(0.6)"
                                     , style "transform-origin" "0 0"
                                     ]
-                                    [ case maybeGrid of
+                                    [ case def.rules of
                                         Right grid ->
                                             Tiles.renderInput
-                                                (toTileUrl format set)
+                                                (toTileUrl def.format set)
                                                 grid
                                         Left _ ->
                                             div [] []  -- FIXME: TODO
@@ -992,7 +1011,7 @@ view model =
                                                 <| Array.toList
                                                     >> Tiles.merge
                                                     >> Tiles.tileAndCount
-                                                            (toTileUrl format set)
+                                                            (toTileUrl def.format set)
                                             )
                                         |> Maybe.withDefault (div [] [])
                                     ]
@@ -1012,8 +1031,8 @@ view model =
                     Image.renderPlane
                         <| Plane.map Image.pixelToColor <| pattern
                 FromTiles { set, mapping } ->
-                    case model.tiles |> Dict.get set of
-                        Just ( ( format, _ ), _ ) ->
+                    case model.tiles |> Dict.get set |> Maybe.map .format of
+                        Just format ->
                             Tiles.renderPlane (toTileUrl format set)
                                 <| Plane.map (fromIndexInSet mapping) <| pattern
                         Nothing -> div [] []
@@ -1033,7 +1052,7 @@ view model =
                                 format =
                                     model.tiles
                                         |> Dict.get spec.set
-                                        |> Maybe.map (Tuple.first >> Tuple.first)
+                                        |> Maybe.map .format
                                         |> Maybe.withDefault "png"
 
                             in
@@ -1277,17 +1296,17 @@ view model =
                     |> List.map
                         (\group ->
                             case model.tiles |> Dict.get group of
-                                Just ( ( format, tiles ), _ ) ->
+                                Just def ->
                                     exampleFrame (SwitchToTiledExample group)
                                         [ img
                                             [ src <| "http://localhost:3000/tiled/"
                                                 ++ group ++ "/" ++
-                                                (tiles
+                                                (def.tiles
                                                     |> List.head
                                                     |> Maybe.map .key
                                                     |> Maybe.withDefault ""
                                                 )
-                                                ++ "." ++ format
+                                                ++ "." ++ def.format
                                             , width 50
                                             , height 50
                                             ]
@@ -1386,7 +1405,7 @@ requestLocalRules tileSet =
         { url = "http://localhost:3000/tiled/" ++ tileSet ++ "/data.xml"
         , expect = Server.expectTileRules
         }
-        |> Cmd.map (runResult (TilesLoadError tileSet) (GotTiles tileSet))
+        |> Cmd.map (runResult (TilesLoadError tileSet) (GotTiles Local tileSet))
 
 
 runResult : (x -> b) -> (a -> b) -> Result x a -> b
@@ -1402,7 +1421,7 @@ requestAllLocalRules = List.map requestLocalRules >> Cmd.batch
 
 requestRemoteRules : TileSetName -> Cmd Msg
 requestRemoteRules tileSet =
-    Server.requestRules tileSet <| runResult (TilesLoadError tileSet) (GotTiles tileSet)
+    Server.requestRules tileSet <| runResult (TilesLoadError tileSet) (GotTiles Remote tileSet)
 
 
 requestAllRemoteRules : List TileSetName -> Cmd Msg
