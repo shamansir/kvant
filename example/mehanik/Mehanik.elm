@@ -49,6 +49,7 @@ import Kvant.Tiles as Tiles
 import Kvant.Xml.Tiles as Tiles
 import Kvant.Xml.Adjacency as Adjacency
 
+import Mehanik.Server as Server
 import Mehanik.Chars as Chars
 import Mehanik.Chars as Text
 import Mehanik.Colors as Colors
@@ -148,6 +149,7 @@ type Msg
     -- receiving from Http requests
     | GotImage ImageAlias Image
     | GotTiles TileGroup ( TileSet, Either (List Rule) TileGrid )
+    | GotRemoteTileGroups TileGroup
     | ImageLoadError ImageAlias Http.Error
     | TilesLoadError TileGroup String
     -- receiving from worker
@@ -1322,6 +1324,7 @@ main =
                 , Cmd.batch
                     [ requestAllImages pixelatedExamples
                     , requestAllRules tiledExamples
+                    --, Server.requestTilesets
                     ]
                 )
         , onUrlChange = always NoOp

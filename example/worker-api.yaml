@@ -147,7 +147,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Adjacency'
+                $ref: '#/components/schemas/Matches'
 components:
   schemas:
     Adjacency:
@@ -169,26 +169,27 @@ components:
             type: number
             example: 0.7
           matches:
+            $ref: '#/components/schemas/Matches'
+    Matches:
+      type: array
+      items:
+        required:
+          - x
+          - y
+          - matches
+        properties:
+          x:
+            type: number
+            example: -1
+            enum: [-1, 0, 1]
+          y:
+            type: number
+            example: -1
+            enum: [-1, 0, 1]
+          matches:
             type: array
             items:
-              required:
-                - x
-                - y
-                - matches
-              properties:
-                x:
-                  type: number
-                  example: -1
-                  enum: [-1, 0, 1]
-                y:
-                  type: number
-                  example: -1
-                  enum: [-1, 0, 1]
-                matches:
-                  type: array
-                  items:
-                    type: integer
-
+              type: integer
     Run:
       type: object
       required:
