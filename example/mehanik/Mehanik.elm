@@ -80,10 +80,10 @@ type alias Model =
     , options : Options
     , example : CurrentExample
     , images : Dict ImageAlias Image
-    , tiles : Dict TileGroup ( TileSet, Either (List Rule) TileGrid )
+    , tiles : Dict TileSetName ( TileSet, Either (List Rule) TileGrid )
     , matches : Maybe (Neighbours (Matches AtomId))
     , imagesErrors : Dict ImageAlias Http.Error
-    , tilesErrors : Dict TileGroup String
+    , tilesErrors : Dict TileSetName String
     , workerError : Maybe String
     }
 
@@ -110,7 +110,7 @@ type CurrentExample
         , wave : Maybe Image
         }
     | FromTiles
-        { group : TileGroup
+        { set : TileSetName
         , mapping : TileMapping
         , adjacency : Maybe
             (Either
@@ -127,7 +127,7 @@ type alias Grid a = Array (Array (Array a))
 type alias ImageAlias = String
 
 
-type alias TileGroup = String
+type alias TileSetName = String
 
 
 type Msg
@@ -136,7 +136,7 @@ type Msg
     -- switch to example
     | SwitchToTextExample ( Vec2, String )
     | SwitchToImageExample Image
-    | SwitchToTiledExample TileGroup
+    | SwitchToTiledExample TileSetName
     -- controls for worker
     | Run
     | Trace
@@ -148,10 +148,10 @@ type Msg
     | ShowMatchesFor AtomId
     -- receiving from Http requests
     | GotImage ImageAlias Image
-    | GotTiles TileGroup ( TileSet, Either (List Rule) TileGrid )
-    | GotRemoteTileGroups TileGroup
+    | GotTiles TileSetName ( TileSet, Either (List Rule) TileGrid )
+    | GotRemoteTileSetNames (List TileSetName)
     | ImageLoadError ImageAlias Http.Error
-    | TilesLoadError TileGroup String
+    | TilesLoadError TileSetName String
     -- receiving from worker
     | GotResult (Grid AtomId)
     | GotAdjacency (Adjacency Pattern)
@@ -519,13 +519,13 @@ update msg model =
                         }
                     )
 
-                FromTiles { group, mapping } ->
+                FromTiles { set, mapping } ->
                     (
                         { model
                         | status =
                             WaitingAdjacencyResponse model.status
                         }
-                    , case model.tiles |> Dict.get group of
+                    , case model.tiles |> Dict.get set of
                         Just (_, Right grid) ->
                             preprocessInWorker
                                 { options =
@@ -621,7 +621,7 @@ update msg model =
             , preprocessInWorker_
             )
 
-        SwitchToTiledExample group ->
+        SwitchToTiledExample set ->
             (
                 { model
                 | status = None
@@ -630,17 +630,17 @@ update msg model =
 
                     FromTiles
 
-                        { group = group
+                        { set = set
 
                         , mapping =
-                            case model.tiles |> Dict.get group of
+                            case model.tiles |> Dict.get set of
                                 Just (tileSet, _) ->
                                     buildMapping tileSet
                                 _ ->
                                     noMapping
 
                         , adjacency =
-                            case model.tiles |> Dict.get group of
+                            case model.tiles |> Dict.get set of
                                 Just (_, Right _) ->
                                     Nothing -- will be received from worker
                                 Just ( (_, tiles ), Left rules ) ->
@@ -658,7 +658,7 @@ update msg model =
                 , matches = Nothing
                 }
 
-            , case model.tiles |> Dict.get group of
+            , case model.tiles |> Dict.get set of
                 Just (_, Right _) ->
                     preprocessInWorker_
                 _ ->
@@ -753,14 +753,22 @@ update msg model =
             , Cmd.none
             )
 
-        GotTiles tileGroup tiles ->
+        GotTiles tileSet tiles ->
             (
                 { model
                 | tiles =
                     model.tiles
-                        |> Dict.insert tileGroup tiles
+                        |> Dict.insert tileSet tiles
                 }
             , Cmd.none
+            )
+
+        GotRemoteTileSetNames tileSetsNames ->
+            ( model
+            , requestAllRemoteRules
+                <| List.filter
+                    (\set -> not <| List.member set tiledExamples)
+                <| tileSetsNames
             )
 
         ImageLoadError imageAlias error ->
@@ -773,12 +781,12 @@ update msg model =
             , Cmd.none
             )
 
-        TilesLoadError tileGroup error ->
+        TilesLoadError tileSet error ->
             (
                 { model
                 | tilesErrors =
                     model.tilesErrors
-                        |> Dict.insert tileGroup error
+                        |> Dict.insert tileSet error
                 }
             , Cmd.none
             )
@@ -845,7 +853,7 @@ update msg model =
                             FromTiles
                                 { spec
                                 | wave =
-                                    ( case model.tiles |> Dict.get spec.group of
+                                    ( case model.tiles |> Dict.get spec.set of
                                         Just _ ->
                                             case spec.adjacency of
 
@@ -949,12 +957,12 @@ view model =
                         ]
                     --Example.view ImageRenderer.make exampleModel
 
-                FromTiles { group, wave, mapping } ->
-                    case model.tiles |> Dict.get group of
+                FromTiles { set, wave, mapping } ->
+                    case model.tiles |> Dict.get set of
                         Just ( ( format, tiles ), maybeGrid ) ->
                             div []
                                 [ hr [] []
-                                , Tiles.viewTiles toTileUrl ShowMatchesFor mapping format group
+                                , Tiles.viewTiles toTileUrl ShowMatchesFor mapping format set
                                     <| case currentTiles of
                                             Just adjacencyTiles ->
                                                 Dict.keys adjacencyTiles
@@ -974,7 +982,7 @@ view model =
                                     [ case maybeGrid of
                                         Right grid ->
                                             Tiles.renderInput
-                                                (toTileUrl format group)
+                                                (toTileUrl format set)
                                                 grid
                                         Left _ ->
                                             div [] []  -- FIXME: TODO
@@ -984,7 +992,7 @@ view model =
                                                 <| Array.toList
                                                     >> Tiles.merge
                                                     >> Tiles.tileAndCount
-                                                            (toTileUrl format group)
+                                                            (toTileUrl format set)
                                             )
                                         |> Maybe.withDefault (div [] [])
                                     ]
@@ -1003,10 +1011,10 @@ view model =
                     -- FIXME:
                     Image.renderPlane
                         <| Plane.map Image.pixelToColor <| pattern
-                FromTiles { group,  mapping } ->
-                    case model.tiles |> Dict.get group of
+                FromTiles { set, mapping } ->
+                    case model.tiles |> Dict.get set of
                         Just ( ( format, _ ), _ ) ->
-                            Tiles.renderPlane (toTileUrl format group)
+                            Tiles.renderPlane (toTileUrl format set)
                                 <| Plane.map (fromIndexInSet mapping) <| pattern
                         Nothing -> div [] []
                 _ -> div [] []
@@ -1024,7 +1032,7 @@ view model =
 
                                 format =
                                     model.tiles
-                                        |> Dict.get spec.group
+                                        |> Dict.get spec.set
                                         |> Maybe.map (Tuple.first >> Tuple.first)
                                         |> Maybe.withDefault "png"
 
@@ -1040,7 +1048,7 @@ view model =
                                             ) of
                                         Just { subject } ->
                                             Tiles.tile1
-                                                (toTileUrl format spec.group)
+                                                (toTileUrl format spec.set)
                                                 subject
                                         Nothing -> div [] []
 
@@ -1225,8 +1233,8 @@ view model =
 
                 ]
 
-        toTileUrl format group ( tile, _ ) = -- FIXME: use rotation
-            "http://localhost:3000/tiled/" ++ group ++ "/" ++ tile ++ "." ++ format
+        toTileUrl format set ( tile, _ ) = -- FIXME: use rotation
+            "http://localhost:3000/tiled/" ++ set ++ "/" ++ tile ++ "." ++ format
 
         pixelatedExample imgAlias =
             case ( model.images |> Dict.get imgAlias, model.imagesErrors |> Dict.get imgAlias ) of
@@ -1242,7 +1250,7 @@ view model =
                         ]
                 ( _, Just error ) ->
                     exampleFrame NoOp
-                        [ Html.text <| imgAlias ++ ": Error " ++ errorToString error ]
+                        [ Html.text <| imgAlias ++ ": Error " ++ Server.errorToString error ]
                 ( Nothing, Nothing ) ->
                     exampleFrame NoOp
                         [ Html.text <| imgAlias ++ ": Loading..." ]
@@ -1323,8 +1331,13 @@ main =
                 ( init
                 , Cmd.batch
                     [ requestAllImages pixelatedExamples
-                    , requestAllRules tiledExamples
-                    --, Server.requestTilesets
+                    , requestAllLocalRules tiledExamples
+                    , Server.requestTilesets
+                        (\result ->
+                            case result of
+                                Ok tileSetsNames -> GotRemoteTileSetNames tileSetsNames
+                                Err error -> TilesLoadError "(remote)" <| Server.errorToString error
+                        )
                     ]
                 )
         , onUrlChange = always NoOp
@@ -1358,7 +1371,7 @@ requestImage imageAlias =
         , expect =
             Http.expectBytesResponse
                 (runResult (ImageLoadError imageAlias) (GotImage imageAlias))
-                loadImage
+                Server.loadImage
         }
 
 
@@ -1366,28 +1379,14 @@ requestAllImages : List ImageAlias -> Cmd Msg
 requestAllImages = List.map requestImage >> Cmd.batch
 
 
-requestRules : TileGroup -> Cmd Msg
-requestRules tileGroup =
+requestLocalRules : TileSetName -> Cmd Msg
+requestLocalRules tileSet =
     Http.get
-        { url = "http://localhost:3000/tiled/" ++ tileGroup ++ "/data.xml"
-        , expect =
-            Http.expectString
-                (Result.mapError errorToString
-                >> Result.andThen
-                    (\xmlString ->
-                        Result.map2
-                            Tuple.pair
-                            ( XD.run Tiles.decode xmlString )
-                            ( case XD.run Adjacency.decodeGrid xmlString of
-                                Ok grid -> Ok <| Right grid
-                                Err error ->
-                                    XD.run Adjacency.decodeRules xmlString
-                                        |> Result.map Left
-                            )
-                    )
-                >> runResult (TilesLoadError tileGroup) (GotTiles tileGroup)
-                )
+        { url = "http://localhost:3000/tiled/" ++ tileSet ++ "/data.xml"
+        , expect = Server.expectTileRules
         }
+        |> Cmd.map (runResult (TilesLoadError tileSet) (GotTiles tileSet))
+
 
 runResult : (x -> b) -> (a -> b) -> Result x a -> b
 runResult onError onSuccess result =
@@ -1396,51 +1395,17 @@ runResult onError onSuccess result =
         Err err -> onError err
 
 
-requestAllRules : List TileGroup -> Cmd Msg
-requestAllRules = List.map requestRules >> Cmd.batch
+requestAllLocalRules : List TileSetName -> Cmd Msg
+requestAllLocalRules = List.map requestLocalRules >> Cmd.batch
 
 
-loadImage : Http.Response Bytes -> Result Http.Error Image
-loadImage response =
-    case response of
-        Http.BadUrl_ url ->
-          Err (Http.BadUrl url)
-
-        Http.Timeout_ ->
-          Err Http.Timeout
-
-        Http.NetworkError_ ->
-          Err Http.NetworkError
-
-        Http.BadStatus_ metadata _ ->
-          Err (Http.BadStatus metadata.statusCode)
-
-        Http.GoodStatus_ _ bytes ->
-          case Image.decode bytes of
-            Just image ->
-              Ok image
-
-            Nothing ->
-              Err (Http.BadBody "Image failed to be decoded")
+requestRemoteRules : TileSetName -> Cmd Msg
+requestRemoteRules tileSet =
+    Server.requestRules tileSet <| runResult (TilesLoadError tileSet) (GotTiles tileSet)
 
 
-errorToString : Http.Error -> String
-errorToString error =
-    case error of
-        Http.BadUrl url ->
-            "The URL " ++ url ++ " was invalid"
-        Http.Timeout ->
-            "Unable to reach the server, try again"
-        Http.NetworkError ->
-            "Unable to reach the server, check your network connection"
-        Http.BadStatus 500 ->
-            "The server had a problem, try again later"
-        Http.BadStatus 400 ->
-            "Verify your information and try again"
-        Http.BadStatus _ ->
-            "Unknown error"
-        Http.BadBody errorMessage ->
-            errorMessage
+requestAllRemoteRules : List TileSetName -> Cmd Msg
+requestAllRemoteRules = List.map requestRemoteRules >> Cmd.batch
 
 
 getPatternAdjacency : CurrentExample -> Maybe (Adjacency Pattern)

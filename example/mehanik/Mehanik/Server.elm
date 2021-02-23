@@ -2,10 +2,17 @@ module Mehanik.Server exposing (..)
 
 
 import Http
+import Bytes exposing (Bytes)
+import Image exposing (Image)
+
 import Dict
 import Json.Decode as D
+import Xml.Decode as XD
+import Either exposing (Either(..))
 
-import Kvant.Tiles exposing (TileSet)
+import Kvant.Tiles exposing (TileSet, Rule, TileGrid)
+import Kvant.Xml.Adjacency as Adjacency
+import Kvant.Xml.Tiles as Tiles
 
 
 serverUrl = "https://kraken.labs.jb.gg"
@@ -33,11 +40,77 @@ requestTileset set receivedTiles =
         }
 
 
-requestTilesDefinition : String -> (Result Http.Error String {-TileSet-} -> msg) -> Cmd msg
-requestTilesDefinition set receivedDescriptionFile =
+requestRules
+    :  String
+    -> (Result String ( TileSet, Either (List Rule) TileGrid ) -> msg)
+    -> Cmd msg
+requestRules set gotTilesetRules =
     Http.get
         { url = storageUrl ++ "/tiles/" ++ set ++ "/data.xml"
-        , expect = Http.expectString receivedDescriptionFile
+        , expect = expectTileRules
         }
+    |> Cmd.map gotTilesetRules
+
 
 --saveSolution : Cmd msg
+
+expectTileRules : Http.Expect (Result String (TileSet, Either (List Rule) (TileGrid)))
+expectTileRules =
+    Http.expectString
+            (Result.mapError errorToString
+            >> Result.andThen
+                (\xmlString ->
+                    Result.map2
+                        Tuple.pair
+                        ( XD.run Tiles.decode xmlString )
+                        ( case XD.run Adjacency.decodeGrid xmlString of
+                            Ok grid -> Ok <| Right grid
+                            Err error ->
+                                XD.run Adjacency.decodeRules xmlString
+                                    |> Result.map Left
+                        )
+                )
+            )
+
+
+errorToString : Http.Error -> String
+errorToString error =
+    case error of
+        Http.BadUrl url ->
+            "The URL " ++ url ++ " was invalid"
+        Http.Timeout ->
+            "Unable to reach the server, try again"
+        Http.NetworkError ->
+            "Unable to reach the server, check your network connection"
+        Http.BadStatus 500 ->
+            "The server had a problem, try again later"
+        Http.BadStatus 400 ->
+            "Verify your information and try again"
+        Http.BadStatus _ ->
+            "Unknown error"
+        Http.BadBody errorMessage ->
+            errorMessage
+
+
+loadImage : Http.Response Bytes -> Result Http.Error Image
+loadImage response =
+    case response of
+        Http.BadUrl_ url ->
+          Err (Http.BadUrl url)
+
+        Http.Timeout_ ->
+          Err Http.Timeout
+
+        Http.NetworkError_ ->
+          Err Http.NetworkError
+
+        Http.BadStatus_ metadata _ ->
+          Err (Http.BadStatus metadata.statusCode)
+
+        Http.GoodStatus_ _ bytes ->
+          case Image.decode bytes of
+            Just image ->
+              Ok image
+
+            Nothing ->
+              Err (Http.BadBody "Image failed to be decoded")
