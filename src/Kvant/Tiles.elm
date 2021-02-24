@@ -22,17 +22,11 @@ import Dict
 type alias TileKey = String
 
 
-type alias Format = String
-
-
 type alias TileInfo =
     { key : TileKey
     , symmetry : Maybe Symmetry
     , weight : Maybe Float
     }
-
-
-type alias TileSet = ( Format, List TileInfo )
 
 
 type alias TilesPlane = Plane (TileKey, Rotation)
@@ -61,26 +55,25 @@ noTile : TileKey
 noTile = "none"
 
 
-buildMapping : TileSet -> TileMapping
+buildMapping : List TileInfo -> TileMapping
 buildMapping =
-    Tuple.second
-        >> List.concatMap
-            (\tile ->
-                Rotation.uniqueFor (tile.symmetry |> Maybe.withDefault Symmetry.default)
-                    |> List.map (Tuple.pair tile.key)
+    List.concatMap
+        (\tile ->
+            Rotation.uniqueFor (tile.symmetry |> Maybe.withDefault Symmetry.default)
+                |> List.map (Tuple.pair tile.key)
+        )
+    >> List.indexedMap
+        (\index ( key, rot ) ->
+            ( ( index, ( key, rot ) )
+            , ( ( key, Rotation.toId rot ), index )
             )
-        >> List.indexedMap
-            (\index ( key, rot ) ->
-                ( ( index, ( key, rot ) )
-                , ( ( key, Rotation.toId rot ), index )
-                )
+        )
+    >> (\list ->
+            ( List.map Tuple.first <| list
+            , List.map Tuple.second <| list
             )
-        >> (\list ->
-                ( List.map Tuple.first <| list
-                , List.map Tuple.second <| list
-                )
-           )
-        >> Tuple.mapBoth Dict.fromList Dict.fromList
+        )
+    >> Tuple.mapBoth Dict.fromList Dict.fromList
 
 
 noMapping : TileMapping

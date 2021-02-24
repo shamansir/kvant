@@ -10,8 +10,6 @@ import Json.Decode as D
 import Xml.Decode as XD
 import Either exposing (Either(..))
 
-import Kvant.Tiles exposing (TileSet, Rule, TileGrid)
-import Kvant.Xml.Adjacency as Adjacency
 import Kvant.Xml.Tiles as Tiles
 
 
@@ -42,7 +40,7 @@ requestTileset set receivedTiles =
 
 requestRules
     :  String
-    -> (Result String ( TileSet, Either (List Rule) TileGrid ) -> msg)
+    -> (Result String Tiles.TileSet -> msg)
     -> Cmd msg
 requestRules set gotTilesetRules =
     Http.get
@@ -54,22 +52,11 @@ requestRules set gotTilesetRules =
 
 --saveSolution : Cmd msg
 
-expectTileRules : Http.Expect (Result String (TileSet, Either (List Rule) (TileGrid)))
+expectTileRules : Http.Expect (Result String Tiles.TileSet)
 expectTileRules =
     Http.expectString
             (Result.mapError errorToString
-            >> Result.andThen
-                (\xmlString ->
-                    Result.map2
-                        Tuple.pair
-                        ( XD.run Tiles.decode xmlString )
-                        ( case XD.run Adjacency.decodeGrid xmlString of
-                            Ok grid -> Ok <| Right grid
-                            Err error ->
-                                XD.run Adjacency.decodeRules xmlString
-                                    |> Result.map Left
-                        )
-                )
+            >> Result.andThen (XD.run Tiles.decode)
             )
 
 

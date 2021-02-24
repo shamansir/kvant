@@ -42,8 +42,7 @@ import Kvant.Patterns exposing (PatternId, Pattern)
 import Kvant.Rotation as Rotation exposing (Rotation)
 import Kvant.Tiles exposing
     ( toIndexInSet, fromIndexInSet, buildMapping, noMapping
-    , TileMapping, TileKey, TileSet, TileGrid, Rule
-    , TileInfo, Format
+    , TileMapping, TileKey
     , TileAdjacency
     )
 import Kvant.Tiles as Tiles
@@ -81,25 +80,12 @@ type Origin
     | Remote
 
 
-type Rotations
-    = Manual
-    | FromFile
-
-
 type alias Model =
     { status : Status
     , options : Options
     , example : CurrentExample
     , images : Dict ImageAlias Image
-    , tiles : Dict TileSetName
-        ( Origin
-        ,
-            { format : Format
-            , tiles : List TileInfo
-            , rules : Either (List Rule) TileGrid
-            , rotations : Rotations
-            }
-        )
+    , tiles : Dict TileSetName ( Origin, Tiles.TileSet )
     , matches : Maybe (Neighbours (Matches AtomId))
     , imagesErrors : Dict ImageAlias Http.Error
     , tilesErrors : Dict TileSetName String
@@ -167,7 +153,7 @@ type Msg
     | ShowMatchesFor AtomId
     -- receiving from Http requests
     | GotImage ImageAlias Image
-    | GotTiles Origin TileSetName ( TileSet, Either (List Rule) TileGrid )
+    | GotTiles Origin TileSetName Tiles.TileSet
     | GotRemoteTileSetNames (List TileSetName)
     | ImageLoadError ImageAlias Http.Error
     | TilesLoadError TileSetName String
@@ -652,9 +638,11 @@ update msg model =
                         { set = set
 
                         , mapping =
-                            case model.tiles |> Dict.get set |> Maybe.map Tuple.second of
-                                Just { format, tiles } ->
-                                    buildMapping ( format, tiles )
+                            case model.tiles
+                                |> Dict.get set
+                                |> Maybe.map (Tuple.second >> .tiles) of
+                                Just tiles ->
+                                    buildMapping tiles
                                 _ ->
                                     noMapping
 
@@ -776,19 +764,14 @@ update msg model =
             , Cmd.none
             )
 
-        GotTiles origin tileSetName ( ( format, tiles ), rules ) ->
+        GotTiles origin tileSetName tileSet ->
             (
                 { model
                 | tiles =
                     model.tiles
                         |> Dict.insert tileSetName
                             ( origin
-                            ,
-                                { format = format
-                                , tiles = tiles
-                                , rules = rules
-                                , rotations = Manual -- TODO
-                                }
+                            , tileSet
                             )
 
                 }
