@@ -33,38 +33,6 @@ viewTiles toTileUrl toMsg mapping format group =
         (tile1 (toTileUrl format group)
                         << Tuple.mapSecond Rotation.fromId)
 
-    {- div
-        [ style "display" "flex"
-        , style "overflow" "scroll"
-        ]
-        <| List.map
-            (\tileKey ->
-                div
-                    [ style "transform" "scale(0.5)"
-                    , style "margin" "5px"
-                    , style "cursor" "pointer"
-                    , style "padding" "3px"
-                    , style "border" "1px solid lightgray"
-                    , style "border-radius" "3px"
-                    , onClick
-                        <| ShowMatchesFor
-                        <| Maybe.withDefault -1
-                        <| Dict.get tileKey
-                        <| Tuple.second
-                        <| mapping
-                    ]
-                    [ TilesRenderer.tile1 (toTileUrl format group)
-                        <| Tuple.mapSecond Rotation.fromId
-                        <| tileKey ]
-            )
-            <| tiles -}
-
-
-
-
-
-
-
 
 renderInput : (( TileKey, Rotation ) -> String) -> TileGrid -> Html msg
 renderInput toPath =

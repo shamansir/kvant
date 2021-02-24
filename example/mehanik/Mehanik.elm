@@ -978,7 +978,7 @@ view model =
                             div []
                                 [ hr [] []
                                 , Tiles.viewTiles
-                                    (toTileUrl origin)
+                                    (toTileUrl origin def.rotations)
                                     ShowMatchesFor
                                     mapping
                                     def.format
@@ -1002,7 +1002,7 @@ view model =
                                     [ case def.rules of
                                         Right grid ->
                                             Tiles.renderInput
-                                                (toTileUrl origin def.format set)
+                                                (toTileUrl origin def.rotations def.format set)
                                                 grid
                                         Left _ ->
                                             div [] []  -- FIXME: TODO
@@ -1012,7 +1012,7 @@ view model =
                                                 <| Array.toList
                                                     >> Tiles.merge
                                                     >> Tiles.tileAndCount
-                                                            (toTileUrl origin def.format set)
+                                                            (toTileUrl origin def.rotations def.format set)
                                             )
                                         |> Maybe.withDefault (div [] [])
                                     ]
@@ -1034,7 +1034,7 @@ view model =
                 FromTiles { set, mapping } ->
                     case model.tiles |> Dict.get set of
                         Just ( origin, def ) ->
-                            Tiles.renderPlane (toTileUrl origin def.format set)
+                            Tiles.renderPlane (toTileUrl origin def.rotations def.format set)
                                 <| Plane.map (fromIndexInSet mapping) <| pattern
                         Nothing -> div [] []
                 _ -> div [] []
@@ -1048,34 +1048,28 @@ view model =
                 FromTiles spec ->
                     case spec.adjacency of
                         Just (Left _) ->
-                            let
 
-                                format =
-                                    model.tiles
-                                        |> Dict.get spec.set
-                                        |> Maybe.map (Tuple.second >> .format)
-                                        |> Maybe.withDefault "png"
-                                origin =
-                                    model.tiles
-                                        |> Dict.get spec.set
-                                        |> Maybe.map Tuple.first
-                                        |> Maybe.withDefault Local
-
-                            in
-                                \matchId ->
-
-                                    case currentTiles
-                                        |> Maybe.andThen
-                                            (Dict.get
-                                                <| Tuple.mapSecond Rotation.toId
-                                                <| fromIndexInSet spec.mapping
-                                                <| matchId
-                                            ) of
-                                        Just { subject } ->
-                                            Tiles.tile1
-                                                (toTileUrl origin format spec.set)
-                                                subject
-                                        Nothing -> div [] []
+                            case model.tiles |> Dict.get spec.set of
+                                Just ( origin, def ) ->
+                                    \matchId ->
+                                        case currentTiles
+                                            |> Maybe.andThen
+                                                (Dict.get
+                                                    <| Tuple.mapSecond Rotation.toId
+                                                    <| fromIndexInSet spec.mapping
+                                                    <| matchId
+                                                ) of
+                                            Just { subject } ->
+                                                Tiles.tile1
+                                                    (toTileUrl
+                                                        origin
+                                                        def.rotations
+                                                        def.format
+                                                        spec.set
+                                                    )
+                                                    subject
+                                            Nothing -> div [] []
+                                Nothing -> \_ -> div [] []
 
                         Just (Right _) ->
 
@@ -1258,13 +1252,20 @@ view model =
 
                 ]
 
-        toTileUrl origin format set ( tile, _ ) = -- FIXME: use rotation
+        toTileUrl origin rotationType format set ( tile, rotation ) = -- FIXME: use rotation
             (case origin of
                 Local ->
                     "http://localhost:3000/tiled/"
                 Remote ->
                     Server.storageUrl ++ "/tiles/"
-            ) ++ set ++ "/" ++ tile ++ "." ++ format
+            ) ++ set
+            ++ "/"
+            ++ (case rotationType of
+                    Tiles.Manual -> tile
+                    Tiles.Unique -> tile ++ " "
+                        ++ (String.fromInt <| Rotation.toId <| Rotation.toQuarter rotation)
+            ) ++ "."
+            ++ format
 
         pixelatedExample imgAlias =
             case ( model.images |> Dict.get imgAlias, model.imagesErrors |> Dict.get imgAlias ) of
@@ -1311,13 +1312,13 @@ view model =
                                     exampleFrame (SwitchToTiledExample set)
                                         [ img
                                             [ src
-                                                <| toTileUrl origin def.format set
+                                                <| toTileUrl origin def.rotations def.format set
                                                 <|
                                                     ( def.tiles
                                                         |> List.head
                                                         |> Maybe.map .key
                                                         |> Maybe.withDefault ""
-                                                    , 0
+                                                    , Rotation.Original
                                                     )
                                             , width 50
                                             , height 50
