@@ -897,7 +897,51 @@ update msg model =
                                 }
 
                 }
-            , Cmd.none
+            , case model.status of
+                WaitingRunResponse ->
+                    case model.example of
+
+                        NotSelected ->
+                            Cmd.none
+
+                        Textual _ ->
+                            Cmd.none
+
+                        FromImage _ ->
+                            Cmd.none
+
+                        FromTiles spec ->
+                            case model.tiles |> Dict.get spec.set |> Maybe.map Tuple.second of
+                                Just def ->
+                                    case spec.adjacency of
+
+                                        Just (Right adjacency) ->
+
+                                            Server.saveSolution
+                                                NoOp
+                                                spec.set
+                                                (def.tiles |> List.map .key)
+                                                <| Patterns.applyWave
+                                                    -1
+                                                    (Array.map <| fromIndexInSet spec.mapping)
+                                                    grid
+                                                    adjacency
+
+                                        Just (Left _) ->
+
+                                            grid
+                                                |> Grid.adaptGrid
+                                                    (Array.map <| fromIndexInSet spec.mapping)
+                                                |> Server.saveSolution
+                                                    NoOp
+                                                    spec.set
+                                                    (def.tiles |> List.map .key)
+
+                                        Nothing ->
+                                            Cmd.none
+                                Nothing -> Cmd.none
+
+                _ -> Cmd.none
             )
 
         GotAdjacency adjacency ->

@@ -6,11 +6,19 @@ import Bytes exposing (Bytes)
 import Image exposing (Image)
 
 import Dict
+import Array exposing (Array)
+import Json.Encode as E
 import Json.Decode as D
 import Xml.Decode as XD
 import Either exposing (Either(..))
 
+import Kvant.Rotation as Rotation exposing (Rotation)
+import Kvant.Json.Tiles as T
 import Kvant.Xml.Tiles as Tiles
+import Tuple
+
+
+currentVersion = "0.1"
 
 
 serverUrl = "https://kraken.labs.jb.gg/tiles"
@@ -50,7 +58,44 @@ requestRules set gotTilesetRules =
     |> Cmd.map gotTilesetRules
 
 
---saveSolution : Cmd msg
+saveSolution
+    :  msg
+    -> String
+    -> List String
+    -> Array ( Array ( Array ( String, Rotation ) ) )
+    -> Cmd msg
+saveSolution msg set_name tiles wave =
+    Http.post
+        { url = sceneServer ++ "/save_scene"
+        , body =
+            Http.jsonBody
+                <| E.object
+                    [ ( "prefix", E.string "kvant" )
+                    ,
+                        ( "payload"
+                        , E.object
+                            [ ( "set_name", E.string set_name )
+                            , ( "version", E.string currentVersion )
+                            , ( "tiles", E.list E.string tiles )
+                            ,
+                                ( "wave"
+                                , E.array
+                                    (E.array
+                                        (E.array <|
+                                            (Tuple.mapSecond
+                                                ( Rotation.toQuarter >> Rotation.toId)
+                                            >> T.encodeTileKey
+                                            )
+                                        )
+                                    )
+                                    wave
+                                )
+                            ]
+                        )
+                    ]
+
+        , expect = Http.expectWhatever <| always msg
+        }
 
 expectTileRules : Http.Expect (Result String Tiles.TileSet)
 expectTileRules =
