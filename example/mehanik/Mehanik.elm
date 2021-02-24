@@ -81,17 +81,25 @@ type Origin
     | Remote
 
 
+type Rotations
+    = Manual
+    | FromFile
+
+
 type alias Model =
     { status : Status
     , options : Options
     , example : CurrentExample
     , images : Dict ImageAlias Image
     , tiles : Dict TileSetName
-        { format : Format
-        , tiles : List TileInfo
-        , rules : Either (List Rule) TileGrid
-        , origin : Origin
-        }
+        ( Origin
+        ,
+            { format : Format
+            , tiles : List TileInfo
+            , rules : Either (List Rule) TileGrid
+            , rotations : Rotations
+            }
+        )
     , matches : Maybe (Neighbours (Matches AtomId))
     , imagesErrors : Dict ImageAlias Http.Error
     , tilesErrors : Dict TileSetName String
@@ -536,7 +544,7 @@ update msg model =
                         | status =
                             WaitingAdjacencyResponse model.status
                         }
-                    , case model.tiles |> Dict.get set |> Maybe.map .rules of
+                    , case model.tiles |> Dict.get set |> Maybe.map (Tuple.second >> .rules) of
                         Just (Right grid) ->
                             preprocessInWorker
                                 { options =
@@ -644,7 +652,7 @@ update msg model =
                         { set = set
 
                         , mapping =
-                            case model.tiles |> Dict.get set of
+                            case model.tiles |> Dict.get set |> Maybe.map Tuple.second of
                                 Just { format, tiles } ->
                                     buildMapping ( format, tiles )
                                 _ ->
@@ -653,6 +661,7 @@ update msg model =
                         , adjacency =
                             model.tiles
                                 |> Dict.get set
+                                |> Maybe.map Tuple.second
                                 |> Maybe.andThen
                                     (\def ->
                                         case def.rules of
@@ -672,7 +681,7 @@ update msg model =
                 , matches = Nothing
                 }
 
-            , case model.tiles |> Dict.get set |> Maybe.map .rules of
+            , case model.tiles |> Dict.get set |> Maybe.map (Tuple.second >> .rules) of
                 Just (Right _) ->
                     preprocessInWorker_
                 _ ->
@@ -773,11 +782,15 @@ update msg model =
                 | tiles =
                     model.tiles
                         |> Dict.insert tileSetName
-                            { format = format
-                            , tiles = tiles
-                            , rules = rules
-                            , origin = origin
-                            }
+                            ( origin
+                            ,
+                                { format = format
+                                , tiles = tiles
+                                , rules = rules
+                                , rotations = Manual -- TODO
+                                }
+                            )
+
                 }
             , Cmd.none
             )
@@ -978,11 +991,11 @@ view model =
 
                 FromTiles { set, wave, mapping } ->
                     case model.tiles |> Dict.get set of
-                        Just def ->
+                        Just ( origin, def ) ->
                             div []
                                 [ hr [] []
                                 , Tiles.viewTiles
-                                    (toTileUrl def.origin)
+                                    (toTileUrl origin)
                                     ShowMatchesFor
                                     mapping
                                     def.format
@@ -1006,7 +1019,7 @@ view model =
                                     [ case def.rules of
                                         Right grid ->
                                             Tiles.renderInput
-                                                (toTileUrl def.origin def.format set)
+                                                (toTileUrl origin def.format set)
                                                 grid
                                         Left _ ->
                                             div [] []  -- FIXME: TODO
@@ -1016,7 +1029,7 @@ view model =
                                                 <| Array.toList
                                                     >> Tiles.merge
                                                     >> Tiles.tileAndCount
-                                                            (toTileUrl def.origin def.format set)
+                                                            (toTileUrl origin def.format set)
                                             )
                                         |> Maybe.withDefault (div [] [])
                                     ]
@@ -1037,8 +1050,8 @@ view model =
                         <| Plane.map Image.pixelToColor <| pattern
                 FromTiles { set, mapping } ->
                     case model.tiles |> Dict.get set of
-                        Just def ->
-                            Tiles.renderPlane (toTileUrl def.origin def.format set)
+                        Just ( origin, def ) ->
+                            Tiles.renderPlane (toTileUrl origin def.format set)
                                 <| Plane.map (fromIndexInSet mapping) <| pattern
                         Nothing -> div [] []
                 _ -> div [] []
@@ -1057,12 +1070,12 @@ view model =
                                 format =
                                     model.tiles
                                         |> Dict.get spec.set
-                                        |> Maybe.map .format
+                                        |> Maybe.map (Tuple.second >> .format)
                                         |> Maybe.withDefault "png"
                                 origin =
                                     model.tiles
                                         |> Dict.get spec.set
-                                        |> Maybe.map .origin
+                                        |> Maybe.map Tuple.first
                                         |> Maybe.withDefault Local
 
                             in
@@ -1309,19 +1322,20 @@ view model =
                     (model.tiles
                     |> Dict.keys
                     |> List.map
-                        (\group ->
-                            case model.tiles |> Dict.get group of
-                                Just def ->
-                                    exampleFrame (SwitchToTiledExample group)
+                        (\set ->
+                            case model.tiles |> Dict.get set of
+                                Just ( origin, def ) ->
+                                    exampleFrame (SwitchToTiledExample set)
                                         [ img
-                                            [ src <| "http://localhost:3000/tiled/"
-                                                ++ group ++ "/" ++
-                                                (def.tiles
-                                                    |> List.head
-                                                    |> Maybe.map .key
-                                                    |> Maybe.withDefault ""
-                                                )
-                                                ++ "." ++ def.format
+                                            [ src
+                                                <| toTileUrl origin def.format set
+                                                <|
+                                                    ( def.tiles
+                                                        |> List.head
+                                                        |> Maybe.map .key
+                                                        |> Maybe.withDefault ""
+                                                    , 0
+                                                    )
                                             , width 50
                                             , height 50
                                             ]
@@ -1329,7 +1343,7 @@ view model =
                                         ]
                                 Nothing ->
                                     exampleFrame NoOp
-                                        [ Html.text <| group ++ ": Loading..." ]
+                                        [ Html.text <| set ++ ": Loading..." ]
                         )
                     )
                 ++
