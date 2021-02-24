@@ -50,11 +50,11 @@ decode =
             (D.maybe Adjacency.decodeRules)
             (D.maybe Adjacency.decodeGrid)
         )
-        (D.stringAttr "unique"
+        (D.maybe (D.stringAttr "unique")
             |> D.map (\uniqueStr ->
                 case uniqueStr of
-                    "True" -> Unique
-                    "true" -> Unique
+                    Just "True" -> Unique
+                    Just "true" -> Unique
                     _ -> Manual
             )
         )
