@@ -240,7 +240,11 @@ fromCardinal c =
                 Nothing  (Just n) Nothing
                 (Just w) (Just x) (Just e)
                 Nothing  (Just s) Nothing
-
+        {- Cardinal _ _ _ _ _ ->
+            Neighbours
+                Nothing Nothing Nothing
+                Nothing Nothing Nothing
+                Nothing Nothing Nothing -}
 
 getCardinal : Direction -> Cardinal a -> a
 getCardinal dir (Cardinal n w x e s) =
