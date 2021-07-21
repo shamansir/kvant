@@ -38,6 +38,10 @@ get : Model -> List Rule
 get { rules } = rules
 
 
+update : Msg -> Model -> Model
+update msg model = model
+
+
 view : Model -> ((TileKey, Rotation) -> Html msg) -> Html Msg
 view { tiles, rules, currentRule } viewTile =
     Html.div

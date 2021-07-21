@@ -59,6 +59,7 @@ import Mehanik.Tiles as Tiles
 import Mehanik.Grid as Grid
 import Mehanik.Generic exposing (..)
 import Mehanik.Patterns as Patterns
+import Mehanik.RuleEditor as RE
 
 
 -- import Mehanik.Renderer exposing (Renderer)
@@ -89,6 +90,7 @@ type alias Model =
     , matches : Maybe (Neighbours (Matches AtomId))
     , imagesErrors : Dict ImageAlias Http.Error
     , tilesErrors : Dict TileSetName String
+    , ruleEditor : Maybe RE.Model
     , workerError : Maybe String
     }
 
@@ -170,6 +172,7 @@ type Msg
     | UseBoundedInput
     | UsePeriodicOutput
     | UseBoundedOutput
+    | ToRuleEditor RE.Msg
 
 
 textExamples =
@@ -275,6 +278,7 @@ init =
     , workerError = Nothing
     , imagesErrors = Dict.empty
     , tilesErrors = Dict.empty
+    , ruleEditor = Nothing
     }
 
 
@@ -606,6 +610,7 @@ update msg model =
                         , wave = Nothing
                         }
                 , matches = Nothing
+                , ruleEditor = Nothing
                 }
             , preprocessInWorker_
             )
@@ -622,12 +627,16 @@ update msg model =
                         , wave = Nothing
                         }
                 , matches = Nothing
+                , ruleEditor = Nothing
                 }
             , preprocessInWorker_
             )
 
         SwitchToTiledExample set ->
             (
+                let
+                    maybeSetData = model.tiles |> Dict.get set |> Maybe.map Tuple.second
+                in
                 { model
                 | status = None
                 , options = forTiles model.options
@@ -638,18 +647,15 @@ update msg model =
                         { set = set
 
                         , mapping =
-                            case model.tiles
-                                |> Dict.get set
-                                |> Maybe.map (Tuple.second >> .tiles) of
+                            case maybeSetData
+                                |> Maybe.map .tiles of
                                 Just tiles ->
                                     buildMapping tiles
                                 _ ->
                                     noMapping
 
                         , adjacency =
-                            model.tiles
-                                |> Dict.get set
-                                |> Maybe.map Tuple.second
+                            maybeSetData
                                 |> Maybe.andThen
                                     (\def ->
                                         case def.rules of
@@ -663,10 +669,20 @@ update msg model =
 
                                                 Nothing -- will be received from worker
                                     )
+
                         , wave = Nothing
                         }
 
                 , matches = Nothing
+
+                , ruleEditor =
+                    maybeSetData
+                        |> Maybe.andThen
+                            (\def ->
+                                case def.rules of
+                                    Left rules -> Just <| RE.load def.tiles rules
+                                    Right _ -> Nothing -- TODO: also show rules, just don't allow editing them
+                            )
                 }
 
             , case model.tiles |> Dict.get set |> Maybe.map (Tuple.second >> .rules) of
@@ -973,6 +989,14 @@ update msg model =
             (
                 { model
                 | workerError = Just error
+                }
+            , Cmd.none
+            )
+
+        ToRuleEditor reMsg ->
+            (
+                { model
+                | ruleEditor = model.ruleEditor |> Maybe.map (RE.update reMsg)
                 }
             , Cmd.none
             )
@@ -1330,6 +1354,16 @@ view model =
                     exampleFrame NoOp
                         [ Html.text <| imgAlias ++ ": Loading..." ]
 
+        viewRuleEditor ruleEditor =
+            case model.example of
+                FromTiles { set } ->
+                    case model.tiles |> Dict.get set of
+                        Just ( origin, def ) ->
+                            RE.view ruleEditor
+                                (Tiles.tile1 <| toTileUrl origin def.rotations def.format set)
+                            |> Html.map ToRuleEditor
+                        Nothing -> div [] []
+                _ -> div [] []
 
         examples
             = div
@@ -1394,6 +1428,11 @@ view model =
                         patterns
                 Nothing -> div [] []
             , viewExample
+            , case model.ruleEditor of
+                Just ruleEditor ->
+                    viewRuleEditor ruleEditor
+                Nothing ->
+                    div [] []
             , case model.matches of
                 Just matches -> viewMatches viewMatch matches
                 Nothing -> div [] []
