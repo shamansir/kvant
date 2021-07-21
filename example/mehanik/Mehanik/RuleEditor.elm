@@ -5,7 +5,9 @@ import Kvant.Symmetry as Symmetry exposing (Symmetry(..))
 import Kvant.Tiles exposing (Rule, TileInfo, TileKey)
 
 import Html exposing (Html)
-import Html.Events as Html
+import Html as H
+import Html.Attributes as HA
+import Html.Events as H
 
 
 type Side
@@ -44,53 +46,55 @@ update msg model = model
 
 view : Model -> ((TileKey, Rotation) -> Html msg) -> Html Msg
 view { tiles, rules, currentRule } viewTile =
-    Html.div
-        []
-        [ Html.div [] <| List.map (viewTileInfo viewTile) <| tiles
-        , Html.div [] <| List.map (viewRule viewTile) <| rules
+    H.div
+        [ HA.class "rule-editor" ]
+        [ H.div [ HA.class "tiles-info" ] <| List.map (viewTileInfo viewTile) <| tiles
+        , H.div [ HA.class "tiles-rules" ] <| List.map (viewRule viewTile) <| rules
         ]
 
 
 viewTileInfo : ((TileKey, Rotation) -> Html msg) -> TileInfo -> Html Msg
 viewTileInfo viewTile { key, symmetry, weight } =
-    Html.div
-        []
-        [ Html.span [] [ Html.text key ]
+    H.div
+        [ HA.class "tile-info" ]
+        [ H.span [] [ H.text key ]
         , case symmetry of
             Just s ->
-                Html.div
-                    [ {- Html.onClick NoOp -} ]
-                    [ Html.text
+                H.div
+                    [ {- H.onClick NoOp -} ]
+                    [ H.text
                         <| "Symmetry: ("
                             ++ Symmetry.symmetryToString s
                             ++ ")"
                     , viewSymmetry (\rot -> viewTile (key, rot)) key s
-                        |> Html.map (always NoOp)
+                        |> H.map (always NoOp)
+                    , case weight of
+                        Just w -> H.text <| String.fromFloat w
+                        Nothing -> H.span [] []
                     ]
-            Nothing -> Html.span [] []
-
+            Nothing -> H.span [] []
         ]
 
 
 viewRule : ((TileKey, Rotation) -> Html msg) -> Rule -> Html Msg
 viewRule viewTile { left, right } =
-    Html.div
-        []
-        [ viewTile left |> Html.map (always NoOp)
-        , viewTile right |> Html.map (always NoOp)
+    H.div
+        [ HA.class "tile-rule" ]
+        [ viewTile left |> H.map (always NoOp)
+        , viewTile right |> H.map (always NoOp)
         ]
 
 
 viewSymmetry : ( Rotation -> Html msg ) -> TileKey -> Symmetry -> Html msg
 viewSymmetry viewRotation tile symmetry =
-    Html.div
-        []
+    H.div
+        [ HA.class "symmetries" ]
         <| List.map
             (\rotation ->
-                Html.div
-                    []
-                    [ Html.text <| Rotation.toString rotation
-                    , viewRotation rotation
+                H.div
+                    [ HA.class "symmetry" ]
+                    [ H.span [ HA.class "rotation" ]  [ H.text <| Rotation.toString rotation ]
+                    , H.div [ HA.class "tile" ] [ viewRotation rotation ]
                     ]
             )
         <| Rotation.uniqueFor symmetry

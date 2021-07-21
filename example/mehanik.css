@@ -1,0 +1,35 @@
+body {
+    margin: 0;
+}
+
+.rule-editor img {
+    border: 1px solid lightgray;
+    border-radius : 3px;
+}
+
+
+.symmetries {
+    display: flex;
+}
+
+.rotation {
+    font-size: 6px;
+    background: white;
+    border-radius: 4px;
+}
+
+.symmetry .tile {
+    margin: 0 5px;
+    transform: scale(0.6);
+}
+
+.symmetry .tile {
+    max-width: 50px;
+    max-height: 50px;
+}
+
+
+.tile-rule {
+    display: flex;
+    margin: 10px;
+}
