@@ -10,7 +10,7 @@
     "start:mehanik": "elm-live ./mehanik/Mehanik.elm --open --start-page ./index.html --port 2000 -- --output=./mehanik.js",
     "start:truchet": "elm-live ./truchet/KvantProxy.elm --open --start-page ./truchet/index.html --port 2000 -- --output=./truchet/kvant-proxy.js",
     "build": "npm run build:worker && npm run build:mehanik",
-    "build:mehanik": "elm make ./mehanik/Mehanik.elm --output=./mehanink.js",
+    "build:mehanik": "elm make ./mehanik/Mehanik.elm --output=./mehanik.js",
     "build:worker": "elm make ./mehanik/Worker.elm --output=./worker.js",
     "build:truchet": "elm make ./truchet/KvantProxy.elm --output=./truchet/kvant-proxy.js",
     "serve": "node server.js"
